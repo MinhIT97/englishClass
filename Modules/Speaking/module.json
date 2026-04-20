@@ -1,0 +1,11 @@
+{
+    "name": "Speaking",
+    "alias": "speaking",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Speaking\\Providers\\SpeakingServiceProvider"
+    ],
+    "files": []
+}

@@ -1,0 +1,12 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Modules\Classroom\Http\Controllers\ClassroomController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('classroom', [ClassroomController::class, 'index'])->name('classroom.index');
+    Route::post('classroom', [ClassroomController::class, 'store'])->name('classroom.store');
+    Route::get('classroom/{id}', [ClassroomController::class, 'show'])->name('classroom.show');
+    Route::post('classroom/join', [ClassroomController::class, 'join'])->name('classroom.join');
+    Route::post('classroom/{id}/post', [ClassroomController::class, 'storePost'])->name('classroom.post.store');
+});

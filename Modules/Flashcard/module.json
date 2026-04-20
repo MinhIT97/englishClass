@@ -1,0 +1,11 @@
+{
+    "name": "Flashcard",
+    "alias": "flashcard",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Flashcard\\Providers\\FlashcardServiceProvider"
+    ],
+    "files": []
+}

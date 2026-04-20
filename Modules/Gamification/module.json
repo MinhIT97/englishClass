@@ -1,0 +1,11 @@
+{
+    "name": "Gamification",
+    "alias": "gamification",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Gamification\\Providers\\GamificationServiceProvider"
+    ],
+    "files": []
+}

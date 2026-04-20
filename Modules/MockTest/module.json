@@ -1,0 +1,11 @@
+{
+    "name": "MockTest",
+    "alias": "mocktest",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\MockTest\\Providers\\MockTestServiceProvider"
+    ],
+    "files": []
+}

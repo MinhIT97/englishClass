@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/gamification",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Gamification\\": "",
+            "Modules\\Gamification\\Database\\Factories\\": "database/factories/",
+            "Modules\\Gamification\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Gamification\\Tests\\": "tests/"
+        }
+    }
+}

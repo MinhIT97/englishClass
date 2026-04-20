@@ -1,0 +1,11 @@
+{
+    "name": "Writing",
+    "alias": "writing",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Writing\\Providers\\WritingServiceProvider"
+    ],
+    "files": []
+}
