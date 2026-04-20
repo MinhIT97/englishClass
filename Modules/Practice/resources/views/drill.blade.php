@@ -11,8 +11,19 @@
     <div id="question-container" class="glass-card" style="max-width: 800px; margin: 0 auto; padding: 3rem">
         <div style="margin-bottom: 2rem">
             <h3 style="color: var(--text-muted); font-size: 1rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1em">Question</h3>
+            
+            @if($skill === 'listening' && isset($question->content['audio_path']))
+                <div style="margin-bottom: 2rem; background: rgba(99, 102, 241, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--glass-border)">
+                    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem">🎧 Listen to the recording and answer the question below:</p>
+                    <audio id="listening-audio" controls style="width: 100%">
+                        <source src="{{ $question->content['audio_path'] }}" type="audio/mpeg">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            @endif
+
             <div id="question-text" style="font-size: 1.5rem; line-height: 1.6; color: var(--text-main)">
-                {!! nl2br(e($question->content['text'] ?? 'No text provided')) !!}
+                {!! nl2br(e($question->content['question'] ?? $question->content['text'] ?? 'No text provided')) !!}
             </div>
         </div>
 

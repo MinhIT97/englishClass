@@ -4,11 +4,11 @@
             <h1 style="font-size: 1.5rem">Create New Question</h1>
             <p style="color: var(--text-muted)">Add a question manually to the bank.</p>
         </div>
-        <a href="{{ route('question.index') }}" class="btn btn-outline" style="border-radius: 50px">Back to Bank</a>
+        <a href="{{ route('admin.questions.index') }}" class="btn btn-outline" style="border-radius: 50px">Back to Bank</a>
     </div>
 
     <div class="glass-card" style="max-width: 800px; margin: 0 auto; padding: 2.5rem">
-        <form action="{{ route('question.store') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('admin.questions.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem">
@@ -52,7 +52,10 @@
                 <h4 style="margin-bottom: 1rem; color: var(--primary)">Listening & Pronunciation 🎧</h4>
                 <div style="margin-bottom: 1rem">
                     <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem">Upload Audio File (.mp3, .wav)</label>
-                    <input type="file" name="audio_file" accept=".mp3,.wav" style="width: 100%">
+                    <input type="file" name="audio_file" id="audio-file-input" accept=".mp3,.wav" style="width: 100%" onchange="previewUploadedAudio(this)">
+                    <div id="upload-preview-container" style="margin-top: 1rem; display: none;">
+                        <audio id="upload-audio-preview" controls style="width: 100%"></audio>
+                    </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 1rem">
                     <div style="flex: 1; height: 1px; background: var(--glass-border)"></div>
@@ -111,6 +114,16 @@
             }
         }
 
+        function previewUploadedAudio(input) {
+            const container = document.getElementById('upload-preview-container');
+            const audio = document.getElementById('upload-audio-preview');
+            if (input.files && input.files[0]) {
+                const url = URL.createObjectURL(input.files[0]);
+                audio.src = url;
+                container.style.display = 'block';
+            }
+        }
+
         async function generateAIVoice() {
             const text = document.getElementById('question-text').value;
             if (!text) {
@@ -124,7 +137,7 @@
             btn.disabled = true;
 
             try {
-                const response = await fetch('{{ route("question.generate_voice") }}', {
+                const response = await fetch('{{ route("admin.questions.generate_voice") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

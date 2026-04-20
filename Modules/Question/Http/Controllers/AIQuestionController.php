@@ -58,11 +58,16 @@ class AIQuestionController extends Controller
         ]);
 
         foreach ($request->questions as $qData) {
+            $content = $qData['content'];
+            if (isset($qData['audio_path'])) {
+                $content['audio_path'] = $qData['audio_path'];
+            }
+
             Question::create([
                 'skill' => $qData['skill'],
                 'type' => $qData['type'],
                 'topic' => $qData['topic'] ?? 'General',
-                'content' => $qData['content'],
+                'content' => $content,
                 'difficulty' => $qData['difficulty'] ?? 'medium',
             ]);
         }
@@ -84,7 +89,7 @@ Each object in the array MUST have:
 - topic: "{$topic}"
 - difficulty: "medium"
 - content: (object) {
-    text: (string) The full question text or passage snippet.
+    question: (string) The full question text or passage snippet.
     answer: (string) The correct answer.
     options: (array of strings, only for mcq type)
     explanation: (string) Why this is the correct answer.

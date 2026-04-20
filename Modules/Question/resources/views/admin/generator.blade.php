@@ -89,18 +89,33 @@
 
         function renderQuestions() {
             const list = document.getElementById('questions-list');
+            const skill = document.getElementById('gen-skill').value;
             list.innerHTML = '';
             
             generatedData.forEach((q, index) => {
                 const card = document.createElement('div');
                 card.className = 'glass-card';
+                
+                let audioHtml = '';
+                if (skill === 'listening') {
+                    audioHtml = `
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(99, 102, 241, 0.05); border-radius: 12px; border: 1px dashed var(--primary)">
+                            <button onclick="generateVoiceForQuestion(${index}, this)" class="btn btn-outline" style="font-size: 0.75rem; border-radius: 50px">
+                                🔊 Generate AI Voice
+                            </button>
+                            <div id="audio-preview-${index}" style="margin-top: 1rem; display: none;"></div>
+                        </div>
+                    `;
+                }
+
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; margin-bottom: 1rem">
                         <span class="badge" style="background: var(--primary)">${q.type.toUpperCase()}</span>
                         <span style="color: var(--text-muted); font-size: 0.75rem">#${index + 1}</span>
                     </div>
-                    <p style="margin-bottom: 1rem; line-height: 1.6">${q.content.text}</p>
-                    <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 8px">
+                    <p style="margin-bottom: 1rem; line-height: 1.6">${q.content.question || q.content.text}</p>
+                    ${audioHtml}
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 8px; margin-top: 1rem">
                         <strong style="color: var(--accent)">Correct Answer:</strong> ${q.content.answer}
                     </div>
                 `;
@@ -108,6 +123,38 @@
             });
 
             document.getElementById('results-container').style.display = 'block';
+        }
+
+        async function generateVoiceForQuestion(index, btn) {
+            const text = generatedData[index].content.question || generatedData[index].content.text;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Generating... ⌛';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('{{ route("admin.questions.generate_voice") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+                if (data.path) {
+                    btn.innerHTML = 'Voice Generated! ✅';
+                    generatedData[index].audio_path = data.path;
+                    
+                    const previewContainer = document.getElementById(`audio-preview-${index}`);
+                    previewContainer.innerHTML = `<audio controls style="width: 100%"><source src="${data.path}" type="audio/mpeg"></audio>`;
+                    previewContainer.style.display = 'block';
+                }
+            } catch (e) {
+                alert('TTS Generation failed.');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
 
         async function saveQuestions() {

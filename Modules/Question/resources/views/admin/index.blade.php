@@ -5,7 +5,7 @@
             <p style="color: var(--text-muted)">Manage and organize all IELTS practice questions.</p>
         </div>
         <div style="display: flex; gap: 1rem">
-            <a href="{{ route('question.create') }}" class="btn btn-outline" style="padding: 0.75rem 1.5rem; border-radius: 50px">
+            <a href="{{ route('admin.questions.create') }}" class="btn btn-outline" style="padding: 0.75rem 1.5rem; border-radius: 50px">
                 + Create Manually
             </a>
             <a href="{{ route('admin.questions.ai') }}" class="btn btn-primary" style="padding: 0.75rem 1.5rem; border-radius: 50px">
@@ -16,7 +16,7 @@
 
     <!-- Filters -->
     <div class="card" style="margin-bottom: 2rem; padding: 1.5rem">
-        <form action="{{ route('question.index') }}" method="GET" style="display: flex; gap: 1rem; align-items: flex-end">
+        <form action="{{ route('admin.questions.index') }}" method="GET" style="display: flex; gap: 1rem; align-items: flex-end">
             <div style="flex: 1">
                 <label style="display: block; margin-bottom: 0.5rem; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Skill</label>
                 <select name="skill" class="form-control" style="width: 100%; padding: 0.6rem; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: var(--radius); color: var(--text-main);">
@@ -37,7 +37,7 @@
             </div>
             <button type="submit" class="btn btn-outline" style="padding: 0.6rem 1.5rem">Filter</button>
             @if(request()->anyFilled(['skill', 'type']))
-                <a href="{{ route('question.index') }}" class="btn btn-outline" style="padding: 0.6rem 1.5rem; color: #ef4444; border-color: rgba(239, 68, 68, 0.2)">Reset</a>
+                <a href="{{ route('admin.questions.index') }}" class="btn btn-outline" style="padding: 0.6rem 1.5rem; color: #ef4444; border-color: rgba(239, 68, 68, 0.2)">Reset</a>
             @endif
         </form>
     </div>
@@ -81,7 +81,7 @@
                         </td>
                         <td style="padding: 1.25rem 1.5rem;">
                             <div style="display: flex; gap: 0.5rem">
-                                <form action="{{ route('question.delete', $question->id) }}" method="POST">
+                                <form action="{{ route('admin.questions.delete', $question->id) }}" method="POST">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; color: #ef4444; border-color: rgba(239, 68, 68, 0.1)" onclick="return confirm('Delete this question?')">Delete</button>

@@ -52,7 +52,7 @@ class QuestionController extends Controller
 
         $this->service->create($data);
 
-        return redirect()->route('question.index')->with('success', 'Question created successfully!');
+        return redirect()->route('admin.questions.index')->with('success', 'Question created successfully!');
     }
 
     public function delete($id)
