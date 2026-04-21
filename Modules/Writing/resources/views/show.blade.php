@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center">
+    <div class="writing-show-header">
         <div>
             <h1 style="font-size: 2rem; margin-bottom: 0.5rem">Analysis Result</h1>
             <p style="color: var(--text-muted)">Detailed feedback for your IELTS {{ strtoupper($attempt->task_type) }} attempt.</p>
@@ -33,7 +33,7 @@
     </div>
 
     <!-- Comparative View -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem">
+    <div class="comparative-grid">
         <div>
             <h3 style="margin-bottom: 1.5rem">Your Original Essay</h3>
             <div class="glass" style="padding: 2rem; border-radius: 12px; min-height: 400px; white-space: pre-wrap; line-height: 1.8; font-size: 0.95rem; color: var(--text-muted)">
@@ -53,4 +53,33 @@
             Try Another Essay
         </a>
     </div>
+
+    <style>
+        .writing-show-header {
+            margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        .comparative-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        @media (max-width: 768px) {
+            .writing-show-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .writing-show-header > div:last-child {
+                text-align: left !important;
+            }
+            .comparative-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </x-app-layout>

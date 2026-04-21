@@ -22,8 +22,8 @@
             display: flex;
             min-height: 100vh;
         }
-        
-        /* Sidebar */
+
+        /* ===== Sidebar ===== */
         .sidebar {
             width: var(--sidebar-width);
             background: var(--bg-secondary);
@@ -32,24 +32,28 @@
             flex-direction: column;
             position: fixed;
             height: 100vh;
-            z-index: 100;
+            z-index: 200;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
         }
-        
+
         .sidebar-header {
             padding: 2rem;
             text-align: center;
+            flex-shrink: 0;
         }
-        
+
         .sidebar-header h2 {
             font-size: 1.5rem;
             color: var(--text-main);
         }
-        
+
         .sidebar-nav {
             flex: 1;
             padding: 1rem;
+            overflow-y: auto;
         }
-        
+
         .nav-item {
             display: flex;
             align-items: center;
@@ -60,31 +64,59 @@
             margin-bottom: 0.5rem;
             transition: all 0.2s ease;
         }
-        
+
         .nav-item:hover, .nav-item.active {
             background: var(--glass);
             color: var(--primary);
         }
-        
+
         .nav-icon {
             margin-right: 1rem;
             width: 20px;
             text-align: center;
         }
-        
+
         .sidebar-footer {
             padding: 1.5rem;
             border-top: 1px solid var(--glass-border);
+            flex-shrink: 0;
         }
-        
-        /* Main Content */
+
+        /* ===== Mobile overlay backdrop ===== */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 150;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.active { display: block; }
+
+        /* ===== Hamburger Button ===== */
+        .hamburger-btn {
+            display: none;
+            background: none;
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            border-radius: 8px;
+            padding: 0.4rem 0.6rem;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-right: auto;
+            transition: background 0.2s;
+        }
+        .hamburger-btn:hover { background: var(--glass); }
+
+        /* ===== Main Content ===== */
         .main-content {
             flex: 1;
             margin-left: var(--sidebar-width);
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
-        
+
         .top-nav {
             height: var(--header-height);
             background: rgba(15, 23, 42, 0.8);
@@ -93,12 +125,13 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
             position: sticky;
             top: 0;
             z-index: 90;
+            gap: 1rem;
         }
-        
+
         .user-pill {
             display: flex;
             align-items: center;
@@ -109,12 +142,63 @@
             font-size: 0.875rem;
             color: var(--text-main);
         }
-        
+
         .content-body {
             padding: 2.5rem;
             max-width: 1200px;
             width: 100%;
             margin: 0 auto;
+        }
+
+        /* ===== RESPONSIVE BREAKPOINTS ===== */
+        @media (max-width: 1024px) {
+            :root { --sidebar-width: 240px; }
+            .content-body { padding: 2rem 1.5rem; }
+        }
+
+        @media (max-width: 768px) {
+            /* Sidebar hidden off-screen by default on mobile */
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+            }
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            /* Main content takes full width */
+            .main-content {
+                margin-left: 0;
+            }
+            /* Show hamburger */
+            .hamburger-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            /* Content padding adjustments */
+            .content-body {
+                padding: 1.25rem 1rem;
+            }
+            /* Top nav: compact */
+            .top-nav {
+                padding: 0 1rem;
+                justify-content: flex-start;
+            }
+            /* User pill: collapse name on mobile */
+            .user-pill .user-name { display: none; }
+            /* Glass card responsive */
+            .glass-card { padding: 1.25rem; }
+            /* Notification dropdown full width */
+            .notification-dropdown {
+                width: calc(100vw - 2rem);
+                right: auto;
+                left: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 1.5rem !important; }
+            h2 { font-size: 1.25rem !important; }
         }
         
         .badge {
@@ -250,6 +334,9 @@
                     <a href="/student/leaderboard" class="nav-item {{ request()->is('student/leaderboard') ? 'active' : '' }}">
                         <span class="nav-icon">🏅</span> Leaderboard
                     </a>
+                    <a href="/courses" class="nav-item {{ request()->is('courses*') ? 'active' : '' }}">
+                        <span class="nav-icon">📚</span> Courses
+                    </a>
                 @endif
                 
                 <a href="/settings" class="nav-item {{ request()->is('settings') ? 'active' : '' }}">
@@ -281,9 +368,14 @@
             </div>
         </aside>
 
+        <!-- Mobile Overlay Backdrop -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-nav">
+                <!-- Hamburger (mobile only) -->
+                <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu">☰</button>
                 <div style="display: flex; align-items: center; gap: 1.5rem">
                     <!-- Notification Bell -->
                     <div style="position: relative" id="notification-wrapper">
@@ -308,8 +400,8 @@
 
                     <div class="user-pill">
                         <span style="margin-right: 0.5rem">👤</span>
-                        {{ auth()->user()->name }}
-                        <span class="badge {{ auth()->user()->status === 'active' ? 'badge-active' : 'badge-pending' }}" style="margin-left: 1rem">
+                        <span class="user-name">{{ auth()->user()->name }}</span>
+                        <span class="badge {{ auth()->user()->status === 'active' ? 'badge-active' : 'badge-pending' }}" style="margin-left: 0.5rem">
                             {{ auth()->user()->status }}
                         </span>
                     </div>
@@ -320,6 +412,35 @@
                 {{ $slot }}
             </div>
         </main>
-    </div>
+    <!-- Hamburger Menu JS -->
+    <script>
+        (function() {
+            const hamburger = document.getElementById('hamburger-btn');
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            function openSidebar() {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+
+            if (hamburger) hamburger.addEventListener('click', openSidebar);
+            if (overlay) overlay.addEventListener('click', closeSidebar);
+
+            // Close sidebar on nav-item click (mobile)
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) closeSidebar();
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

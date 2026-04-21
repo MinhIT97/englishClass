@@ -10,6 +10,184 @@ const log = (msg, data = null) => {
     }
 };
 
+// ===== @Mention Autocomplete System =====
+const mentionStyles = `
+.mention-dropdown {
+    position: absolute;
+    background: #1e1e2e;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 9999;
+    min-width: 220px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 0.4rem;
+    backdrop-filter: blur(20px);
+    animation: mentionFadeIn 0.15s ease;
+}
+@keyframes mentionFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.mention-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-size: 0.85rem;
+}
+.mention-item:hover, .mention-item.active {
+    background: rgba(99,102,241,0.2);
+}
+.mention-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 700; color: white;
+    flex-shrink: 0;
+}
+.mention-name { font-weight: 600; color: white; }
+.mention-role { font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-left: auto; }
+`;
+
+class MentionAutocomplete {
+    constructor() {
+        this.dropdown = null;
+        this.members = window.classroomMembers || [];
+        this.query = '';
+        this.activeInput = null;
+        this.activeIndex = -1;
+        this.mentionStart = -1;
+
+        // Inject CSS
+        const style = document.createElement('style');
+        style.textContent = mentionStyles;
+        document.head.appendChild(style);
+
+        this.bind();
+    }
+
+    bind() {
+        document.addEventListener('input', (e) => this.onInput(e));
+        document.addEventListener('keydown', (e) => this.onKeyDown(e));
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.mention-dropdown')) this.hide();
+        });
+    }
+
+    onInput(e) {
+        const input = e.target;
+        if (input.tagName !== 'INPUT' && input.tagName !== 'TEXTAREA') return;
+
+        const val = input.value;
+        const caret = input.selectionStart;
+
+        // Find the '@' before the caret
+        let atIdx = -1;
+        for (let i = caret - 1; i >= 0; i--) {
+            if (val[i] === '@') { atIdx = i; break; }
+            if (val[i] === ' ' || val[i] === '\n') break;
+        }
+
+        if (atIdx === -1) { this.hide(); return; }
+
+        this.query = val.slice(atIdx + 1, caret);
+        this.mentionStart = atIdx;
+        this.activeInput = input;
+
+        const filtered = this.members.filter(m =>
+            m.name.toLowerCase().includes(this.query.toLowerCase())
+        );
+
+        if (filtered.length === 0) { this.hide(); return; }
+        this.show(filtered, input);
+    }
+
+    onKeyDown(e) {
+        if (!this.dropdown) return;
+        const items = this.dropdown.querySelectorAll('.mention-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            this.activeIndex = Math.min(this.activeIndex + 1, items.length - 1);
+            this.updateActive(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            this.activeIndex = Math.max(this.activeIndex - 1, 0);
+            this.updateActive(items);
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            if (this.activeIndex >= 0 && items[this.activeIndex]) {
+                e.preventDefault();
+                this.select(items[this.activeIndex].dataset.name);
+            }
+        } else if (e.key === 'Escape') {
+            this.hide();
+        }
+    }
+
+    updateActive(items) {
+        items.forEach((el, i) => el.classList.toggle('active', i === this.activeIndex));
+        items[this.activeIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+
+    show(members, input) {
+        this.hide();
+        this.activeIndex = 0;
+
+        this.dropdown = document.createElement('div');
+        this.dropdown.className = 'mention-dropdown';
+
+        members.forEach((m, i) => {
+            const item = document.createElement('div');
+            item.className = 'mention-item' + (i === 0 ? ' active' : '');
+            item.dataset.name = m.name;
+            const bgColor = m.role === 'teacher' ? '#7c3aed' : '#6366f1';
+            item.innerHTML = `
+                <div class="mention-avatar" style="background: ${bgColor}">${m.initial}</div>
+                <span class="mention-name">${m.name}</span>
+                <span class="mention-role">${m.role}</span>
+            `;
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                this.select(m.name);
+            });
+            this.dropdown.appendChild(item);
+        });
+
+        // Position dropdown above the input
+        const rect = input.getBoundingClientRect();
+        this.dropdown.style.position = 'fixed';
+        this.dropdown.style.left = rect.left + 'px';
+        this.dropdown.style.top = (rect.top - 10) + 'px';
+        this.dropdown.style.transform = 'translateY(-100%)';
+        this.dropdown.style.width = Math.max(rect.width, 240) + 'px';
+
+        document.body.appendChild(this.dropdown);
+    }
+
+    select(name) {
+        if (!this.activeInput) return;
+        const val = this.activeInput.value;
+        const before = val.slice(0, this.mentionStart);
+        const after = val.slice(this.activeInput.selectionStart);
+        this.activeInput.value = before + '@' + name + ' ' + after;
+        const newCaret = before.length + name.length + 2;
+        this.activeInput.setSelectionRange(newCaret, newCaret);
+        this.activeInput.focus();
+        this.hide();
+    }
+
+    hide() {
+        this.dropdown?.remove();
+        this.dropdown = null;
+        this.activeIndex = -1;
+    }
+}
+
+
 // Global listener for notifications
 if (window.Echo) {
     log('Echo initialized.');
@@ -26,6 +204,7 @@ if (window.Echo) {
             .notification((notification) => {
                 log('Private notification received:', notification);
                 showNotification(toastFromData(notification));
+                incrementBadgeCount();
                 fetchUnreadCount();
             });
     }
@@ -39,15 +218,21 @@ if (window.Echo) {
             })
             .listen('.NewPostPublished', (e) => {
                 log('NewPostPublished event received via Echo:', e);
-                showNotification({
-                    classroom_name: 'Classroom',
-                    author_name: e.user_name,
-                    type: 'posted a new ' + e.type
-                });
+                if (e.user_id && String(e.user_id) !== String(userId)) {
+                    showNotification({
+                        classroom_name: 'Classroom',
+                        author_name: e.user_name,
+                        type: 'posted a new ' + e.type
+                    });
+                    incrementBadgeCount();
+                }
                 handleNewPost(e);
             })
             .listen('.CommentPublished', (e) => {
                 log('CommentPublished event received via Echo:', e);
+                if (e.user_id && String(e.user_id) !== String(userId)) {
+                    incrementBadgeCount();
+                }
                 handleNewComment(e);
             })
             .error((err) => {
@@ -74,6 +259,12 @@ function toastFromData(n) {
 // Notification UI Logic
 document.addEventListener('DOMContentLoaded', () => {
     log('DOM Content Loaded. Initializing UI components.');
+    
+    // Initialize @mention autocomplete (works on any page with classroomMembers)
+    if (window.classroomMembers) {
+        new MentionAutocomplete();
+        log('MentionAutocomplete initialized with', window.classroomMembers.length + ' members.');
+    }
     
     const navBtn = document.getElementById('notification-btn');
     const dropdown = document.getElementById('notification-dropdown');
@@ -146,6 +337,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Delegated listener for Reply buttons
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('reply-btn')) {
+            const username = e.target.dataset.username;
+            const postId = e.target.dataset.postId;
+            log(`Reply button clicked. Tagging user: @${username} for post: ${postId}`);
+            
+            const form = document.querySelector(`#comment-form-${postId}`);
+            if (form) {
+                const input = form.querySelector('input[name="content"]');
+                if (input) {
+                    input.value = `@${username} `;
+                    input.focus();
+                    
+                    // Scroll into view if needed
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+    });
+
     // Delegated listener for comment forms
     document.addEventListener('submit', async (e) => {
         if (e.target.classList.contains('comment-form')) {
@@ -200,6 +412,17 @@ async function fetchUnreadCount() {
             badge.style.display = data.count > 0 ? 'flex' : 'none';
         }
     } catch (e) {}
+}
+
+function incrementBadgeCount() {
+    const badge = document.getElementById('notification-badge');
+    if (badge) {
+        let count = parseInt(badge.innerText) || 0;
+        count++;
+        badge.innerText = count;
+        badge.style.display = 'flex';
+        log('Optimistically incremented badge count to:', count);
+    }
 }
 
 async function fetchNotifications() {
@@ -330,9 +553,12 @@ function handleNewComment(data) {
                 ${data.user_name.substring(0, 1)}
             </div>
             <div style="flex: 1">
-                <div style="display: flex; justify-content: space-between">
+                <div style="display: flex; justify-content: space-between; align-items: center">
                     <span style="font-weight: 700; font-size: 0.8rem">${data.user_name}</span>
-                    <span style="font-size: 0.7rem; color: var(--text-muted)">${data.created_at}</span>
+                    <div style="display: flex; gap: 0.75rem; align-items: center">
+                        <span style="font-size: 0.7rem; color: var(--text-muted)">${data.created_at}</span>
+                        <button type="button" class="reply-btn" data-username="${data.user_name}" data-post-id="${data.post_id}" style="background: none; border: none; color: var(--primary); font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0">Reply</button>
+                    </div>
                 </div>
                 <div style="font-size: 0.85rem; margin-top: 0.25rem">${data.content}</div>
             </div>

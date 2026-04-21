@@ -10,7 +10,7 @@
         </div>
     @endif
 
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem">
+    <div class="writing-grid">
         <!-- Essay Form -->
         <div class="glass-card">
             <form method="POST" action="{{ route('student.writing.submit') }}">
@@ -54,5 +54,19 @@
                 {{ $attempts->links() }}
             </div>
         </div>
+        </div>
     </div>
+
+    <style>
+        .writing-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }
+        @media (max-width: 768px) {
+            .writing-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </x-app-layout>

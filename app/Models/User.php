@@ -25,6 +25,13 @@ class User extends Authenticatable implements JWTSubject
                     ->withTimestamps();
     }
 
+    public function enrolledCourses()
+    {
+        return $this->belongsToMany(\Modules\Course\Models\Course::class, 'course_user')
+                    ->withPivot('status')
+                    ->withTimestamps();
+    }
+
     /**
      * Get the attributes that should be cast.
      *

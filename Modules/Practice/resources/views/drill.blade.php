@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center">
+    <div class="drill-header-wrap">
         <div>
             <h1 style="font-size: 2rem; margin-bottom: 0.5rem">{{ ucfirst($skill) }} Drill</h1>
             <p style="color: var(--text-muted)">Question #{{ rand(100,999) }} • Difficulty: <span style="color: var(--primary)">{{ ucfirst($question->difficulty) }}</span></p>
@@ -8,7 +8,7 @@
     </div>
 
     <!-- Question Container -->
-    <div id="question-container" class="glass-card" style="max-width: 800px; margin: 0 auto; padding: 3rem">
+    <div id="question-container" class="glass-card drill-container" style="max-width: 800px; margin: 0 auto;">
         <div style="margin-bottom: 2rem">
             <h3 style="color: var(--text-muted); font-size: 1rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1em">Question</h3>
             
@@ -111,6 +111,29 @@
             border-color: var(--primary) !important;
             background: rgba(99, 102, 241, 0.1) !important;
             transform: translateX(10px);
+        }
+        .drill-header-wrap {
+            margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        .drill-container {
+            padding: 3rem;
+        }
+        @media (max-width: 768px) {
+            .drill-header-wrap {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .drill-header-wrap a {
+                text-align: center;
+            }
+            .drill-container {
+                padding: 1.5rem;
+            }
         }
     </style>
 </x-app-layout>

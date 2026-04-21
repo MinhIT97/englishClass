@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center">
+    <div class="speaking-header-wrap">
         <div>
             <h1 style="font-size: 2rem; margin-bottom: 0.5rem">AI Speaking Simulator</h1>
             <p style="color: var(--text-muted)">Practice your speaking with Gemini AI acting as an IELTS examiner.</p>
@@ -9,7 +9,7 @@
         </button>
     </div>
 
-    <div id="simulator-container" style="display: none; height: 600px; display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem">
+    <div id="simulator-container" class="speaking-grid" style="display: none; height: 600px;">
         <!-- Visual & Chat -->
         <div class="glass-card" style="display: flex; flex-direction: column; padding: 0">
             <!-- AI Visualizer Area -->
@@ -142,6 +142,37 @@
             0% { transform: scale(1); opacity: 0.3; }
             50% { transform: scale(1.5); opacity: 0.6; }
             100% { transform: scale(1); opacity: 0.3; }
+        }
+        .speaking-header-wrap {
+            margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        .speaking-grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 1.5rem;
+        }
+        @media (max-width: 900px) {
+            #simulator-container {
+                height: auto !important;
+            }
+            .speaking-grid {
+                grid-template-columns: 1fr;
+            }
+            .speaking-header-wrap {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .speaking-header-wrap button {
+                width: 100%;
+            }
+            #chat-history {
+                height: 300px;
+            }
         }
     </style>
 </x-app-layout>

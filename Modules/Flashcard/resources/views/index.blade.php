@@ -1,10 +1,10 @@
 <x-app-layout>
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem">
+    <div class="flashcard-header-wrap">
         <div>
             <h1 style="font-size: 2rem; margin-bottom: 0.5rem">IELTS Flashcards</h1>
             <p style="color: var(--text-muted)">Smart interactive cards for core vocabulary mastery.</p>
         </div>
-        <div style="display: flex; gap: 0.5rem; background: var(--glass); padding: 0.5rem; border-radius: 50px;">
+        <div class="flashcard-tabs-wrap">
             <button onclick="switchTab('cards')" id="tab-cards" class="btn btn-primary" style="padding: 0.5rem 1.5rem; border-radius: 50px; font-size: 0.8rem">Study Cards</button>
             <button onclick="switchTab('notebook')" id="tab-notebook" class="btn btn-outline" style="padding: 0.5rem 1.5rem; border-radius: 50px; font-size: 0.8rem; border: none">My Notebook ({{ count($myVocab) }})</button>
         </div>
@@ -13,10 +13,10 @@
     <!-- Cards Tab -->
     <div id="section-cards">
         <!-- Topic Selection -->
-        <div style="display: flex; gap: 1rem; margin-bottom: 3rem; overflow-x: auto; padding-bottom: 1rem">
-            <button onclick="filterByTopic('all')" class="badge topic-btn badge-active" data-topic="all" style="padding: 0.75rem 1.5rem; cursor: pointer">All Topics</button>
+        <div class="topic-selection-wrap">
+            <button onclick="filterByTopic('all')" class="badge topic-btn badge-active" data-topic="all" style="padding: 0.75rem 1.5rem; cursor: pointer; white-space: nowrap;">All Topics</button>
             @foreach(['Environment', 'Technology', 'Education', 'Society'] as $topic)
-                <button onclick="filterByTopic('{{ $topic }}')" class="badge topic-btn" data-topic="{{ $topic }}" style="background: var(--glass); color: var(--text-muted); padding: 0.75rem 1.5rem; cursor: pointer">{{ $topic }}</button>
+                <button onclick="filterByTopic('{{ $topic }}')" class="badge topic-btn" data-topic="{{ $topic }}" style="background: var(--glass); color: var(--text-muted); padding: 0.75rem 1.5rem; cursor: pointer; white-space: nowrap;">{{ $topic }}</button>
             @endforeach
         </div>
 
@@ -49,7 +49,7 @@
         </div>
 
         <!-- Controls -->
-        <div style="display: flex; justify-content: center; align-items: center; gap: 2rem; margin-top: 4rem">
+        <div class="controls-wrap" style="display: flex; justify-content: center; align-items: center; gap: 2rem; margin-top: 4rem">
             <button onclick="prevCard()" class="btn btn-outline" style="border-radius: 50px; padding: 0.75rem 2rem">Previous</button>
             <span id="card-indicator" style="color: var(--text-muted); font-size: 0.875rem">1 / 1</span>
             <button onclick="nextCard()" class="btn btn-primary" style="border-radius: 50px; padding: 0.75rem 2rem">Next Card ➜</button>
@@ -216,6 +216,35 @@
     </script>
 
     <style>
+        .flashcard-header-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        .flashcard-tabs-wrap {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--glass);
+            padding: 0.5rem;
+            border-radius: 50px;
+        }
+        .topic-selection-wrap {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+            /* Hide scrollbar for cleaner look */
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .topic-selection-wrap::-webkit-scrollbar {
+            display: none;
+        }
+        
         #bookmark-btn:hover {
             transform: scale(1.1) !important;
         }
@@ -231,6 +260,40 @@
             background: var(--bg-secondary);
             border: 1px solid var(--glass-border);
             border-radius: var(--radius);
+        }
+        
+        /* Flashcard mobile adjustments */
+        @media (max-width: 640px) {
+            .flashcard-header-wrap {
+                flex-direction: column;
+            }
+            .flashcard-tabs-wrap {
+                width: 100%;
+                justify-content: stretch;
+            }
+            .flashcard-tabs-wrap button {
+                flex: 1;
+                text-align: center;
+                padding: 0.5rem 1rem !important; /* Slightly less padding on mobile */
+            }
+            /* Make flashcard slightly smaller on very small screens to prevent overflow */
+            #flashcard {
+                height: 300px !important; 
+            }
+            #flashcard h2 {
+                font-size: 2rem !important;
+            }
+            #flashcard .back-content p {
+                 font-size: 1rem !important;
+                 margin-bottom: 1rem !important;
+            }
+            .controls-wrap {
+                 margin-top: 2rem !important; /* Less margin on mobile */
+                 gap: 1rem !important;
+            }
+            .controls-wrap button {
+                padding: 0.5rem 1rem !important;
+            }
         }
     </style>
 </x-app-layout>

@@ -20,6 +20,16 @@ class Course extends Model
     ];
 
     /**
+     * The students that belong to the course.
+     */
+    public function students()
+    {
+        return $this->belongsToMany(\App\Models\User::class, 'course_user')
+            ->withPivot('status')
+            ->withTimestamps();
+    }
+
+    /**
      * Get the options for generating the slug.
      */
     public function getSlugOptions(): SlugOptions

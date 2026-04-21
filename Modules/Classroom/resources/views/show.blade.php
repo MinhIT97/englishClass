@@ -1,29 +1,74 @@
 <x-app-layout>
     <x-slot name="head">
         <meta name="classroom-id" content="{{ $classroom->id }}">
+        @php
+            $members = collect([$classroom->teacher])
+                ->merge($classroom->students)
+                ->unique('id')
+                ->map(fn($u) => [
+                    'id'      => $u->id,
+                    'name'    => $u->name,
+                    'role'    => $u->role,
+                    'initial' => strtoupper(substr($u->name, 0, 1)),
+                ])
+                ->values()
+                ->toJson();
+        @endphp
+        <script>
+            window.classroomMembers = {!! $members !!};
+        </script>
+        <style>
+            /* Classroom show — responsive */
+            .classroom-show-grid {
+                display: grid;
+                grid-template-columns: 2fr 1fr;
+                gap: 2rem;
+            }
+            .classroom-banner h1 { font-size: 2.5rem; }
+            .classroom-tabs {
+                padding: 1rem 2rem;
+                background: var(--bg-secondary);
+                border-top: 1px solid var(--glass-border);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            @media (max-width: 768px) {
+                .classroom-show-grid { grid-template-columns: 1fr; }
+                .classroom-banner h1 { font-size: 1.6rem; }
+                .classroom-banner { padding: 1.25rem !important; }
+                .classroom-tabs { padding: 0.75rem 1rem; gap: 0.25rem; }
+                .classroom-tabs button { font-size: 0.8rem; }
+            }
+            @media (max-width: 480px) {
+                .classroom-banner { height: 150px !important; }
+            }
+        </style>
     </x-slot>
     <div style="max-width: 1000px; margin: 0 auto">
         <!-- Class Header -->
         <div class="glass-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem">
-            <div style="height: 200px; background: linear-gradient(135deg, var(--primary) 0%, #312e81 100%); display: flex; align-items: flex-end; padding: 2rem">
+            <div class="classroom-banner" style="height: 200px; background: linear-gradient(135deg, var(--primary) 0%, #312e81 100%); display: flex; align-items: flex-end; padding: 2rem">
                 <div>
-                    <h1 style="color: white; font-size: 2.5rem; margin-bottom: 0.5rem">{{ $classroom->name }}</h1>
-                    <div style="display: flex; gap: 1rem; color: rgba(255,255,255,0.8); font-size: 0.875rem">
+                    <h1 class="classroom-banner-title" style="color: white; margin-bottom: 0.5rem">{{ $classroom->name }}</h1>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; color: rgba(255,255,255,0.8); font-size: 0.875rem">
                         <span>Teacher: {{ $classroom->teacher->name }}</span>
                         <span>•</span>
                         <span>Invite Code: <strong style="color: white">{{ $classroom->invite_code }}</strong></span>
                     </div>
                 </div>
             </div>
-            <div style="padding: 1rem 2rem; background: var(--bg-secondary); border-top: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center">
-                <div style="display: flex; gap: 2rem">
+            <div class="classroom-tabs">
+                <div style="display: flex; gap: 1.5rem">
                     <button class="tab-link active" style="color: var(--primary); font-weight: 700; background: none; border: none; font-size: 0.9rem">Wall / Feed</button>
                     <button class="tab-link" style="color: var(--text-muted); background: none; border: none; font-size: 0.9rem">People ({{ $classroom->students->count() }})</button>
                 </div>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem">
+        <div class="classroom-show-grid">
             <!-- Feed Column -->
             <div>
                 <!-- Create Post -->
@@ -137,15 +182,18 @@
                                 <div id="comments-list-{{ $post->id }}">
                                     @foreach($post->comments as $comment)
                                         <div class="comment-item" style="display: flex; gap: 0.75rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem">
-                                            <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem">
+                                            <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; flex-shrink: 0">
                                                 {{ substr($comment->user->name, 0, 1) }}
                                             </div>
-                                            <div style="flex: 1">
-                                                <div style="display: flex; justify-content: space-between">
+                                            <div style="flex: 1; min-width: 0">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem">
                                                     <span style="font-weight: 700; font-size: 0.8rem">{{ $comment->user->name }}</span>
-                                                    <span style="font-size: 0.7rem; color: var(--text-muted)">{{ $comment->created_at->diffForHumans() }}</span>
+                                                    <div style="display: flex; gap: 0.75rem; align-items: center">
+                                                        <span style="font-size: 0.7rem; color: var(--text-muted)">{{ $comment->created_at->diffForHumans() }}</span>
+                                                        <button type="button" class="reply-btn" data-username="{{ $comment->user->name }}" data-post-id="{{ $post->id }}" style="background: none; border: none; color: var(--primary); font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0">Reply</button>
+                                                    </div>
                                                 </div>
-                                                <div style="font-size: 0.85rem; margin-top: 0.25rem">{{ $comment->content }}</div>
+                                                <div style="font-size: 0.85rem; margin-top: 0.3rem; line-height: 1.5; word-break: break-word">{{ $comment->content }}</div>
                                             </div>
                                         </div>
                                     @endforeach
