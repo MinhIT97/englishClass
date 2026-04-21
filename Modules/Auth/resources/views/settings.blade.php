@@ -10,9 +10,9 @@
         </div>
     @endif
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+    <div class="settings-grid">
         <!-- General Info -->
-        <div class="card">
+        <div class="glass-card">
             <h3 style="margin-bottom: 1.5rem">General Information</h3>
             <form action="{{ route('settings.update') }}" method="POST">
                 @csrf
@@ -42,7 +42,7 @@
         </div>
 
         <!-- Security -->
-        <div class="card">
+        <div class="glass-card">
             <h3 style="margin-bottom: 1.5rem">Security & Password</h3>
             <form action="{{ route('settings.update') }}" method="POST">
                 @csrf
@@ -67,4 +67,18 @@
             </div>
         </div>
     </div>
+
+    <style>
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </x-app-layout>
