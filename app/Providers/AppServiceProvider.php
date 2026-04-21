@@ -22,6 +22,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Event::listen(
+            \Laravel\Reverb\Events\MessageReceived::class,
+            \App\Listeners\ReverbMessageListener::class,
+        );
+
         // View Share AI Status
         $aiService = app(\App\Services\AI\GeminiService::class);
         view()->share('ai_live', $aiService->isLive());

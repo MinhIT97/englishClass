@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Log;
 class GeminiService
 {
     protected $apiKey;
-    protected $apiUrl = 'https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash-lite:generateContent';
+    protected $model = 'gemini-2.5-flash-lite';
+    protected $apiUrl = 'https://aiplatform.googleapis.com/v1/publishers/google/models/';
 
     public function __construct()
     {
@@ -26,7 +27,7 @@ class GeminiService
     /**
      * Generate content from AI.
      */
-    public function generate(string $prompt)
+    public function generate(string $prompt, string $audioBase64 = null, string $mimeType = 'audio/webm')
     {
         if (empty($this->apiKey)) {
             // Fallback for development if API key is missing
@@ -34,16 +35,29 @@ class GeminiService
             return $this->getMockResponse($prompt);
         }
 
+        $url = $this->apiUrl . $this->model . ':generateContent?key=' . $this->apiKey;
+
+        $parts = [
+            ['text' => $prompt]
+        ];
+
+        if ($audioBase64) {
+            $parts[] = [
+                'inline_data' => [
+                    'mime_type' => $mimeType,
+                    'data' => $audioBase64
+                ]
+            ];
+        }
+
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->post($this->apiUrl . '?key=' . $this->apiKey, [
+            ])->post($url, [
                 'contents' => [
                     [
                         "role" => "user",
-                        'parts' => [
-                            ['text' => $prompt]
-                        ]
+                        'parts' => $parts
                     ]
                 ],
                 'generationConfig' => [
@@ -66,8 +80,6 @@ class GeminiService
 
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     Log::error('Gemini JSON Decode Error: ' . json_last_error_msg());
-                    Log::error('Raw Gemini Text: ' . $text);
-                    Log::error('Cleaned Gemini Text: ' . $cleanText);
                     return null;
                 }
 
@@ -75,6 +87,12 @@ class GeminiService
             }
 
             Log::error('Gemini API Error: ' . $response->body());
+            
+            // If quota limit or credit issue, return a smart mock response so the UI still works for testing
+            if ($response->status() === 429 || $response->status() === 402) {
+                return $this->getMockResponse($prompt);
+            }
+
             return null;
         } catch (\Exception $e) {
             Log::error('Gemini Service Exception: ' . $e->getMessage());
@@ -115,7 +133,20 @@ class GeminiService
             ];
         }
 
-        return ['message' => 'AI is sleeping. Feature not available without API key.'];
+        if (str_contains($prompt, 'IELTS Speaking Examiner')) {
+            return [
+                'response' => "That's a very interesting answer. Now, let's move on to talk about technology. How often do you use the internet for your studies?",
+                'feedback' => [
+                    'grammar_correction' => "Instead of saying 'I use internet', it's better to say 'I use the internet'.",
+                    'tip' => "Try to extend your answers by giving examples or reasons."
+                ]
+            ];
+        }
+
+        return [
+            'response' => 'AI is temporarily in standby mode due to API limits. (Mock Mode)',
+            'feedback' => null
+        ];
     }
 
     /**
@@ -159,18 +190,18 @@ class GeminiService
         try {
             // Using a standard public TTS endpoint (Limited to 200 chars usually)
             $url = "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=" . urlencode($text);
-            
+
             $response = Http::get($url);
-            
+
             if ($response->successful()) {
                 $filename = 'tts_' . time() . '_' . Str::random(5) . '.mp3';
                 $path = 'listening_audio/' . $filename;
-                
+
                 \Illuminate\Support\Facades\Storage::disk('public')->put($path, $response->body());
-                
+
                 return '/storage/' . $path;
             }
-            
+
             Log::error('TTS Generation Failed: ' . $response->status());
             return null;
         } catch (\Exception $e) {

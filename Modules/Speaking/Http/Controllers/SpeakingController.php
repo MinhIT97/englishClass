@@ -45,18 +45,25 @@ class SpeakingController extends Controller
     {
         $request->validate([
             'session_id' => 'required|exists:speaking_sessions,id',
-            'message' => 'required|string',
+            'message' => 'nullable|string',
+            'audio' => 'nullable|string', // Base64 audio
         ]);
 
         $session = SpeakingSession::findOrFail($request->session_id);
         
-        // Save student's turn
-        $session->transcripts()->create([
-            'content' => $request->message,
-            'feedback' => null,
-        ]);
+        // Save student's turn if message exists
+        if ($request->message) {
+            $session->transcripts()->create([
+                'content' => $request->message,
+                'feedback' => null,
+            ]);
+        }
 
-        $aiResponse = $this->speakingService->getNextResponse($session, $request->message);
+        $aiResponse = $this->speakingService->getNextResponse(
+            $session, 
+            $request->message, 
+            $request->audio
+        );
 
         return response()->json([
             'ai_message' => $aiResponse ? $aiResponse->content : 'Thinking...',
