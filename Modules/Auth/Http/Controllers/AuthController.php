@@ -33,8 +33,8 @@ class AuthController extends Controller
         // Simple stats for now
         $stats = [
             'total_students' => \App\Models\User::where('role', 'student')->count(),
-            'pending_approvals' => \App\Models\User::where('status', 'pending')->count(),
-            'active_students' => \App\Models\User::where('status', 'active')->count(),
+            'pending_approvals' => \App\Models\User::where('role', 'student')->where('status', 'pending')->count(),
+            'active_students' => \App\Models\User::where('role', 'student')->where('status', 'active')->count(),
         ];
 
         return view('auth::admin.dashboard', compact('stats'));

@@ -28,7 +28,7 @@ class UserService
     {
         $this->userRepository->pushCriteria(new \Prettus\Repository\Criteria\RequestCriteria(request()));
         return $this->userRepository->scopeQuery(function($query) use ($status) {
-            return $query->where('status', $status);
+            return $query->where('status', $status)->where('role', 'student');
         })->paginate($perPage);
     }
 }

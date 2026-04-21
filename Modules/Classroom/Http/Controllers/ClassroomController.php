@@ -50,9 +50,43 @@ class ClassroomController extends Controller
      */
     public function show($id)
     {
-        $classroom = Classroom::with(['posts.user', 'students'])->findOrFail($id);
+        $classroom = Classroom::with(['posts.user', 'posts.comments.user', 'students'])->findOrFail($id);
         
         return view('classroom::show', compact('classroom'));
+    }
+
+    /**
+     * Store a comment on a classroom post.
+     */
+    public function storeComment(Request $request, $id)
+    {
+        $post = \Modules\Classroom\Models\ClassroomPost::findOrFail($id);
+
+        $request->validate([
+            'content' => 'required|string|max:1000',
+        ]);
+
+        $comment = $post->comments()->create([
+            'user_id' => auth()->id(),
+            'content' => $request->content,
+        ]);
+
+        // Load user for broadcast
+        $comment->load('user');
+
+        // Broadcast comment
+        broadcast(new \App\Events\CommentPublished($comment))->toOthers();
+
+        // Notify post author if it's not the same person
+        if ($post->user_id !== auth()->id()) {
+            $post->user->notify(new \App\Notifications\ClassroomNotification(
+                'New comment on your post',
+                auth()->user()->name . ' commented on your post in ' . $post->classroom->name,
+                route('classroom.show', $post->classroom_id)
+            ));
+        }
+
+        return back()->with('success', 'Comment added!');
     }
 
     /**
@@ -82,20 +116,53 @@ class ClassroomController extends Controller
     {
         $classroom = Classroom::findOrFail($id);
         
-        // Authorization check (only teacher or enrolled student depending on settings)
-        // For now, let's allow everyone in the class to post like a group
-        
         $request->validate([
             'content' => 'required|string',
-            'type' => 'required|string|in:announcement,schedule,meeting',
+            'type' => 'required|string|in:announcement,schedule,meeting,material,video,pronunciation',
+            'attachment' => 'nullable|file|max:51200', // max 50MB
         ]);
 
-        $classroom->posts()->create([
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('classroom_attachments/' . $classroom->id, 'public');
+        }
+
+        $post = $classroom->posts()->create([
             'user_id' => auth()->id(),
             'content' => $request->content,
             'type' => $request->type,
+            'attachment_path' => $attachmentPath,
         ]);
 
-        return back()->with('success', 'Announcement posted!');
+        // Broadcast notification
+        broadcast(new \App\Events\NewPostPublished($post))->toOthers();
+
+        return back()->with('success', 'Post published successfully!');
+    }
+
+    /**
+     * Store feedback for a student's pronunciation task.
+     */
+    public function storeFeedback(Request $request, $id)
+    {
+        $post = \Modules\Classroom\Models\ClassroomPost::findOrFail($id);
+
+        // Only teacher or admin can give feedback
+        if (auth()->user()->role !== 'admin' && auth()->user()->role !== 'teacher') {
+            return back()->with('error', 'Unauthorized.');
+        }
+
+        $request->validate([
+            'feedback_content' => 'required|string',
+            'grade' => 'nullable|string|max:50',
+        ]);
+
+        $post->update([
+            'feedback_content' => $request->feedback_content,
+            'grade' => $request->grade,
+            'feedback_by' => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Feedback submitted!');
     }
 }

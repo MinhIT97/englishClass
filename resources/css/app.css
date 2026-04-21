@@ -1,11 +1,145 @@
-@import 'tailwindcss';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+@font-face {
+    font-family: 'Instrument Sans';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url(https://fonts.gstatic.com/s/instrumentsans/v1/X7nW4b8yvL4uU1U1U1U1U1U1.woff2) format('woff2');
+}
 
-@theme {
+:root {
+    /* Colors */
+    --bg-main: #0f172a;
+    --bg-secondary: #1e293b;
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --accent: #10b981;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    
+    /* Layout */
+    --sidebar-width: 280px;
+    --header-height: 70px;
+    --radius: 12px;
+
+    /* Fonts */
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, h4 {
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+/* Glassmorphism utility */
+.glass {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+}
+
+.glass-card {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    padding: 2rem;
+    border-radius: var(--radius);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary);
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+}
+
+.btn-outline:hover {
+    background-color: var(--glass);
+}
+
+/* Input Styles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    color: var(--text-main);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease forwards;
 }

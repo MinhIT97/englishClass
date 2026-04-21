@@ -9,4 +9,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('classroom/{id}', [ClassroomController::class, 'show'])->name('classroom.show');
     Route::post('classroom/join', [ClassroomController::class, 'join'])->name('classroom.join');
     Route::post('classroom/{id}/post', [ClassroomController::class, 'storePost'])->name('classroom.post.store');
+    Route::post('classroom/post/{id}/feedback', [ClassroomController::class, 'storeFeedback'])->name('classroom.post.feedback');
+    Route::post('classroom/post/{id}/comment', [ClassroomController::class, 'storeComment'])->name('classroom.post.comment');
 });

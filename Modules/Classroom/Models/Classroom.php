@@ -29,6 +29,7 @@ class Classroom extends Model
     public function students()
     {
         return $this->belongsToMany(\App\Models\User::class, 'classroom_user')
+                    ->where('users.role', 'student')
                     ->withPivot('role')
                     ->withTimestamps();
     }

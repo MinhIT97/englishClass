@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Auth\Http\Controllers\AuthController;
+use Modules\Auth\Http\Controllers\NotificationController;
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
@@ -12,6 +13,11 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+    
+    // Notifications
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
+    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unreadCount');
     
     // Profile Settings
     Route::get('settings', [\Modules\Auth\Http\Controllers\ProfileController::class, 'index'])->name('settings');

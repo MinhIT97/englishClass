@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="user-id" content="{{ auth()->id() }}">
 
     <title>{{ config('app.name', 'IELTS Mastery') }}</title>
 
@@ -12,8 +13,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <!-- Styles & Scripts -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <style>
         .layout-wrapper {
@@ -125,6 +126,77 @@
         
         .badge-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
         .badge-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+
+        /* Notifications */
+        .notification-dropdown {
+            position: absolute;
+            top: calc(var(--header-height) - 10px);
+            right: 0;
+            width: 360px;
+            max-height: 480px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1000;
+        }
+
+        .notification-dropdown.active {
+            display: flex;
+        }
+
+        .notification-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notification-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .notification-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            gap: 1rem;
+            transition: background 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .notification-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .notification-item.unread {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        #notification-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            padding: 0 4px;
+            border-radius: 10px;
+            min-width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #0f172a;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -146,15 +218,36 @@
                     <a href="/admin/questions" class="nav-item {{ request()->is('admin/questions') ? 'active' : '' }}">
                         <span class="nav-icon">📝</span> Question Bank
                     </a>
+                    <a href="/classroom" class="nav-item {{ request()->is('classroom*') ? 'active' : '' }}">
+                        <span class="nav-icon">🏫</span> Classrooms
+                    </a>
+                    <a href="/courses" class="nav-item {{ request()->is('courses*') ? 'active' : '' }}">
+                        <span class="nav-icon">📚</span> Courses
+                    </a>
                 @else
                     <a href="/student/dashboard" class="nav-item {{ request()->is('student/dashboard') ? 'active' : '' }}">
                         <span class="nav-icon">🏠</span> Home
                     </a>
+                    <a href="/classroom" class="nav-item {{ request()->is('classroom*') ? 'active' : '' }}">
+                        <span class="nav-icon">🏫</span> Classrooms
+                    </a>
                     <a href="/student/practice" class="nav-item {{ request()->is('student/practice') ? 'active' : '' }}">
                         <span class="nav-icon">⚡</span> Practice Mode
                     </a>
+                    <a href="/student/writing" class="nav-item {{ request()->is('student/writing*') ? 'active' : '' }}">
+                        <span class="nav-icon">✍️</span> Writing AI
+                    </a>
+                    <a href="/student/speaking" class="nav-item {{ request()->is('student/speaking*') ? 'active' : '' }}">
+                        <span class="nav-icon">🗣️</span> Speaking AI
+                    </a>
+                    <a href="/student/flashcards" class="nav-item {{ request()->is('student/flashcards*') ? 'active' : '' }}">
+                        <span class="nav-icon">🗂️</span> Flashcards
+                    </a>
                     <a href="/student/test" class="nav-item {{ request()->is('student/test') ? 'active' : '' }}">
                         <span class="nav-icon">🏆</span> Mock Tests
+                    </a>
+                    <a href="/student/leaderboard" class="nav-item {{ request()->is('student/leaderboard') ? 'active' : '' }}">
+                        <span class="nav-icon">🏅</span> Leaderboard
                     </a>
                 @endif
                 
@@ -190,12 +283,35 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-nav">
-                <div class="user-pill">
-                    <span style="margin-right: 0.5rem">👤</span>
-                    {{ auth()->user()->name }}
-                    <span class="badge {{ auth()->user()->status === 'active' ? 'badge-active' : 'badge-pending' }}" style="margin-left: 1rem">
-                        {{ auth()->user()->status }}
-                    </span>
+                <div style="display: flex; align-items: center; gap: 1.5rem">
+                    <!-- Notification Bell -->
+                    <div style="position: relative" id="notification-wrapper">
+                        <button id="notification-btn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-main); position: relative; display: flex; align-items: center">
+                            🔔
+                            <span id="notification-badge">0</span>
+                        </button>
+
+                        <div class="notification-dropdown" id="notification-dropdown">
+                            <div class="notification-header">
+                                <h4 style="margin: 0; font-size: 1rem; font-weight: 700">Notifications</h4>
+                                <button id="mark-read-btn" style="background: none; border: none; color: var(--primary); font-size: 0.75rem; cursor: pointer">Mark all as read</button>
+                            </div>
+                            <div class="notification-list" id="notification-list">
+                                <!-- Notifications will be injected here -->
+                                <div style="padding: 2rem; text-align: center; color: var(--text-muted)">
+                                    No new notifications
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="user-pill">
+                        <span style="margin-right: 0.5rem">👤</span>
+                        {{ auth()->user()->name }}
+                        <span class="badge {{ auth()->user()->status === 'active' ? 'badge-active' : 'badge-pending' }}" style="margin-left: 1rem">
+                            {{ auth()->user()->status }}
+                        </span>
+                    </div>
                 </div>
             </header>
             

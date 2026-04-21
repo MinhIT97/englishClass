@@ -19,7 +19,15 @@ class ClassroomPost extends Model
         'content',
         'type',
         'attachment_path',
+        'feedback_content',
+        'grade',
+        'feedback_by',
     ];
+
+    public function feedbackBy()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'feedback_by');
+    }
 
     public function classroom()
     {
@@ -29,6 +37,11 @@ class ClassroomPost extends Model
     public function user()
     {
         return $this->belongsTo(\App\Models\User::class);
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(ClassroomComment::class)->oldest();
     }
 
     // protected static function newFactory(): ClassroomPostFactory

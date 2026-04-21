@@ -1,4 +1,7 @@
 <x-app-layout>
+    <x-slot name="head">
+        <meta name="classroom-id" content="{{ $classroom->id }}">
+    </x-slot>
     <div style="max-width: 1000px; margin: 0 auto">
         <!-- Class Header -->
         <div class="glass-card" style="padding: 0; overflow: hidden; margin-bottom: 2rem">
@@ -31,16 +34,22 @@
                                 {{ substr(auth()->user()->name, 0, 1) }}
                             </div>
                             <div style="flex: 1">
-                                <form action="{{ route('classroom.post.store', $classroom->id) }}" method="POST">
+                                <form action="{{ route('classroom.post.store', $classroom->id) }}" method="POST" enctype="multipart/form-data">
                                     @csrf
                                     <textarea name="content" required placeholder="Share something with the class..." style="width: 100%; height: 100px; background: var(--bg-main); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; resize: none; margin-bottom: 1rem"></textarea>
-                                    <div style="display: flex; justify-content: space-between; align-items: center">
-                                        <div style="display: flex; gap: 0.5rem">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap">
+                                        <div style="display: flex; gap: 0.5rem; align-items: center; flex: 1">
                                             <select name="type" style="background: var(--bg-main); border: 1px solid var(--glass-border); color: var(--text-muted); padding: 0.5rem; border-radius: 8px; font-size: 0.8rem">
                                                 <option value="announcement">Announcement 📢</option>
+                                                <option value="material">Study Material 📚</option>
+                                                <option value="video">Learning Video 🎥</option>
+                                                @if(auth()->user()->role === 'student')
+                                                <option value="pronunciation">Pronunciation Submission 🗣️</option>
+                                                @endif
                                                 <option value="schedule">Schedule 📅</option>
                                                 <option value="meeting">Meeting 💻</option>
                                             </select>
+                                            <input type="file" name="attachment" style="font-size: 0.75rem; color: var(--text-muted)">
                                         </div>
                                         <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1.5rem; border-radius: 50px">Post</button>
                                     </div>
@@ -66,7 +75,89 @@
                                 </div>
                                 <span class="badge" style="background: var(--bg-main); font-size: 0.7rem; text-transform: uppercase">{{ $post->type }}</span>
                             </div>
-                            <div style="line-height: 1.6; white-space: pre-wrap">{{ $post->content }}</div>
+                            <div style="line-height: 1.6; white-space: pre-wrap; margin-bottom: 1rem">{{ $post->content }}</div>
+
+                            @if($post->attachment_path)
+                                <div style="margin-bottom: 1.5rem">
+                                    @if($post->type === 'video' || $post->type === 'pronunciation')
+                                        <video controls style="width: 100%; border-radius: 12px; background: #000; max-height: 400px">
+                                            <source src="{{ asset('storage/' . $post->attachment_path) }}" type="video/mp4">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    @else
+                                        <a href="{{ asset('storage/' . $post->attachment_path) }}" target="_blank" class="glass-card" style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; text-decoration: none; border: 1px dashed var(--glass-border)">
+                                            <div style="font-size: 1.5rem">📁</div>
+                                            <div style="flex: 1">
+                                                <div style="font-weight: 600; font-size: 0.85rem">Attachment</div>
+                                                <div style="font-size: 0.7rem; color: var(--text-muted)">Click to view or download</div>
+                                            </div>
+                                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                        </a>
+                                    @endif
+                                </div>
+                            @endif
+
+                            <!-- Feedback Section -->
+                            @if($post->feedback_content)
+                                <div style="background: rgba(16, 185, 129, 0.1); border-radius: 12px; padding: 1rem; border-left: 4px solid #10b981; margin-top: 1rem">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem">
+                                        <div style="font-weight: 700; color: #065f46; font-size: 0.85rem">Teacher Feedback</div>
+                                        @if($post->grade)
+                                            <div style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 800">Grade: {{ $post->grade }}</div>
+                                        @endif
+                                    </div>
+                                    <p style="font-size: 0.9rem; color: #064e3b">{{ $post->feedback_content }}</p>
+                                    <div style="font-size: 0.7rem; color: #064e3b; margin-top: 0.5rem; opacity: 0.7; text-align: right">By {{ $post->feedbackBy->name ?? 'System' }}</div>
+                                </div>
+                            @elseif(auth()->user()->role === 'teacher' || auth()->user()->role === 'admin')
+                                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--glass-border)">
+                                    <details>
+                                        <summary style="cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--primary)">Grade & Feedback</summary>
+                                        <form action="{{ route('classroom.post.feedback', $post->id) }}" method="POST" style="margin-top: 1rem">
+                                            @csrf
+                                            <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: flex-start">
+                                                <textarea name="feedback_content" required placeholder="Write your corrections and feedback..." style="width: 100%; height: 80px; background: var(--bg-main); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem; font-size: 0.85rem; resize: none"></textarea>
+                                                <div style="display: flex; flex-direction: column; gap: 0.5rem">
+                                                    <input type="text" name="grade" placeholder="Grade" style="width: 80px; background: var(--bg-main); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.5rem; font-size: 0.85rem">
+                                                    <button type="submit" class="btn btn-primary" style="padding: 0.5rem; font-size: 0.8rem">Submit</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </details>
+                                </div>
+                            @endif
+
+                            <!-- Comments Section -->
+                            <div style="margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1rem">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; color: var(--text-muted); font-size: 0.85rem">
+                                    <span>💬</span>
+                                    <span>{{ $post->comments->count() }} Comments</span>
+                                </div>
+
+                                <div id="comments-list-{{ $post->id }}">
+                                    @foreach($post->comments as $comment)
+                                        <div class="comment-item" style="display: flex; gap: 0.75rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem">
+                                            <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem">
+                                                {{ substr($comment->user->name, 0, 1) }}
+                                            </div>
+                                            <div style="flex: 1">
+                                                <div style="display: flex; justify-content: space-between">
+                                                    <span style="font-weight: 700; font-size: 0.8rem">{{ $comment->user->name }}</span>
+                                                    <span style="font-size: 0.7rem; color: var(--text-muted)">{{ $comment->created_at->diffForHumans() }}</span>
+                                                </div>
+                                                <div style="font-size: 0.85rem; margin-top: 0.25rem">{{ $comment->content }}</div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                <!-- Add Comment Form -->
+                                <form action="{{ route('classroom.post.comment', $post->id) }}" method="POST" style="margin-top: 1.5rem; display: flex; gap: 0.5rem">
+                                    @csrf
+                                    <input type="text" name="content" required placeholder="Write a comment..." style="flex: 1; background: var(--bg-main); border: 1px solid var(--glass-border); border-radius: 20px; padding: 0.5rem 1rem; font-size: 0.85rem">
+                                    <button type="submit" style="background: none; border: none; font-size: 1.25rem; cursor: pointer">🕊️</button>
+                                </form>
+                            </div>
                         </div>
                     @empty
                         <div class="glass-card" style="text-align: center; padding: 4rem">
