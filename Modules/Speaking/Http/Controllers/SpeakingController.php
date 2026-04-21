@@ -59,8 +59,8 @@ class SpeakingController extends Controller
         $aiResponse = $this->speakingService->getNextResponse($session, $request->message);
 
         return response()->json([
-            'ai_message' => $aiResponse->content,
-            'feedback' => $aiResponse->feedback,
+            'ai_message' => $aiResponse ? $aiResponse->content : 'Thinking...',
+            'feedback' => $aiResponse ? $aiResponse->feedback : null,
         ]);
     }
 }

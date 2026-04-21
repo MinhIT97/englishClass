@@ -37,13 +37,20 @@ class SpeakingService
         
         $aiResult = $this->aiService->generate($prompt);
 
-        if (!$aiResult) return null;
+        if (!$aiResult || !isset($aiResult['response'])) {
+            // Fallback for safety
+            return Transcript::create([
+                'session_id' => $session->id,
+                'content' => "I'm sorry, I'm having a bit of trouble hearing you clearly. Could you repeat that or tell me more?",
+                'feedback' => null,
+            ]);
+        }
 
         // Save AI response
         return Transcript::create([
             'session_id' => $session->id,
-            'content' => $aiResult['response'] ?? 'Could you tell me more about that?',
-            'feedback' => $aiResult['feedback'] ?? null, // AI might provide micro-feedback on last input
+            'content' => $aiResult['response'],
+            'feedback' => $aiResult['feedback'] ?? null,
         ]);
     }
 
