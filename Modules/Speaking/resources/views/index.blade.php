@@ -222,69 +222,9 @@
             }
         }
 
-        function monitorVolume() {
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            function check() {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) {
-                    sum += dataArray[i];
-                }
-                const average = sum / dataArray.length;
-                const volume = average / 255;
-                
-                // Update pulse based on real volume
-                const waveform = document.getElementById('waveform');
-                if (mediaRecorder && mediaRecorder.state === 'recording') {
-                    const scale = 1 + (volume * 2);
-                    waveform.style.transform = `scale(${scale})`;
-                    waveform.style.opacity = 0.3 + (volume * 0.7);
-                }
-                
-                requestAnimationFrame(check);
-            }
-            check();
-        }
-
-        function setMicStatus(isListening) {
-            const micBtn = document.getElementById('mic-btn');
-            const statusText = document.getElementById('visual-status-text');
-            const waveform = document.getElementById('waveform');
-            
-            if (isListening) {
-                micBtn.classList.add('recording');
-                statusText.textContent = 'LISTENING...';
-            } else {
-                micBtn.classList.remove('recording');
-                statusText.textContent = 'IELTS EXAMINER ACTIVE';
-                waveform.style.transform = 'scale(1)';
-                waveform.style.opacity = '0.3';
-            }
-        }
-
-        async function toggleMic() {
-            if (!audioContext) await initAudioContext();
-            
-            // Standard user activation requirement for AudioContext
-            if (audioContext.state === 'suspended') {
-                await audioContext.resume();
-            }
-
-            if (mediaRecorder.state === 'inactive') {
-                mediaRecorder.start();
-                if (recognition) recognition.start();
-                setMicStatus(true);
-                document.getElementById('student-input').value = '';
-            } else {
-                mediaRecorder.stop();
-                if (recognition) recognition.stop();
-                setMicStatus(false);
-            }
-        }
 
         function setupEchoListener(sessId) {
-            window.Echo.private(`speaking-session.${sessId}`)
+            window.Echo.channel(`speaking-session.${sessId}`)
                 .listen('.VoiceResponseArrived', (e) => {
                     if (e.textChunk) {
                         // Append text to chat directly
