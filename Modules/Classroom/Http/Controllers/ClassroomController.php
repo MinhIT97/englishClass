@@ -86,6 +86,19 @@ class ClassroomController extends Controller
             ));
         }
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'comment' => [
+                    'id' => $comment->id,
+                    'content' => $comment->content,
+                    'user_name' => $comment->user->name,
+                    'user_initial' => substr($comment->user->name, 0, 1),
+                    'created_at' => $comment->created_at->diffForHumans(),
+                ]
+            ]);
+        }
+
         return back()->with('success', 'Comment added!');
     }
 
@@ -148,6 +161,24 @@ class ClassroomController extends Controller
                 auth()->user()->name . ' posted a new ' . $request->type,
                 route('classroom.show', $classroom->id)
             ));
+        }
+
+        if ($request->wantsJson()) {
+            $post->load('user');
+            return response()->json([
+                'success' => true,
+                'post' => [
+                    'id' => $post->id,
+                    'content' => $post->content,
+                    'type' => $post->type,
+                    'attachment_path' => $post->attachment_path,
+                    'attachment_url' => $post->attachment_path ? asset('storage/' . $post->attachment_path) : null,
+                    'user_name' => $post->user->name,
+                    'user_role' => $post->user->role,
+                    'user_initial' => substr($post->user->name, 0, 1),
+                    'created_at' => $post->created_at->diffForHumans(),
+                ]
+            ]);
         }
 
         return back()->with('success', 'Post published successfully!');

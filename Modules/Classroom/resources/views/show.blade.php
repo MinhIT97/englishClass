@@ -34,7 +34,7 @@
                                 {{ substr(auth()->user()->name, 0, 1) }}
                             </div>
                             <div style="flex: 1">
-                                <form action="{{ route('classroom.post.store', $classroom->id) }}" method="POST" enctype="multipart/form-data">
+                                <form id="create-post-form" action="{{ route('classroom.post.store', $classroom->id) }}" method="POST" enctype="multipart/form-data">
                                     @csrf
                                     <textarea name="content" required placeholder="Share something with the class..." style="width: 100%; height: 100px; background: var(--bg-main); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; resize: none; margin-bottom: 1rem"></textarea>
                                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap">
@@ -60,7 +60,7 @@
                 @endif
 
                 <!-- Posts List -->
-                <div style="display: flex; flex-direction: column; gap: 1.5rem">
+                <div id="posts-list" style="display: flex; flex-direction: column; gap: 1.5rem">
                     @forelse($classroom->posts as $post)
                         <div class="glass-card" style="padding: 1.5rem">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem">
@@ -152,7 +152,7 @@
                                 </div>
 
                                 <!-- Add Comment Form -->
-                                <form action="{{ route('classroom.post.comment', $post->id) }}" method="POST" style="margin-top: 1.5rem; display: flex; gap: 0.5rem">
+                                <form id="comment-form-{{ $post->id }}" class="comment-form" action="{{ route('classroom.post.comment', $post->id) }}" method="POST" data-post-id="{{ $post->id }}" style="margin-top: 1.5rem; display: flex; gap: 0.5rem">
                                     @csrf
                                     <input type="text" name="content" required placeholder="Write a comment..." style="flex: 1; background: var(--bg-main); border: 1px solid var(--glass-border); border-radius: 20px; padding: 0.5rem 1rem; font-size: 0.85rem">
                                     <button type="submit" style="background: none; border: none; font-size: 1.25rem; cursor: pointer">🕊️</button>
