@@ -137,6 +137,19 @@ class ClassroomController extends Controller
         // Broadcast notification
         broadcast(new \App\Events\NewPostPublished($post))->toOthers();
 
+        // Notify all members of the classroom EXCEPT the author
+        $members = collect($classroom->students)->merge([$classroom->teacher])->filter(function ($member) {
+            return $member && $member->id !== auth()->id();
+        });
+
+        if ($members->count() > 0) {
+            \Illuminate\Support\Facades\Notification::send($members, new \App\Notifications\ClassroomNotification(
+                $classroom->name,
+                auth()->user()->name . ' posted a new ' . $request->type,
+                route('classroom.show', $classroom->id)
+            ));
+        }
+
         return back()->with('success', 'Post published successfully!');
     }
 

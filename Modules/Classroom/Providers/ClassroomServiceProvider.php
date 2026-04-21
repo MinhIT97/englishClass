@@ -43,4 +43,22 @@ class ClassroomServiceProvider extends ModuleServiceProvider
     // {
     //     $schedule->command('inspire')->hourly();
     // }
+
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->bind(
+            \Modules\Classroom\Repositories\Contracts\ClassroomRepositoryInterface::class,
+            \Modules\Classroom\Repositories\Eloquent\ClassroomRepository::class
+        );
+
+        $this->app->bind(
+            \Modules\Classroom\Services\Contracts\ClassroomServiceInterface::class,
+            \Modules\Classroom\Services\ClassroomService::class
+        );
+    }
 }
