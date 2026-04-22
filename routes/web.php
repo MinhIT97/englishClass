@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\LocaleController;
 
 Route::get('/', function () {
     if (auth()->check()) {
@@ -10,3 +11,5 @@ Route::get('/', function () {
     }
     return view('welcome');
 });
+
+Route::get('lang/{locale}', [LocaleController::class, 'setLocale'])->name('set.locale');
