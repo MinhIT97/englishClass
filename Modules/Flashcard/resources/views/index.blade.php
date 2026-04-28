@@ -149,6 +149,7 @@
     let knowSet = [], dontKnowSet = [], skipSet = [];
     let isReviewMode = false;
     let isFlipped = false;
+    let isAnimating = false;
 
     function renderCard() {
         if (currentIndex >= filteredCards.length) {
@@ -168,7 +169,10 @@
             document.getElementById('card-definition').textContent = card.definition;
             const ex = card.example.replace(new RegExp(card.word, 'gi'), '<strong style="color:var(--primary)">$&</strong>');
             document.getElementById('card-example').innerHTML = '"' + ex + '"';
-            document.getElementById('card-indicator').textContent = `${currentIndex + 1} / ${filteredCards.length}`;
+            
+            // Fix indicator: don't show more than total
+            const displayIndex = Math.min(currentIndex + 1, filteredCards.length);
+            document.getElementById('card-indicator').textContent = `${displayIndex} / ${filteredCards.length}`;
             updateProgress();
         }, 150);
     }
@@ -179,6 +183,9 @@
     }
 
     function markCard(verdict) {
+        if (isAnimating || currentIndex >= filteredCards.length) return;
+        isAnimating = true;
+        
         const card = filteredCards[currentIndex];
         if (verdict === 'know') {
             knowSet.push(card);
@@ -189,17 +196,26 @@
             document.getElementById('count-dontknow').textContent = dontKnowSet.length;
             animateCard('left');
         }
+        
         setTimeout(() => {
             currentIndex++;
+            isAnimating = false;
             renderCard();
         }, 300);
     }
 
     function skipCard() {
+        if (isAnimating || currentIndex >= filteredCards.length) return;
+        isAnimating = true;
+
         skipSet.push(filteredCards[currentIndex]);
         document.getElementById('count-skip').textContent = skipSet.length;
         animateCard('up');
-        setTimeout(() => { currentIndex++; renderCard(); }, 300);
+        setTimeout(() => { 
+            currentIndex++; 
+            isAnimating = false;
+            renderCard(); 
+        }, 300);
     }
 
     function animateCard(dir) {
@@ -227,7 +243,11 @@
     }
 
     function showSessionComplete() {
-        document.getElementById('flashcard').closest('div').style.display = 'none';
+        updateProgress();
+        // Hide the whole study area (the container of flashcard and actions)
+        const container = document.getElementById('flashcard').parentElement;
+        if (container) container.style.display = 'none';
+        
         document.getElementById('session-complete').style.display = 'block';
         document.getElementById('review-missed-btn').style.display = dontKnowSet.length > 0 ? '' : 'none';
     }
@@ -239,7 +259,10 @@
         document.getElementById('count-dontknow').textContent = 0;
         document.getElementById('count-skip').textContent = 0;
         document.getElementById('session-complete').style.display = 'none';
-        document.getElementById('flashcard').closest('div').style.display = '';
+        
+        const container = document.getElementById('flashcard').parentElement;
+        if (container) container.style.display = 'block';
+        
         renderCard();
     }
 
@@ -251,7 +274,10 @@
         document.getElementById('count-dontknow').textContent = 0;
         document.getElementById('count-skip').textContent = 0;
         document.getElementById('session-complete').style.display = 'none';
-        document.getElementById('flashcard').closest('div').style.display = '';
+        
+        const container = document.getElementById('flashcard').parentElement;
+        if (container) container.style.display = 'block';
+        
         renderCard();
     }
 
@@ -393,8 +419,8 @@
         background: var(--bg-secondary);
         border: 1px solid var(--glass-border);
     }
-    .fc-shadow1 { bottom: -10px; height: calc(100% - 20px); z-index: 0; opacity: .6; }
-    .fc-shadow2 { bottom: -20px; width: 80%; height: calc(100% - 40px); z-index: -1; opacity: .3; }
+    .fc-shadow1 { bottom: -10px; height: calc(100% - 20px); z-index: 0; opacity: .6; pointer-events: none; }
+    .fc-shadow2 { bottom: -20px; width: 80%; height: calc(100% - 40px); z-index: -1; opacity: .3; pointer-events: none; }
 
     /* ===== FLASHCARD ===== */
     .fc-card {
@@ -513,7 +539,9 @@
         justify-content: center;
         align-items: center;
         gap: 1.25rem;
-        margin-top: 2rem;
+        margin-top: 3rem;
+        position: relative;
+        z-index: 10;
     }
     .fc-action-btn {
         display: flex;
