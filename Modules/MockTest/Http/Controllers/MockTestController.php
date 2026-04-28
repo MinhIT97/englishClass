@@ -14,4 +14,15 @@ class MockTestController extends Controller
     {
         return view('mocktest::index');
     }
+
+    /**
+     * Start a full mock test simulation.
+     */
+    public function startFullTest()
+    {
+        // For now, redirect to the first skill (Listening) in practice mode
+        // but we could extend this to track a "test session" in the future.
+        return redirect()->route('student.practice.drill', ['skill' => 'listening'])
+            ->with('info', 'Starting Full Mock Test Simulation. Complete all sections for a final band score.');
+    }
 }

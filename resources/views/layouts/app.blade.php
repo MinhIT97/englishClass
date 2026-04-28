@@ -409,6 +409,24 @@
             </header>
             
             <div class="content-body">
+                @if(session('success'))
+                    <div class="glass-card" style="padding: 1rem; margin-bottom: 1.5rem; border-color: #10b981; color: #10b981">
+                        ✅ {{ session('success') }}
+                    </div>
+                @endif
+
+                @if(session('info'))
+                    <div class="glass-card" style="padding: 1rem; margin-bottom: 1.5rem; border-color: var(--primary); color: var(--primary)">
+                        ℹ️ {{ session('info') }}
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="glass-card" style="padding: 1rem; margin-bottom: 1.5rem; border-color: #ef4444; color: #ef4444">
+                        ⚠️ {{ session('error') }}
+                    </div>
+                @endif
+
                 {{ $slot }}
             </div>
         </main>

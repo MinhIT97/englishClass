@@ -4,11 +4,13 @@ namespace App\Services\AI;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class GeminiService
 {
     protected $apiKey;
-    protected $model = 'gemini-2.5-flash-lite';
+    protected $model = 'gemini-1.5-flash';
     protected $apiUrl = 'https://aiplatform.googleapis.com/v1/publishers/google/models/';
 
     public function __construct()

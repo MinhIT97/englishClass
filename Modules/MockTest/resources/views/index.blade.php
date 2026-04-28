@@ -44,7 +44,7 @@
                     <span title="Writing" style="opacity: 0.5">✍️</span>
                     <span title="Speaking" style="opacity: 0.5">🗣️</span>
                 </div>
-                <button class="btn btn-primary mocktest-start-btn">Start Full Test</button>
+                <a href="{{ route('student.test.start') }}" class="btn btn-primary mocktest-start-btn">Start Full Test</a>
             </div>
         </div>
 
@@ -62,22 +62,22 @@
 
     <h2 style="margin-bottom: 1.5rem">Skill Mock tests</h2>
     <div class="mocktest-skills-grid">
-        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
+        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onclick="window.location.href='{{ route('student.practice.drill', 'listening') }}'" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
             <div style="font-size: 2.5rem; margin-bottom: 1rem">🎧</div>
             <div style="font-weight: 600; margin-bottom: 0.5rem">Listening</div>
             <div class="go" style="color: var(--primary); font-size: 0.75rem; font-weight: 700; opacity: 0; transition: opacity 0.2s">ENTER ➜</div>
         </div>
-        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
+        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onclick="window.location.href='{{ route('student.practice.drill', 'reading') }}'" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
             <div style="font-size: 2.5rem; margin-bottom: 1rem">📖</div>
             <div style="font-weight: 600; margin-bottom: 0.5rem">Reading</div>
             <div class="go" style="color: var(--primary); font-size: 0.75rem; font-weight: 700; opacity: 0; transition: opacity 0.2s">ENTER ➜</div>
         </div>
-        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
+        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onclick="window.location.href='{{ route('student.practice.drill', 'writing') }}'" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
             <div style="font-size: 2.5rem; margin-bottom: 1rem">✍️</div>
             <div style="font-weight: 600; margin-bottom: 0.5rem">Writing</div>
             <div class="go" style="color: var(--primary); font-size: 0.75rem; font-weight: 700; opacity: 0; transition: opacity 0.2s">ENTER ➜</div>
         </div>
-        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
+        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onclick="window.location.href='{{ route('student.practice.drill', 'speaking') }}'" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
             <div style="font-size: 2.5rem; margin-bottom: 1rem">🗣️</div>
             <div style="font-weight: 600; margin-bottom: 0.5rem">Speaking</div>
             <div class="go" style="color: var(--primary); font-size: 0.75rem; font-weight: 700; opacity: 0; transition: opacity 0.2s">ENTER ➜</div>
