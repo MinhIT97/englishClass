@@ -25,17 +25,29 @@ jobs:
       - name: Wait for app to be healthy
         run: |
           cd /home/minhnv/projects/englishClass
-          echo "Waiting for app container..."
-          timeout 120 bash -c '
-            until docker compose exec -T app php artisan --version > /dev/null 2>&1; do
-              echo "  still waiting..."
-              sleep 5
-            done
-          '
-          echo "App is healthy!"
+          echo "Waiting 30s for containers to start..."
+          sleep 30
+          echo "--- Container Status ---"
+          docker compose ps
+          echo "--- App Logs (last 50 lines) ---"
+          docker compose logs --tail=50 app
+          echo "--- Nginx Logs ---"
+          docker compose logs --tail=20 nginx
+
+      - name: Verify app is running
+        run: |
+          cd /home/minhnv/projects/englishClass
+          # Kiểm tra container app có đang chạy không
+          if ! docker compose ps app | grep -q "Up"; then
+            echo "❌ App container is not running!"
+            docker compose logs app
+            exit 1
+          fi
+          echo "✅ App container is running!"
 
       - name: Cleanup old images
         run: docker image prune -af || true
 
       - name: Deploy success
         run: echo "✅ Deploy completed successfully!"
+
