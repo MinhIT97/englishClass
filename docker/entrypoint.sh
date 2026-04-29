@@ -3,6 +3,12 @@ set -e
 
 echo "🚀 Starting English Class Laravel Application..."
 
+# Copy public files to shared volume for Nginx IMMEDIATELY
+if [ -d "/app/public_shared" ]; then
+    echo "📂 Syncing public files for Nginx..."
+    cp -a /app/public/. /app/public_shared/
+fi
+
 # Wait for database to be ready
 echo "⏳ Waiting for database to be ready..."
 until mysqladmin ping -h"$DB_HOST" -u"$DB_USERNAME" -p"$DB_PASSWORD" --silent; do
@@ -19,12 +25,6 @@ php artisan migrate --force
 echo "🧹 Optimizing..."
 php artisan optimize:clear
 php artisan optimize
-
-# Copy public files to shared volume for Nginx
-if [ -d "/app/public_shared" ]; then
-    echo "📂 Syncing public files for Nginx..."
-    cp -R /app/public/* /app/public_shared/
-fi
 
 echo "✨ Application is ready!"
 
