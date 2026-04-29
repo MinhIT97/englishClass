@@ -9,7 +9,9 @@ RUN apk add --no-cache \
     mariadb-client \
     postgresql-client \
     libzip-dev \
+    libxml2-dev \
     openssl-dev \
+    oniguruma-dev \
     bash
 
 # Install PHP extensions
@@ -20,6 +22,9 @@ RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS && \
     pdo_mysql \
     zip \
     bcmath \
+    curl \
+    mbstring \
+    xml \
     && apk del .phpize-deps
 
 # Install Composer
@@ -37,11 +42,14 @@ RUN echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/custom.ini \
 # Set working directory
 WORKDIR /app
 
+# Copy composer files first for caching
+COPY composer.json composer.lock ./
+
+# Install PHP dependencies early for build cache
+RUN composer install --no-dev --optimize-autoloader --prefer-dist --no-progress --no-interaction
+
 # Copy application files
 COPY . /app
-
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --prefer-dist
 
 # Install Node dependencies and build assets
 RUN npm ci && npm run build
