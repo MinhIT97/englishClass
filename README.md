@@ -32,7 +32,7 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
 - **Frontend**: Blade, Vanilla JavaScript (MediaRecorder API), CSS (Glassmorphism design)
 - **Architecture**: Modular Design (HMVC) using `nwidart/laravel-modules`
 
-## ⚙️ Installation & Setup
+## ⚙️ Installation & Setup (Local)
 
 1. **Clone the repository**:
    ```bash
@@ -65,6 +65,36 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
    ```bash
    php artisan serve
    ```
+
+## 🐳 Docker Setup (Recommended)
+
+1. **Start the containers** (runs in background):
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   docker-compose exec app composer install
+   docker-compose exec app npm install;
+   docker-compose exec app npm run build
+   ```
+
+3. **Configure Environment**:
+   ```bash
+   cp .env.example .env
+   docker-compose exec app php artisan key:generate
+   ```
+   *Make sure `DB_HOST=db` and `REDIS_HOST=redis` are set in your `.env`.*
+   *Also ensure your `GEMINI_API_KEY` is added.*
+
+4. **Run Migrations & Seeders**:
+   ```bash
+   docker-compose exec app php artisan migrate --seed
+   ```
+
+5. **Access the application**:
+   Open [http://localhost:8000](http://localhost:8000) in your browser.
 
 ## 📂 Project Structure
 
