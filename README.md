@@ -29,26 +29,29 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
 - **Backend**: Laravel 12 (PHP 8.4)
 - **Database**: MySQL
 - **AI Core**: Google Gemini 1.5 Flash (for content generation & analysis)
-- **Frontend**: Blade, Vanilla JavaScript (MediaRecorder API), CSS (Glassmorphism design)
+- **Frontend**: Blade, TailwindCSS, Vanilla JavaScript (MediaRecorder API), Vite
 - **Architecture**: Modular Design (HMVC) using `nwidart/laravel-modules`
 
 ## ⚙️ Installation & Setup
 
 ### Option 1: Run with Docker (recommended)
 
+*Note: Our Docker setup uses an automated entrypoint. Database migrations and cache optimization run automatically when the container starts.*
+
 1. **Copy environment file**:
    ```bash
    cp .env.docker .env
    ```
 
-2. **Build and start containers**:
+2. **Enable Local Development Mode** (Skip this for Production):
+   To map your local code into the container for live editing, copy the override file:
    ```bash
-   docker compose up -d --build
+   cp docker-compose.override.yml.example docker-compose.override.yml
    ```
 
-3. **Run migrations**:
+3. **Build and start containers**:
    ```bash
-   docker compose exec app php artisan migrate --force
+   docker compose up -d --build
    ```
 
 4. **Access the app**:
