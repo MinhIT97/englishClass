@@ -59,4 +59,4 @@ RUN mkdir -p storage/logs bootstrap/cache \
 EXPOSE 9000
 
 ENTRYPOINT ["entrypoint.sh"]
-CMD ["php-fpm"]
+CMD ["php-fpm", "-F"]
