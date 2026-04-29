@@ -1,37 +1,32 @@
-FROM php:8.3-fpm
+FROM php:8.3-fpm-alpine
 
-# Update package list and install system dependencies
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    apt-get update --fix-missing && \
-    apt-get install -y --no-install-recommends \
+# Install system dependencies
+RUN apk add --no-cache \
     git \
     curl \
     zip \
     unzip \
-    mysql-client \
-    libpq-dev \
+    mariadb-client \
+    postgresql-client \
     libzip-dev \
-    libssl-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    openssl-dev \
+    bash
 
 # Install PHP extensions
-RUN docker-php-ext-install \
+RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS && \
+    docker-php-ext-configure zip && \
+    docker-php-ext-install \
     pdo \
     pdo_mysql \
     zip \
     bcmath \
-    ctype \
-    fileinfo \
-    json \
-    tokenizer
+    && apk del .phpize-deps
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
 # Install Node.js 20.x
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache nodejs npm
 
 # Set PHP configurations for production
 RUN echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/custom.ini \
