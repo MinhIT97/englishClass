@@ -4,6 +4,8 @@ FROM php:8.4-fpm-alpine
 RUN apk add --no-cache \
     git \
     curl \
+    libcurl \
+    curl-dev \
     zip \
     unzip \
     mariadb-client \
@@ -12,7 +14,8 @@ RUN apk add --no-cache \
     libxml2-dev \
     openssl-dev \
     oniguruma-dev \
-    bash
+    bash \
+    pkgconf
 
 # Install PHP extensions
 RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS && \
@@ -26,7 +29,6 @@ RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS && \
     mbstring \
     xml \
     && apk del .phpize-deps
-
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
