@@ -19,20 +19,22 @@ chown -R www-data:www-data /app/storage
 chmod -R 775 /app/storage
 
 # -------------------------------------------------------
-# 2. Chờ MySQL sẵn sàng
+# 2. Chờ MySQL sẵn sàng (TCP check - không phụ thuộc auth plugin)
 # -------------------------------------------------------
 echo "⏳ Waiting for database..."
 max_retries=30
 count=0
-until mysqladmin ping -h"${DB_HOST:-db}" -u"${DB_USERNAME:-root}" -p"${DB_PASSWORD:-password}" --silent 2>/dev/null; do
+until bash -c "echo > /dev/tcp/${DB_HOST:-db}/3306" 2>/dev/null; do
     count=$((count + 1))
     if [ "$count" -ge "$max_retries" ]; then
-        echo "❌ Database not reachable after ${max_retries} retries. Exiting."
+        echo "❌ Database port not reachable after ${max_retries} retries. Exiting."
         exit 1
     fi
     echo "   Retry ${count}/${max_retries}..."
     sleep 2
 done
+# Thêm 3s để MySQL hoàn tất init sau khi port mở
+sleep 3
 echo "✅ Database is ready!"
 
 # -------------------------------------------------------
