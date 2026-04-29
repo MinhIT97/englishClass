@@ -42,10 +42,8 @@ services:
     ports:
       - "3307:3306"
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-englishclass}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
-      MYSQL_USER: ${DB_USERNAME:-root}
+         MYSQL_DATABASE: englishclass
+         MYSQL_ROOT_PASSWORD: password
     volumes:
       - dbdata:/var/lib/mysql
     networks:

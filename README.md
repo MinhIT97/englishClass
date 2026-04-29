@@ -26,13 +26,41 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
 
 ## 🛠 Tech Stack
 
-- **Backend**: Laravel 11 (PHP)
+- **Backend**: Laravel 12 (PHP 8.4)
 - **Database**: MySQL
 - **AI Core**: Google Gemini 1.5 Flash (for content generation & analysis)
 - **Frontend**: Blade, Vanilla JavaScript (MediaRecorder API), CSS (Glassmorphism design)
 - **Architecture**: Modular Design (HMVC) using `nwidart/laravel-modules`
 
 ## ⚙️ Installation & Setup
+
+### Option 1: Run with Docker (recommended)
+
+1. **Copy environment file**:
+   ```bash
+   cp .env.docker .env
+   ```
+
+2. **Build and start containers**:
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. **Run migrations**:
+   ```bash
+   docker compose exec app php artisan migrate --force
+   ```
+
+4. **Access the app**:
+   - HTTP: `http://localhost:8080`
+   - HTTPS: `https://localhost:8443`
+
+5. **Database connection**:
+   - MySQL host: `127.0.0.1`
+   - MySQL port: `3307`
+   - Redis port: `6379`
+
+### Option 2: Local PHP setup
 
 1. **Clone the repository**:
    ```bash
@@ -46,22 +74,22 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
    npm install && npm run dev
    ```
 
-3. **Configure Environment**:
+3. **Configure environment**:
    ```bash
    cp .env.example .env
    php artisan key:generate
    ```
-   **Crucial**: Add your Gemini API Key in `.env`:
+   Add your Gemini API Key in `.env`:
    ```env
    GEMINI_API_KEY=your_api_key_here
    ```
 
-4. **Run Migrations & Seeders**:
+4. **Run migrations**:
    ```bash
    php artisan migrate --seed
    ```
 
-5. **Start the server**:
+5. **Start the app**:
    ```bash
    php artisan serve
    ```
