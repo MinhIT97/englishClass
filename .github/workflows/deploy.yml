@@ -8,20 +8,34 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
+    timeout-minutes: 30
 
     steps:
-      - name: Deploy Laravel Project
+      - name: Pull latest code
         run: |
           cd /home/minhnv/projects/englishClass
-
-          echo "Pull latest code..."
           git fetch origin master
           git reset --hard origin/master
 
-          echo "Build & start containers..."
-          docker compose up -d --build
+      - name: Build & start containers
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose up -d --build --remove-orphans
 
-          echo "Cleanup old images..."
-          docker image prune -af || true
+      - name: Wait for app to be healthy
+        run: |
+          cd /home/minhnv/projects/englishClass
+          echo "Waiting for app container..."
+          timeout 120 bash -c '
+            until docker compose exec -T app php artisan --version > /dev/null 2>&1; do
+              echo "  still waiting..."
+              sleep 5
+            done
+          '
+          echo "App is healthy!"
 
-          echo "Deploy success!"
+      - name: Cleanup old images
+        run: docker image prune -af || true
+
+      - name: Deploy success
+        run: echo "✅ Deploy completed successfully!"

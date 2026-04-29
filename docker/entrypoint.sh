@@ -1,32 +1,51 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting English Class Laravel Application..."
+echo "======================================"
+echo "🚀  English Class — Starting up..."
+echo "======================================"
 
-# Copy public files to shared volume for Nginx IMMEDIATELY
-if [ -d "/app/public_shared" ]; then
-    echo "📂 Syncing public files for Nginx..."
-    cp -a /app/public/. /app/public_shared/
-fi
+# -------------------------------------------------------
+# 1. Copy public assets vào named volume cho Nginx đọc
+#    (chạy NGAY ĐẦU trước khi làm bất cứ thứ gì)
+# -------------------------------------------------------
+echo "📂 Syncing public files for Nginx..."
+cp -a /app/public/. /app/public/
 
-# Wait for database to be ready
-echo "⏳ Waiting for database to be ready..."
-until mysqladmin ping -h"$DB_HOST" -u"$DB_USERNAME" -p"$DB_PASSWORD" --silent; do
-  echo '.'
-  sleep 1
+# -------------------------------------------------------
+# 2. Chờ MySQL sẵn sàng (dùng healthcheck của compose
+#    nhưng vẫn giữ fallback phòng chắc ăn)
+# -------------------------------------------------------
+echo "⏳ Waiting for database..."
+max_retries=30
+count=0
+until mysqladmin ping -h"${DB_HOST:-db}" -u"${DB_USERNAME:-root}" -p"${DB_PASSWORD:-password}" --silent 2>/dev/null; do
+    count=$((count + 1))
+    if [ "$count" -ge "$max_retries" ]; then
+        echo "❌ Database not reachable after ${max_retries} retries. Exiting."
+        exit 1
+    fi
+    echo "   Retry ${count}/${max_retries}..."
+    sleep 2
 done
 echo "✅ Database is ready!"
 
-# Run migrations
-echo "🔄 Running database migrations..."
+# -------------------------------------------------------
+# 3. Run migrations
+# -------------------------------------------------------
+echo "🔄 Running migrations..."
 php artisan migrate --force
 
-# Optimize
+# -------------------------------------------------------
+# 4. Clear & re-cache config, routes, views
+# -------------------------------------------------------
 echo "🧹 Optimizing..."
 php artisan optimize:clear
 php artisan optimize
 
-echo "✨ Application is ready!"
+echo "======================================"
+echo "✨  Application is ready!"
+echo "======================================"
 
-# Execute main command
+# Chạy lệnh chính (php-fpm)
 exec "$@"
