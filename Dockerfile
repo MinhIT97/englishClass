@@ -48,7 +48,13 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 
 # Install PHP dependencies early for build cache
-RUN composer install --no-dev --optimize-autoloader --prefer-dist --no-progress --no-interaction
+RUN composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --prefer-dist \
+    --no-progress \
+    --no-interaction \
+    --no-scripts
 
 # Copy application files
 COPY . /app
