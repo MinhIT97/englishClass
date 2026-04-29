@@ -1,4 +1,4 @@
-#!/bash
+#!/bin/bash
 set -e
 
 echo "🚀 Starting English Class Laravel Application..."
@@ -15,12 +15,18 @@ echo "✅ Database is ready!"
 echo "🔄 Running database migrations..."
 php artisan migrate --force
 
-# Clear cache
-echo "🧹 Clearing cache..."
-php artisan cache:clear
-php artisan config:clear
+# Optimize
+echo "🧹 Optimizing..."
+php artisan optimize:clear
+php artisan optimize
+
+# Copy public files to shared volume for Nginx
+if [ -d "/app/public_shared" ]; then
+    echo "📂 Syncing public files for Nginx..."
+    cp -R /app/public/* /app/public_shared/
+fi
 
 echo "✨ Application is ready!"
 
-# Start PHP-FPM
-exec php-fpm
+# Execute main command
+exec "$@"

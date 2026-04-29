@@ -1,4 +1,3 @@
-```yaml
 name: Auto Deploy
 
 on:
@@ -22,19 +21,7 @@ jobs:
           echo "Build & start containers..."
           docker compose up -d --build
 
-          echo "Wait app..."
-          sleep 10
-
-          echo "Laravel optimize..."
-          docker compose exec -T app php artisan migrate --force || true
-          docker compose exec -T app php artisan config:clear || true
-          docker compose exec -T app php artisan cache:clear || true
-          docker compose exec -T app php artisan config:cache || true
-          docker compose exec -T app php artisan route:cache || true
-          docker compose exec -T app php artisan view:cache || true
-
-          echo "Cleanup..."
+          echo "Cleanup old images..."
           docker image prune -af || true
 
           echo "Deploy success!"
-
