@@ -63,6 +63,7 @@ RUN apk add --no-cache \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         openssl-dev \
+        linux-headers \
     && docker-php-ext-configure zip \
     && docker-php-ext-install \
         pdo \
