@@ -15,13 +15,27 @@ use Illuminate\Support\Facades\Log;
 class VoiceStreamWorker extends Command
 {
     /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'voice:stream-worker';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Background daemon to process real-time voice streams to Gemini Live API';
+
+    /**
      * Execute the console command.
      */
     public function handle()
     {
         $this->info("Starting Voice Stream Worker...");
         $apiKey = config('services.gemini.key');
-        
+
         if (empty($apiKey)) {
             $this->error("Gemini API key is completely missing!");
             return;
@@ -45,9 +59,9 @@ class VoiceStreamWorker extends Command
                 ]
             ]
         ];
-        
+
         $client->send(json_encode($setup));
-        
+
         // Wait for setup completion
         try {
             $setupResp = $client->receive();
@@ -83,7 +97,7 @@ class VoiceStreamWorker extends Command
                 $response = $client->receive();
                 if ($response && str_contains($response, 'serverContent')) {
                     $data = json_decode($response, true);
-                    
+
                     if (isset($data['serverContent']['modelTurn']['parts'])) {
                         foreach ($data['serverContent']['modelTurn']['parts'] as $part) {
                             if (isset($part['inlineData']) && isset($part['inlineData']['data'])) {
