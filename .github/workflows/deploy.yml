@@ -1,16 +1,40 @@
+```yaml
 name: Auto Deploy
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
 
 jobs:
   deploy:
     runs-on: self-hosted
 
     steps:
-      - name: Deploy Laravel
+      - name: Deploy Laravel Project
         run: |
           cd /home/minhnv/projects/englishClass
-          git pull origin master
+
+          echo "Pull latest code..."
+          git fetch origin master
+          git reset --hard origin/master
+
+          echo "Build & start containers..."
           docker compose up -d --build
+
+          echo "Wait app..."
+          sleep 10
+
+          echo "Laravel optimize..."
+          docker compose exec -T app php artisan migrate --force || true
+          docker compose exec -T app php artisan config:clear || true
+          docker compose exec -T app php artisan cache:clear || true
+          docker compose exec -T app php artisan config:cache || true
+          docker compose exec -T app php artisan route:cache || true
+          docker compose exec -T app php artisan view:cache || true
+
+          echo "Cleanup..."
+          docker image prune -af || true
+
+          echo "Deploy success!"
+
