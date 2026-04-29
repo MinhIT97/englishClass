@@ -1,7 +1,9 @@
 FROM php:8.3-fpm
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Update package list and install system dependencies
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends \
     git \
     curl \
     zip \
@@ -10,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     libzip-dev \
     libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-install \
