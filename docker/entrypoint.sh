@@ -7,10 +7,10 @@ echo "======================================"
 
 # -------------------------------------------------------
 # 1. Copy public assets vào named volume cho Nginx đọc
-#    (chạy NGAY ĐẦU trước khi làm bất cứ thứ gì)
 # -------------------------------------------------------
 echo "📂 Syncing public files for Nginx..."
-cp -a /app/public/. /app/public/
+mkdir -p /app/public_shared
+cp -a /app/public/. /app/public_shared/
 
 # -------------------------------------------------------
 # 2. Chờ MySQL sẵn sàng (dùng healthcheck của compose
