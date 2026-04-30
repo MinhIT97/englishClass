@@ -68,6 +68,16 @@ services:
       - english-network
     restart: unless-stopped
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: english-class-cloudflared
+    command: tunnel run laravel
+    volumes:
+      - ~/.cloudflared:/etc/cloudflared
+    networks:
+      - english-network
+    restart: unless-stopped
+
 volumes:
   dbdata:
   app_storage:
