@@ -25,6 +25,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Force HTTPS when behind a proxy like Cloudflare Tunnel
+        if (request()->header('x-forwarded-proto') === 'https' || str_contains(config('app.url'), 'https://')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         \Illuminate\Support\Facades\Event::listen(
             \Laravel\Reverb\Events\MessageReceived::class,
             \App\Listeners\ReverbMessageListener::class,

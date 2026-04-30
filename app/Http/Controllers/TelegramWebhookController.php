@@ -81,7 +81,8 @@ class TelegramWebhookController extends Controller
                 . "👤 Tên: <b>{$user->name}</b>\n"
                 . "📧 Email: <b>{$user->email}</b>\n\n"
                 . "👨‍💼 Duyệt bởi: <b>{$adminName}</b>\n"
-                . "🕐 Thời gian: <b>{$approvedAt}</b>"
+                . "🕐 Thời gian: <b>{$approvedAt}</b>",
+                ['inline_keyboard' => []]
             );
         }
 
@@ -115,7 +116,8 @@ class TelegramWebhookController extends Controller
                 . "👤 Tên: <b>{$user->name}</b>\n"
                 . "📧 Email: <b>{$user->email}</b>\n\n"
                 . "👨‍💼 Từ chối bởi: <b>{$adminName}</b>\n"
-                . "🕐 Thời gian: <b>{$rejectedAt}</b>"
+                . "🕐 Thời gian: <b>{$rejectedAt}</b>",
+                ['inline_keyboard' => []]
             );
         }
 

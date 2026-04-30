@@ -58,19 +58,25 @@ class TelegramService
     /**
      * Edit an existing message text.
      */
-    public function editMessageText(string $chatId, int $messageId, string $text): void
+    public function editMessageText(string $chatId, int $messageId, string $text, array $replyMarkup = null): void
     {
         if (empty($this->token)) {
             return;
         }
 
+        $payload = [
+            'chat_id'    => $chatId,
+            'message_id' => $messageId,
+            'text'       => $text,
+            'parse_mode' => 'HTML',
+        ];
+
+        if ($replyMarkup !== null) {
+            $payload['reply_markup'] = json_encode($replyMarkup);
+        }
+
         try {
-            Http::timeout(10)->post("{$this->baseUrl}{$this->token}/editMessageText", [
-                'chat_id'    => $chatId,
-                'message_id' => $messageId,
-                'text'       => $text,
-                'parse_mode' => 'HTML',
-            ]);
+            Http::timeout(10)->post("{$this->baseUrl}{$this->token}/editMessageText", $payload);
         } catch (\Throwable $e) {
             Log::error('[Telegram] editMessageText exception', ['message' => $e->getMessage()]);
         }
