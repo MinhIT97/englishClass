@@ -3,7 +3,7 @@
 namespace Modules\Question\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Modules\Speaking\Services\AiSpeakingService;
+use Modules\Speaking\Services\AiTextService;
 use Modules\Question\Models\Question;
 use Illuminate\Http\Request;
 
@@ -11,7 +11,7 @@ class AIQuestionController extends Controller
 {
     protected $aiService;
 
-    public function __construct(AiSpeakingService $aiService)
+    public function __construct(AiTextService $aiService)
     {
         $this->aiService = $aiService;
     }
@@ -32,11 +32,11 @@ class AIQuestionController extends Controller
         $request->validate([
             'skill' => 'required|string',
             'topic' => 'required|string',
-            'count' => 'integer|min:1|max:5',
+            'count' => 'integer|min:1|max:30',
         ]);
 
         $prompt = $this->buildGeneratorPrompt($request->skill, $request->topic, $request->count);
-        $questions = $this->aiService->generate($prompt);
+        $questions = $this->aiService->generateRaw($prompt);
 
         if (!$questions) {
             return response()->json(['error' => 'AI Generation failed.'], 500);
