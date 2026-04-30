@@ -112,7 +112,7 @@
     </nav>
 
     <!-- Hero Section -->
-    <section class="relative pt-60 sm:pt-48 lg:pt-32 pb-20 px-6">
+    <section class="relative pt-36 sm:pt-44 lg:pt-32 pb-20 px-4 sm:px-6">
         <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
             <div class="relative z-10 text-center lg:text-left space-y-8 order-2 lg:order-1">
                 <div class="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
@@ -122,7 +122,7 @@
                     </span>
                     {{ __('welcome.hero.badge') }}
                 </div>
-                <h1 class="text-5xl lg:text-7xl font-outfit font-extrabold leading-tight">
+                <h1 class="text-4xl sm:text-5xl lg:text-7xl font-outfit font-extrabold leading-tight">
                     {{ __('welcome.hero.title') }} <br>
                     <span class="text-gradient">{{ __('welcome.hero.title_accent') }}</span>
                 </h1>
@@ -150,7 +150,7 @@
             <div class="relative order-1 lg:order-2 flex justify-center">
                 <div class="relative z-10 floating">
                     <img src="{{ asset('images/hero_student.png') }}" alt="IELTS AI Student" class="w-full max-w-[550px] rounded-[2.5rem] shadow-2xl">
-                    <div class="absolute -bottom-6 -left-6 bg-[#030712]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl">
+                    <div class="hidden sm:block absolute -bottom-6 -left-6 bg-[#030712]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 text-2xl">✓</div>
                             <div>
@@ -205,7 +205,7 @@
 
     <!-- Stats Section -->
     <section id="statistics" class="py-20 px-6">
-        <div class="max-w-7xl mx-auto glass rounded-[3rem] p-12 lg:p-20 grid md:grid-cols-3 gap-12 text-center border-indigo-500/10">
+        <div class="max-w-7xl mx-auto glass rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-12 lg:p-20 grid md:grid-cols-3 gap-8 text-center border-indigo-500/10">
             <div class="space-y-2">
                 <div class="text-5xl lg:text-6xl font-outfit font-black text-indigo-400">95%</div>
                 <div class="text-lg font-semibold uppercase tracking-widest text-gray-500">{{ __('welcome.stats.success_rate') }}</div>
@@ -261,8 +261,8 @@
 
     <!-- Final CTA -->
     <section class="py-20 px-6">
-        <div class="max-w-5xl mx-auto bg-gradient-premium rounded-[3rem] p-12 lg:p-20 text-center space-y-8 shadow-2xl shadow-rose-500/10">
-            <h2 class="text-4xl lg:text-5xl font-outfit font-extrabold text-white">{{ __('welcome.cta_final.title') }}</h2>
+        <div class="max-w-5xl mx-auto bg-gradient-premium rounded-[2rem] sm:rounded-[3rem] p-8 sm:p-12 lg:p-20 text-center space-y-8 shadow-2xl shadow-rose-500/10">
+            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-outfit font-extrabold text-white">{{ __('welcome.cta_final.title') }}</h2>
             <p class="text-white/80 text-lg max-w-2xl mx-auto">{{ __('welcome.cta_final.subtitle') }}</p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
                 <a href="{{ route('register') }}" class="px-10 py-5 bg-white text-rose-600 font-bold text-xl rounded-2xl hover:bg-gray-100 transition-all">
@@ -277,7 +277,7 @@
 
     <!-- Footer -->
     <footer class="py-12 px-6 border-t border-white/5">
-        <div class="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 mb-12">
+        <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div class="space-y-4">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 bg-gradient-premium rounded-lg flex items-center justify-center font-outfit font-bold text-lg">I</div>
