@@ -3,6 +3,7 @@
 namespace Modules\Auth\Services;
 
 use Modules\Auth\Repositories\UserRepositoryInterface;
+use App\Events\StudentRegistered;
 use Illuminate\Support\Facades\Hash;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use Illuminate\Validation\ValidationException;
@@ -26,7 +27,11 @@ class AuthService
         $data['status'] = 'pending';
         $data['target_band'] = $data['target_band'] ?? null;
 
-        return $this->userRepository->create($data);
+        $user = $this->userRepository->create($data);
+
+        event(new StudentRegistered($user));
+
+        return $user;
     }
 
     /**

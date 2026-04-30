@@ -22,6 +22,14 @@ class UserService
     }
 
     /**
+     * Reject a user (set status to rejected).
+     */
+    public function rejectUser(int $id)
+    {
+        return $this->userRepository->updateStatus($id, 'rejected');
+    }
+
+    /**
      * List users by status.
      */
     public function listByStatus(string $status, int $perPage = 15)

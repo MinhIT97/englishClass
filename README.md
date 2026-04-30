@@ -24,6 +24,11 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
 - **XP & Levels**: Earn experience points for every correct answer and drill completed.
 - **Progress Tracking**: Visualize your journey toward your target band score.
 
+### 5. Telegram Bot — Admin Approval
+- **Instant Notification**: The moment a student registers, the admin receives a Telegram message with the student's name, email, and target band score.
+- **One-tap Approval**: Approve or reject the student directly in Telegram via Inline Buttons — no need to log into the web dashboard.
+- **Audit Trail**: Every action (approved/rejected, timestamp, admin name) is recorded in the message history and application logs.
+
 ## 🛠 Tech Stack
 
 - **Backend**: Laravel 12 (PHP 8.4)
@@ -31,6 +36,8 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
 - **AI Core**: Google Gemini 1.5 Flash (for content generation & analysis)
 - **Frontend**: Blade, TailwindCSS, Vanilla JavaScript (MediaRecorder API), Vite
 - **Architecture**: Modular Design (HMVC) using `nwidart/laravel-modules`
+- **Real-time Notifications**: Telegram Bot API (native HTTP, no extra package)
+- **Deployment**: Docker (multi-stage build) + Cloudflare Tunnel
 
 ## ⚙️ Installation & Setup
 
@@ -96,6 +103,75 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
    ```bash
    php artisan serve
    ```
+
+## 🤖 Telegram Bot Setup
+
+The platform integrates a Telegram Bot that notifies the admin when a new student registers and allows **one-tap approval directly from Telegram**.
+
+### How it works
+
+```
+Student registers → StudentRegistered event fired
+    → SendTelegramNotification listener
+    → TelegramService sends message to Admin Chat
+    → Admin taps [✅ Duyệt] or [❌ Từ chối]
+    → Telegram sends callback to /telegram/webhook
+    → User status updated (active / rejected)
+    → Bot edits the message to confirm action
+```
+
+### Step 1 — Create a Telegram Bot
+
+1. Open Telegram and search for **@BotFather**.
+2. Send `/newbot` and follow the prompts to get your **Bot Token**.
+3. Send any message to your new bot, then visit:
+   ```
+   https://api.telegram.org/bot{TOKEN}/getUpdates
+   ```
+4. Find `"chat":{"id": ...}` in the response — this is your **Admin Chat ID**.
+
+### Step 2 — Add environment variables
+
+```env
+TELEGRAM_BOT_TOKEN=123456789:ABCDefgh...
+TELEGRAM_ADMIN_CHAT_ID=987654321
+TELEGRAM_WEBHOOK_SECRET=englishclass_webhook_secret
+```
+
+### Step 3 — Register the Webhook (once after deploy)
+
+Replace `{TOKEN}` and `{YOUR_DOMAIN}` then open in browser or run with curl:
+
+```bash
+curl "https://api.telegram.org/bot{TOKEN}/setWebhook\
+?url=https://{YOUR_DOMAIN}/telegram/webhook\
+&secret_token=englishclass_webhook_secret"
+```
+
+Expected response:
+```json
+{"ok":true,"result":true,"description":"Webhook was set"}
+```
+
+> **Note:** The app uses Cloudflare Tunnel to expose the server over HTTPS — Telegram requires HTTPS for webhooks. No extra configuration needed.
+
+### Step 4 — Verify
+
+Register a new student account on the platform. You should immediately receive a Telegram message like:
+
+```
+🎓 Học sinh mới đăng ký!
+
+👤 Tên: Nguyen Van A
+📧 Email: a@gmail.com
+🎯 Target Band: 7.0
+🕐 Thời gian: 30/04/2026 10:00
+
+Vui lòng duyệt học viên này:
+  [✅ Duyệt]  [❌ Từ chối]
+```
+
+---
 
 ## 📂 Project Structure
 

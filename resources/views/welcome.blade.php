@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth overflow-x-hidden">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,11 +40,13 @@
             top: 20%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 800px;
+            width: 100vw;
+            max-width: 800px;
             height: 800px;
             background: radial-gradient(circle, rgba(79, 70, 229, 0.15) 0%, rgba(225, 29, 72, 0) 70%);
             z-index: -1;
             filter: blur(60px);
+            pointer-events: none;
         }
         @keyframes floating {
             0% { transform: translateY(0px); }
@@ -66,10 +68,10 @@
     <div class="hero-glow"></div>
 
     <!-- Navigation -->
-    <nav id="navbar" class="fixed top-0 w-full z-50 transition-all duration-300 px-3 sm:px-6 py-4">
-        <div class="max-w-7xl mx-auto flex justify-between items-center glass rounded-2xl px-4 sm:px-6 py-3">
+    <nav id="navbar" class="fixed top-0 w-full z-50 transition-all duration-300 px-2 sm:px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center glass rounded-xl sm:rounded-2xl px-3 sm:px-6 py-2 sm:py-3">
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-premium rounded-xl flex items-center justify-center font-outfit font-bold text-lg sm:text-xl shadow-lg shadow-indigo-500/20">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 shrink-0 bg-gradient-premium rounded-xl flex items-center justify-center font-outfit font-bold text-lg sm:text-xl shadow-lg shadow-indigo-500/20">
                     I
                 </div>
                 <span class="font-outfit font-bold text-base sm:text-xl tracking-tight hidden sm:block">IELTS <span class="text-indigo-400">AI</span></span>
@@ -81,26 +83,26 @@
                 <a href="#community" class="hover:text-white transition-colors">{{ __('welcome.nav.community') }}</a>
             </div>
 
-            <div class="flex items-center gap-4 sm:gap-6">
+            <div class="flex items-center gap-2 sm:gap-6">
                 <!-- Language Switcher -->
-                <div class="flex items-center gap-2 text-xs font-bold font-outfit tracking-widest border-r border-white/10 pr-4 sm:pr-6">
+                <div class="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs font-bold font-outfit tracking-widest border-r border-white/10 pr-2 sm:pr-6 shrink-0">
                     <a href="{{ route('set.locale', 'en') }}" class="lang-link {{ app()->getLocale() == 'en' ? 'active' : 'text-gray-500 hover:text-gray-300' }}">EN</a>
                     <span class="text-white/10">|</span>
                     <a href="{{ route('set.locale', 'vi') }}" class="lang-link {{ app()->getLocale() == 'vi' ? 'active' : 'text-gray-500 hover:text-gray-300' }}">VI</a>
                 </div>
 
-                <div class="flex items-center gap-2 sm:gap-3">
+                <div class="flex items-center gap-1 sm:gap-3">
                     @if (Route::has('login'))
                         @auth
                             <a href="{{ auth()->user()->role === 'admin' ? route('admin.dashboard') : route('student.dashboard') }}" 
-                               class="px-4 sm:px-5 py-2 rounded-xl bg-gradient-premium text-white font-semibold text-xs sm:text-sm shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform">
+                               class="px-3 sm:px-5 py-2 rounded-xl bg-gradient-premium text-white font-semibold text-xs sm:text-sm shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform whitespace-nowrap shrink-0">
                                 {{ __('welcome.nav.dashboard') }}
                             </a>
                         @else
-                            <a href="{{ route('login') }}" class="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium hover:text-white transition-colors">{{ __('welcome.nav.login') }}</a>
+                            <a href="{{ route('login') }}" class="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium hover:text-white transition-colors whitespace-nowrap shrink-0">{{ __('welcome.nav.login') }}</a>
                             @if (Route::has('register'))
                                 <a href="{{ route('register') }}" 
-                                   class="px-4 sm:px-5 py-2 rounded-xl bg-gradient-premium text-white font-semibold text-xs sm:text-sm shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform whitespace-nowrap">
+                                   class="px-3 sm:px-5 py-2 rounded-xl bg-gradient-premium text-white font-semibold text-[10px] sm:text-sm shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform whitespace-nowrap shrink-0">
                                     {{ __('welcome.nav.register') }}
                                 </a>
                             @endif
@@ -112,9 +114,9 @@
     </nav>
 
     <!-- Hero Section -->
-    <section class="relative pt-36 sm:pt-44 lg:pt-32 pb-20 px-4 sm:px-6">
-        <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
-            <div class="relative z-10 text-center lg:text-left space-y-8 order-2 lg:order-1">
+    <section class="relative pt-28 sm:pt-32 md:pt-32 lg:pt-28 pb-20 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div class="relative z-10 text-center md:text-left space-y-6 lg:space-y-8">
                 <div class="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
                     <span class="relative flex h-2 w-2">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
@@ -126,10 +128,10 @@
                     {{ __('welcome.hero.title') }} <br>
                     <span class="text-gradient">{{ __('welcome.hero.title_accent') }}</span>
                 </h1>
-                <p class="text-gray-400 text-lg max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                <p class="text-gray-400 text-base md:text-lg max-w-xl mx-auto md:mx-0 leading-relaxed">
                     {{ __('welcome.hero.subtitle') }}
                 </p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <div class="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                     <a href="{{ route('register') }}" class="px-8 py-4 rounded-2xl bg-gradient-premium text-white font-bold text-lg shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-1 transition-all">
                         {{ __('welcome.hero.cta_start') }}
                     </a>
@@ -137,7 +139,7 @@
                         {{ __('welcome.hero.cta_explore') }}
                     </a>
                 </div>
-                <div class="flex items-center justify-center lg:justify-start gap-4 pt-4">
+                <div class="flex items-center justify-center md:justify-start gap-4 pt-4">
                     <div class="flex -space-x-3">
                         @for ($i = 1; $i <= 4; $i++)
                             <div class="w-10 h-10 rounded-full border-2 border-[#030712] bg-gray-800 flex items-center justify-center text-xs font-bold font-outfit">S{{ $i }}</div>
@@ -147,7 +149,7 @@
                     <span class="text-sm text-gray-400 font-medium">{{ __('welcome.hero.stats') }}</span>
                 </div>
             </div>
-            <div class="relative order-1 lg:order-2 flex justify-center">
+            <div class="relative flex justify-center mt-8 md:mt-0">
                 <div class="relative z-10 floating">
                     <img src="{{ asset('images/hero_student.png') }}" alt="IELTS AI Student" class="w-full max-w-[550px] rounded-[2.5rem] shadow-2xl">
                     <div class="hidden sm:block absolute -bottom-6 -left-6 bg-[#030712]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl">
@@ -314,9 +316,8 @@
         </div>
         <div class="max-w-7xl mx-auto pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
             <p class="text-gray-500 text-xs text-center">&copy; {{ date('Y') }} IELTS Mastery Platform. {{ __('welcome.footer.rights') }}</p>
-            <div class="flex gap-6 text-xs text-gray-600">
-                <span>Laravel v{{ app()->version() }}</span>
-                <span>PHP v{{ PHP_VERSION }}</span>
+            <div class="flex gap-6 text-xs text-gray-500 font-medium">
+                <span>Crafted with <span class="text-rose-500">♥</span> by Minh Nguyen</span>
             </div>
         </div>
     </footer>

@@ -30,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Listeners\ReverbMessageListener::class,
         );
 
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\StudentRegistered::class,
+            \App\Listeners\SendTelegramNotification::class,
+        );
+
         // View Share AI Status
         $aiService = app(\App\Services\AI\GeminiService::class);
         view()->share('ai_live', $aiService->isLive());
