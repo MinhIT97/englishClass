@@ -68,6 +68,14 @@ services:
       - english-network
     restart: unless-stopped
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: english-class-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token  eyJhIjoiMGM0NWVlYzFlMmFjY2E1NTAyMjgzMGFjMGIyNTNlMGIiLCJ0IjoiZGM4NGFkNWEtYWNlYi00NDA0LWFiYjgtMTYzMTU3N2U3NTI1IiwicyI6Ik1qZ3pOalkzTURndE1EbGhOUzAwWWpZNUxUazVNREF0TjJKalpUUTROMk5oWm1WaiJ9
+    depends_on:
+      - nginx # Đảm bảo Web Server chạy trước khi Tunnel mở
+
 volumes:
   dbdata:
   app_storage:
