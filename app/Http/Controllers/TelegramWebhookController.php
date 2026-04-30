@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 class TelegramWebhookController extends Controller
 {
-    public function __construct(private TelegramService $telegram)
-    {
-    }
+    public function __construct(private TelegramService $telegram) {}
 
     public function handle(Request $request): Response
     {
@@ -78,10 +76,10 @@ class TelegramWebhookController extends Controller
                 (string) $chatId,
                 $messageId,
                 "✅ <b>Đã duyệt học viên</b>\n\n"
-                . "👤 Tên: <b>{$user->name}</b>\n"
-                . "📧 Email: <b>{$user->email}</b>\n\n"
-                . "👨‍💼 Duyệt bởi: <b>{$adminName}</b>\n"
-                . "🕐 Thời gian: <b>{$approvedAt}</b>",
+                    . "👤 Tên: <b>{$user->name}</b>\n"
+                    . "📧 Email: <b>{$user->email}</b>\n\n"
+                    . "👨‍💼 Duyệt bởi: <b>{$adminName}</b>\n"
+                    . "🕐 Thời gian: <b>{$approvedAt}</b>",
                 ['inline_keyboard' => []]
             );
         }
@@ -113,10 +111,10 @@ class TelegramWebhookController extends Controller
                 (string) $chatId,
                 $messageId,
                 "❌ <b>Đã từ chối học viên</b>\n\n"
-                . "👤 Tên: <b>{$user->name}</b>\n"
-                . "📧 Email: <b>{$user->email}</b>\n\n"
-                . "👨‍💼 Từ chối bởi: <b>{$adminName}</b>\n"
-                . "🕐 Thời gian: <b>{$rejectedAt}</b>",
+                    . "👤 Tên: <b>{$user->name}</b>\n"
+                    . "📧 Email: <b>{$user->email}</b>\n\n"
+                    . "👨‍💼 Từ chối bởi: <b>{$adminName}</b>\n"
+                    . "🕐 Thời gian: <b>{$rejectedAt}</b>",
                 ['inline_keyboard' => []]
             );
         }

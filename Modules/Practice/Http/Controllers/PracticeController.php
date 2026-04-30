@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Modules\Question\Models\Question;
 use Modules\Practice\Models\UserAnswer;
 use Modules\Gamification\Services\GamificationService;
-use App\Services\AI\GeminiService;
+use Modules\Speaking\Services\AiSpeakingService;
 use App\Services\AI\VoiceService;
 use Illuminate\Http\Request;
 
@@ -16,7 +16,7 @@ class PracticeController extends Controller
     protected $geminiService;
     protected $voiceService;
 
-    public function __construct(GamificationService $gamificationService, GeminiService $geminiService, VoiceService $voiceService)
+    public function __construct(GamificationService $gamificationService, AiSpeakingService $geminiService, VoiceService $voiceService)
     {
         $this->gamificationService = $gamificationService;
         $this->geminiService = $geminiService;

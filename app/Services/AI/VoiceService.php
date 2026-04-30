@@ -122,7 +122,7 @@ class VoiceService
      */
     public function processAudioWithGemini(string $audioBase64, string $questionText = '', string $targetAnswer = ''): ?array
     {
-        $geminiService = app(GeminiService::class);
+        $geminiService = app(\Modules\Speaking\Services\AiSpeakingService::class);
 
         $prompt = <<<PROMPT
 You are an IELTS Speaking Examiner evaluating a student's response.

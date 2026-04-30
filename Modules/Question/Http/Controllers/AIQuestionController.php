@@ -3,7 +3,7 @@
 namespace Modules\Question\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Services\AI\GeminiService;
+use Modules\Speaking\Services\AiSpeakingService;
 use Modules\Question\Models\Question;
 use Illuminate\Http\Request;
 
@@ -11,7 +11,7 @@ class AIQuestionController extends Controller
 {
     protected $aiService;
 
-    public function __construct(GeminiService $aiService)
+    public function __construct(AiSpeakingService $aiService)
     {
         $this->aiService = $aiService;
     }

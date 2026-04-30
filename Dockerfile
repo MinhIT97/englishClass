@@ -1,126 +1,43 @@
-# ------------------------------------
-# Stage 1: Build Vite Assets (Node)
-# ------------------------------------
-FROM node:20-alpine AS frontend
-
+# --- Giai đoạn 1: Build Assets (Vite/NPM) ---
+FROM node:18-alpine AS asset-builder
 WORKDIR /app
-
-COPY package.json package-lock.json ./
-# Copy config files nếu có
-COPY postcss.config.js tailwind.config.js vite.config.js vite-module-loader.js ./
-
-RUN npm ci --frozen-lockfile
-
-COPY resources/ resources/
-COPY Modules/ Modules/
-COPY public/ public/
-
+COPY package*.json ./
+RUN npm install
+COPY . .
 RUN npm run build
 
-# ------------------------------------
-# Stage 2: Install Composer Dependencies
-# ------------------------------------
-FROM composer:2 AS vendor
+# --- Giai đoạn 2: Ứng dụng chính (PHP) ---
+FROM php:8.2-fpm
 
-WORKDIR /app
+# Cài đặt system dependencies
+RUN apt-get update && apt-get install -y \
+    git curl libpng-dev libonig-dev libxml2-dev zip unzip libzip-dev
 
-COPY composer.json composer.lock ./
+# Cài đặt PHP extensions (bao gồm Redis cho Reverb/Queue)
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+RUN pecl install redis && docker-php-ext-enable redis
 
-# Cài đặt không có dev, không chạy scripts để tránh lỗi thiếu .env
-RUN composer install \
-    --no-dev \
-    --no-interaction \
-    --no-plugins \
-    --no-scripts \
-    --prefer-dist \
-    --optimize-autoloader
+# Copy Composer từ image chính thức
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy toàn bộ source code vào
-COPY . .
+WORKDIR /var/www
 
-# Chạy lại dump-autoload sau khi có đủ code
-RUN composer dump-autoload --no-dev --optimize --no-scripts
+# Copy toàn bộ code vào container
+COPY . /var/www
 
-# ------------------------------------
-# Stage 3: Production Runtime Image
-# ------------------------------------
-FROM php:8.4-fpm-alpine AS production
+# Copy assets đã build từ Giai đoạn 1 sang
+COPY --from=asset-builder /app/public/build /var/www/public/build
 
-# Cài dependencies hệ thống
-RUN apk add --no-cache \
-        bash \
-        curl \
-        libcurl \
-        curl-dev \
-        git \
-        zip \
-        unzip \
-        mariadb-client \
-        libzip-dev \
-        libxml2-dev \
-        oniguruma-dev \
-        pkgconf \
-    && apk add --no-cache --virtual .build-deps \
-        $PHPIZE_DEPS \
-        openssl-dev \
-        linux-headers \
-    && docker-php-ext-configure zip \
-    && docker-php-ext-install \
-        pdo \
-        pdo_mysql \
-        zip \
-        bcmath \
-        curl \
-        mbstring \
-        xml \
-        opcache \
-        pcntl \
-        sockets \
-    && apk del .build-deps
+# Tự động cài đặt thư viện PHP (Optimized cho Production)
+RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# PHP production configuration
-RUN { \
-    echo "memory_limit = 256M"; \
-    echo "upload_max_filesize = 100M"; \
-    echo "post_max_size = 100M"; \
-    echo "max_execution_time = 300"; \
-    echo "expose_php = Off"; \
-} > /usr/local/etc/php/conf.d/custom.ini
+# Phân quyền tự động cho các thư mục cache/storage
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# OPcache configuration
-RUN { \
-    echo "opcache.enable=1"; \
-    echo "opcache.memory_consumption=256"; \
-    echo "opcache.interned_strings_buffer=16"; \
-    echo "opcache.max_accelerated_files=20000"; \
-    echo "opcache.revalidate_freq=0"; \
-    echo "opcache.validate_timestamps=0"; \
-} > /usr/local/etc/php/conf.d/opcache.ini
+# Cài đặt Entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-WORKDIR /app
-
-# Copy toàn bộ source từ vendor stage (đã có code + vendor/)
-COPY --from=vendor --chown=www-data:www-data /app /app
-
-# Copy Vite build assets từ frontend stage
-COPY --from=frontend --chown=www-data:www-data /app/public/build /app/public/build
-
-# Copy entrypoint
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Tạo thư mục cần thiết và set quyền
-RUN mkdir -p \
-        storage/app/public \
-        storage/framework/cache \
-        storage/framework/sessions \
-        storage/framework/views \
-        storage/logs \
-        bootstrap/cache \
-    && chown -R www-data:www-data /app \
-    && chmod -R 775 storage bootstrap/cache
-
-EXPOSE 9000
-
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]

@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // View Share AI Status
-        $aiService = app(\App\Services\AI\GeminiService::class);
+        $aiService = app(\Modules\Speaking\Services\AiSpeakingService::class);
         view()->share('ai_live', $aiService->isLive());
 
         Gate::define('admin-access', function ($user) {
