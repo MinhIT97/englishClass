@@ -59,6 +59,7 @@ fi
 echo "📂 Syncing public files for Nginx..."
 mkdir -p /app/public_shared
 cp -a /app/public/. /app/public_shared/
+chmod -R 755 /app/public_shared
 
 # -------------------------------------------------------
 # 6. Optimize (chạy với www-data để file cache đúng owner)
