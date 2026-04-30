@@ -16,5 +16,4 @@ Route::get('lang/{locale}', [LocaleController::class, 'setLocale'])->name('set.l
 
 // Telegram Webhook — bỏ qua CSRF vì request đến từ Telegram server
 Route::post('telegram/webhook', [\App\Http\Controllers\TelegramWebhookController::class, 'handle'])
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('telegram.webhook');
