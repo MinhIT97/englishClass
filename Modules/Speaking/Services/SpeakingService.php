@@ -3,6 +3,7 @@
 namespace Modules\Speaking\Services;
 
 use App\Services\AI\GeminiService;
+use App\Services\AI\VoiceService;
 use Modules\Speaking\Models\SpeakingSession;
 use Modules\Speaking\Models\Transcript;
 use Illuminate\Support\Facades\Log;
@@ -10,10 +11,12 @@ use Illuminate\Support\Facades\Log;
 class SpeakingService
 {
     protected $aiService;
+    protected $voiceService;
 
-    public function __construct(GeminiService $aiService)
+    public function __construct(GeminiService $aiService, VoiceService $voiceService)
     {
         $this->aiService = $aiService;
+        $this->voiceService = $voiceService;
     }
 
     /**
@@ -34,7 +37,7 @@ class SpeakingService
     {
         $history = $session->transcripts()->orderBy('created_at', 'asc')->get();
         $prompt = $this->buildSpeakingPrompt($history, $studentInput, (bool)$audioBase64);
-        
+
         $aiResult = $this->aiService->generate($prompt, $audioBase64);
 
         if (!$aiResult || !isset($aiResult['response'])) {
@@ -65,7 +68,7 @@ class SpeakingService
         $audioInstruction = $hasAudio ? "I have attached the student's actual audio input. Please listen carefully to their pronunciation, intonation, and delivery speed." : "";
 
         return <<<PROMPT
-You are an IELTS Speaking Examiner (Persona: friendly but professional). 
+You are an IELTS Speaking Examiner (Persona: friendly but professional).
 Context of conversation:
 {$context}
 

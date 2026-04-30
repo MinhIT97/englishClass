@@ -20,6 +20,30 @@ class GeminiService
     }
 
     /**
+     * Get API key for external use
+     */
+    public function getApiKey(): ?string
+    {
+        return $this->apiKey;
+    }
+
+    /**
+     * Get model name for external use
+     */
+    public function getModel(): string
+    {
+        return $this->model;
+    }
+
+    /**
+     * Get API URL for external use
+     */
+    public function getApiUrl(): string
+    {
+        return $this->apiUrl;
+    }
+
+    /**
      * Check if the AI service is in Live Mode.
      */
     public function isLive(): bool

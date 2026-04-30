@@ -7,17 +7,20 @@ use Modules\Question\Models\Question;
 use Modules\Practice\Models\UserAnswer;
 use Modules\Gamification\Services\GamificationService;
 use App\Services\AI\GeminiService;
+use App\Services\AI\VoiceService;
 use Illuminate\Http\Request;
 
 class PracticeController extends Controller
 {
     protected $gamificationService;
     protected $geminiService;
+    protected $voiceService;
 
-    public function __construct(GamificationService $gamificationService, GeminiService $geminiService)
+    public function __construct(GamificationService $gamificationService, GeminiService $geminiService, VoiceService $voiceService)
     {
         $this->gamificationService = $gamificationService;
         $this->geminiService = $geminiService;
+        $this->voiceService = $voiceService;
     }
 
     /**
@@ -54,13 +57,13 @@ class PracticeController extends Controller
     {
         $text = $question->content['text'] ?? $question->content['question'] ?? '';
         $answer = $question->content['answer'] ?? '';
-        
+
         // Clean text: remove hints and fill gaps
         $cleanText = preg_replace('/\s*\(Audio transcript hint:.*?\)\s*/i', '', $text);
         $cleanText = str_replace(['[____]', '[___]', '[__]', '[blank]'], $answer, $cleanText);
-        
+
         $audioPath = $this->geminiService->generateVoice($cleanText);
-        
+
         if ($audioPath) {
             $content = $question->content;
             $content['audio_path'] = $audioPath;
@@ -81,11 +84,11 @@ class PracticeController extends Controller
 
         $question = Question::findOrFail($request->question_id);
         $studentAnswer = $request->get('answer');
-        
+
         // Basic check for MCQ and Gap Fill
         $correctAnswer = $question->content['answer'] ?? '';
         $isCorrect = strtolower(trim($studentAnswer)) === strtolower(trim($correctAnswer));
-        
+
         $points = $isCorrect ? 10 : 2; // 10 XP for correct, 2 XP for effort
 
         $userAnswer = UserAnswer::create([
@@ -116,27 +119,9 @@ class PracticeController extends Controller
         $audioBase64 = $request->get('audio');
         $questionText = $question->content['question'] ?? $question->content['text'] ?? 'N/A';
         $targetAnswer = $question->content['answer'] ?? 'General response';
-        
-        $prompt = <<<PROMPT
-You are an IELTS Speaking Examiner. 
-The student was asked this question: "{$questionText}"
-The correct answer or target response involves: "{$targetAnswer}"
 
-Listen to the attached audio and evaluate:
-1. **Pronunciation**: Did they speak clearly? Any mispronounced words?
-2. **Correctness**: Did they answer the question correctly?
-3. **Fluency**: How natural did they sound?
-
-Return the response strictly in JSON:
-{
-    "is_correct": (boolean) Whether the answer is basically correct,
-    "points_earned": (int) 2-10 based on quality,
-    "feedback": (string) Brief comment on content,
-    "pronunciation_feedback": (string) Specific analysis of their pronunciation and accent.
-}
-PROMPT;
-
-        $aiResult = $this->geminiService->generate($prompt, $audioBase64);
+        // Use VoiceService for audio processing (supports both OpenAI Whisper and Gemini)
+        $aiResult = $this->voiceService->processAudioWithGemini($audioBase64, $questionText, $targetAnswer);
 
         $isCorrect = $aiResult['is_correct'] ?? true;
         $points = $aiResult['points_earned'] ?? 5;
