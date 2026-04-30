@@ -10,8 +10,9 @@ use Illuminate\Support\Str;
 class GeminiService
 {
     protected $apiKey;
-    protected $model = 'gemini-1.5-flash';
+    protected $model = 'gemini-2.5-flash-lite';
     protected $apiUrl = 'https://aiplatform.googleapis.com/v1/publishers/google/models/';
+
 
     public function __construct()
     {
@@ -89,7 +90,7 @@ class GeminiService
             }
 
             Log::error('Gemini API Error: ' . $response->body());
-            
+
             // If quota limit or credit issue, return a smart mock response so the UI still works for testing
             if ($response->status() === 429 || $response->status() === 402) {
                 return $this->getMockResponse($prompt);
