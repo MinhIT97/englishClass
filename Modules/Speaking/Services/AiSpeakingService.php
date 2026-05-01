@@ -24,6 +24,67 @@ class AiSpeakingService
     }
 
     /**
+     * Generate content using Gemini 1.5 Flash
+     * Supports both text and audio/multimodal inputs
+     */
+    public function generate(string $prompt, ?string $inlineData = null, string $mimeType = 'audio/webm'): ?array
+    {
+        if (!$this->isLive()) {
+            Log::warning("Gemini API Key is missing. Mocking response.");
+            return null;
+        }
+
+        try {
+            $contents = [
+                [
+                    'role' => 'user',
+                    'parts' => [
+                        ['text' => $prompt]
+                    ]
+                ]
+            ];
+
+            // Nếu có dữ liệu inline (audio/image)
+            if ($inlineData) {
+                $contents[0]['parts'][] = [
+                    'inline_data' => [
+                        'mime_type' => $mimeType,
+                        'data'      => $inlineData
+                    ]
+                ];
+            }
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post("https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}", [
+                'contents' => $contents,
+                'generationConfig' => [
+                    'response_mime_type' => 'application/json',
+                    'temperature'        => 0.7,
+                    'topP'               => 0.95,
+                    'topK'               => 64,
+                    'maxOutputTokens'    => 2048,
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+                
+                // Gemini có thể trả về text thô hoặc JSON string
+                return json_decode($text, true);
+            }
+
+            Log::error("Gemini API Error: " . $response->body());
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error("Gemini Generation Exception: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Generate TTS and save to public storage
      */
     public function generateTTS(string $text): ?string
