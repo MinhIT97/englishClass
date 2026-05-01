@@ -30,6 +30,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 
 RUN pecl install redis && docker-php-ext-enable redis
 
+# Đảm bảo PHP-FPM lắng nghe trên tất cả các interface (0.0.0.0) để Nginx có thể kết nối
+RUN sed -i 's/listen = 127.0.0.1:9000/listen = 9000/g' /usr/local/etc/php-fpm.d/www.conf 2>/dev/null || true \
+    && sed -i 's/listen = 127.0.0.1:9000/listen = 9000/g' /usr/local/etc/php-fpm.d/zz-docker.conf 2>/dev/null || true
+
 # Copy Composer từ image chính thức
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
