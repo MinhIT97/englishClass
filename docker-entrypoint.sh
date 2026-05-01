@@ -25,14 +25,13 @@ if [ "$CONTAINER_ROLE" = "app" ]; then
         php artisan migrate --force --no-interaction || echo "❌ Migration failed!"
     fi
 
-    # Đảm bảo quyền ghi cho storage và cache
+    # Đảm bảo quyền ghi cho storage và cache (chỉ quét các folder cần thiết để nhanh hơn)
     echo "Setting permissions..."
-    chown -R www-data:www-data /app/storage /app/bootstrap/cache
-    chmod -R 775 /app/storage /app/bootstrap/cache
-
-    # Tạo các thư mục cần thiết nếu chưa có
-    mkdir -p /app/storage/framework/sessions /app/storage/framework/views /app/storage/framework/cache
-    chown -R www-data:www-data /app/storage/framework
+    for dir in storage storage/framework storage/framework/sessions storage/framework/views storage/framework/cache storage/logs bootstrap/cache; do
+        mkdir -p /app/$dir
+        chown www-data:www-data /app/$dir
+        chmod 775 /app/$dir
+    done
 
     # Link storage nếu chưa có
     if [ ! -L public/storage ]; then
