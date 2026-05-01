@@ -6,56 +6,53 @@ echo "🚀  English Class — Starting up..."
 echo "======================================"
 
 # -------------------------------------------------------
-# 1. Check for dependencies
+# 1. Khởi tạo thư mục storage nếu mount volume rỗng
 # -------------------------------------------------------
-if [ ! -f "vendor/autoload.php" ]; then
-    echo "❌ vendor/autoload.php not found!"
-    echo "   Ensure you have run 'composer install' or that the volume mount is correct."
-    # We don't exit here because maybe the container is intended to be used for installing dependencies
-    # but most artisan commands will fail.
-fi
+echo "📁 Checking storage directories..."
+mkdir -p \
+    storage/app/public \
+    storage/framework/cache/data \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
 
 # -------------------------------------------------------
-# 2. Wait for MySQL if DB_HOST is set
+# 2. Đợi Database sẵn sàng
 # -------------------------------------------------------
 if [ -n "$DB_HOST" ]; then
     echo "⏳ Waiting for database ($DB_HOST)..."
     max_retries=30
     count=0
-    # Try to connect to DB port
     until (echo > /dev/tcp/$DB_HOST/${DB_PORT:-3306}) >/dev/null 2>&1; do
         count=$((count + 1))
         if [ "$count" -ge "$max_retries" ]; then
-            echo "❌ Database ($DB_HOST) not reachable after ${max_retries} retries."
-            # We don't exit yet, artisan might give a better error message
+            echo "❌ Database not reachable after ${max_retries} retries."
             break
         fi
         echo "   Retry ${count}/${max_retries}..."
         sleep 2
     done
     if [ "$count" -lt "$max_retries" ]; then
-        echo "✅ Database is reachable!"
-        # Small sleep to ensure MySQL is fully initialized
-        sleep 2
+        echo "✅ Database is ready!"
+        sleep 1
     fi
 fi
 
 # -------------------------------------------------------
 # 3. Laravel Optimization
 # -------------------------------------------------------
-echo "🧹 Cleaning and caching configuration..."
-# We use || true because failing to clear cache shouldn't crash the container
-php artisan config:clear || echo "⚠️  Warning: config:clear failed"
-php artisan route:clear || echo "⚠️  Warning: route:clear failed"
-php artisan view:clear || echo "⚠️  Warning: view:clear failed"
-php artisan event:clear || echo "⚠️  Warning: event:clear failed"
+echo "🧹 Optimizing Laravel..."
+php artisan config:clear || true
+php artisan route:clear || true
+php artisan view:clear || true
 
-# In production, we usually want to cache
 if [ "$APP_ENV" = "production" ]; then
     echo "📦 Caching for production..."
-    php artisan config:cache || echo "⚠️  Warning: config:cache failed"
-    php artisan route:cache || echo "⚠️  Warning: route:cache failed"
-    php artisan view:cache || echo "⚠️  Warning: view:cache failed"
+    php artisan config:cache || true
+    php artisan route:cache || true
+    php artisan view:cache || true
 fi
 
 # -------------------------------------------------------
@@ -67,11 +64,23 @@ if [ "$RUN_MIGRATIONS" = "true" ]; then
 fi
 
 # -------------------------------------------------------
-# 5. Set permissions
+# 5. Storage Link
 # -------------------------------------------------------
-echo "🔐 Setting permissions..."
-chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
-chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+if [ ! -L public/storage ]; then
+    echo "🔗 Creating storage symlink..."
+    php artisan storage:link || true
+fi
+
+# -------------------------------------------------------
+# 6. Sync Public Assets for Nginx
+#    (Vì Nginx dùng volume riêng 'app_public' để đọc static files)
+# -------------------------------------------------------
+if [ -d "/app/public_shared" ]; then
+    echo "📂 Syncing public files to shared volume..."
+    cp -ru /app/public/. /app/public_shared/
+    chown -R www-data:www-data /app/public_shared
+    chmod -R 755 /app/public_shared
+fi
 
 echo "======================================"
 echo "✨  Application is ready!"

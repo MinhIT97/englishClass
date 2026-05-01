@@ -8,11 +8,10 @@ services:
     container_name: english-class-app
     working_dir: /app
     volumes:
-      # storage: user-generated files (uploads, sessions, logs, views)
+      - .:/app
+      - /app/vendor
       - app_storage:/app/storage
-      # public_shared: populated by entrypoint.sh, đọc bởi Nginx
       - app_public:/app/public_shared
-      # bootstrap/cache KHÔNG mount — dùng cache đã build trong image
     networks:
       - english-network
     depends_on:
@@ -20,8 +19,28 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    env_file:
-      - .env
+    env_file: .env
+    restart: unless-stopped
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: english-class-queue
+    working_dir: /app
+    command: php artisan queue:work redis --sleep=2 --tries=3 --timeout=60
+    volumes:
+      - .:/app
+      - /app/vendor
+      - app_storage:/app/storage
+    networks:
+      - english-network
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    env_file: .env
     restart: unless-stopped
 
   reverb:
@@ -31,8 +50,10 @@ services:
     container_name: english-class-reverb
     working_dir: /app
     command: php artisan reverb:start --host="0.0.0.0" --port=8080
-    env_file:
-      - .env
+    volumes:
+      - .:/app
+      - /app/vendor
+    env_file: .env
     networks:
       - english-network
     depends_on:
@@ -57,7 +78,6 @@ services:
   db:
     image: mysql:8.0
     container_name: english-class-db
-    # Ép MySQL dùng native_password để tương thích với mọi client
     command: --default-authentication-plugin=mysql_native_password
     ports:
       - "3307:3306"
@@ -88,9 +108,9 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: english-class-cloudflared
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token  eyJhIjoiMGM0NWVlYzFlMmFjY2E1NTAyMjgzMGFjMGIyNTNlMGIiLCJ0IjoiZGM4NGFkNWEtYWNlYi00NDA0LWFiYjgtMTYzMTU3N2U3NTI1IiwicyI6Ik1qZ3pOalkzTURndE1EbGhOUzAwWWpZNUxUazVNREF0TjJKalpUUTROMk5oWm1WaiJ9
+    command: tunnel --no-autoupdate run --token  ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
-      - nginx # Đảm bảo Web Server chạy trước khi Tunnel mở
+      - nginx
 
 volumes:
   dbdata:
