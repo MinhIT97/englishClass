@@ -25,6 +25,8 @@ services:
 
   queue:
     build:
+      context: .
+      dockerfile: Dockerfile
     working_dir: /app
     command: php artisan queue:work redis --sleep=2 --tries=3 --timeout=60
     volumes:
