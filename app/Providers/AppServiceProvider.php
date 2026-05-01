@@ -30,15 +30,7 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        \Illuminate\Support\Facades\Event::listen(
-            \Laravel\Reverb\Events\MessageReceived::class,
-            \App\Listeners\ReverbMessageListener::class,
-        );
-
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\StudentRegistered::class,
-            \App\Listeners\SendTelegramNotification::class,
-        );
+        //
 
         // View Share AI Status
         $aiService = app(\Modules\Speaking\Services\AiSpeakingService::class);
