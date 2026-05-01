@@ -14,8 +14,9 @@ jobs:
       - name: Pull latest code
         run: |
           cd /home/minhnv/projects/englishClass
-          # Sửa lỗi Permission denied do Docker chiếm quyền sở hữu các file storage/cache
-          sudo chown -R $USER:$USER .
+          # Sửa lỗi Permission bằng Docker (do GitHub Action không có quyền sudo có pass)
+          # Chạy một container tạm thời để trả lại quyền sở hữu cho user hiện tại
+          docker run --rm -v $(pwd):/app alpine chown -R $(id -u):$(id -g) /app
           git fetch origin master
           git reset --hard origin/master
 
