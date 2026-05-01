@@ -20,31 +20,71 @@ jobs:
       - name: Build & start containers
         run: |
           cd /home/minhnv/projects/englishClass
-          docker compose up -d --build --remove-orphans
+          # Sử dụng lệnh deploy.sh đã tối ưu hoặc chạy trực tiếp docker-compose
+          docker compose up -d --build --remove-orphans --scale queue=4
+
+      - name: Clear Laravel cache
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T app php artisan optimize:clear
+
+      - name: Run migrations
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T app php artisan migrate --force
+
+      - name: Restart Laravel Queue
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T app php artisan queue:restart
+
+      - name: Restart Reverb
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose restart reverb
 
       - name: Show startup logs
         run: |
           cd /home/minhnv/projects/englishClass
-          echo "Waiting 45s for containers to initialize..."
-          sleep 45
-          echo "--- Container Status ---"
+          sleep 15
           docker compose ps
-          echo ""
-          echo "--- App Logs ---"
           docker compose logs --tail=60 app
 
       - name: Verify containers are up
         run: |
           cd /home/minhnv/projects/englishClass
-          APP_STATUS=$(docker compose ps app --format "{{.State}}" 2>/dev/null || docker compose ps app | tail -1)
-          echo "App status: $APP_STATUS"
-          if docker compose ps app | grep -E "Exit|Error|Restarting"; then
-            echo "❌ App container is not healthy!"
-            docker compose logs app
+          if docker compose ps | grep -E "Exit|Error|Restarting"; then
+            echo "❌ Container error detected"
+            docker compose logs
             exit 1
           fi
           echo "✅ All containers are running!"
-          docker compose ps
+
+      - name: Verify Health and Notify Telegram
+        run: |
+          cd /home/minhnv/projects/englishClass
+
+          # 1. Get Health Status from /up (Laravel 11 default health check)
+          HEALTH_RESPONSE=$(curl -s http://localhost/up || echo '{"status":"failed"}')
+
+          # 2. Determine final status
+          if echo "$HEALTH_RESPONSE" | grep -q "OK"; then
+            DEPLOY_STATUS="success"
+            HEALTH_JSON='{"app":"ok","db":"ok","redis":"ok"}'
+          else
+            DEPLOY_STATUS="failed"
+            HEALTH_JSON='{"app":"failed"}'
+          fi
+
+          # 3. Send Notification to Telegram via Laravel API
+          curl -X POST http://localhost/api/deploy/notify \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"status\": \"$DEPLOY_STATUS\",
+              \"branch\": \"${{ github.ref_name }}\",
+              \"commit\": \"${{ github.sha }}\",
+              \"health\": $HEALTH_JSON
+            }"
 
       - name: Cleanup old images
         run: docker image prune -af || true
