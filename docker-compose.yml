@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     container_name: english-class-app
     working_dir: /app
+    environment:
+      CONTAINER_ROLE: app
     volumes:
       - .:/app
       - /app/vendor
@@ -20,6 +22,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "cgi-fcgi", "-bind", "-connect", "127.0.0.1:9000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     env_file: .env
     restart: unless-stopped
 
@@ -28,6 +35,8 @@ services:
       context: .
       dockerfile: Dockerfile
     working_dir: /app
+    environment:
+      CONTAINER_ROLE: queue
     command: php artisan queue:work redis --sleep=2 --tries=3 --timeout=60
     volumes:
       - .:/app
@@ -50,6 +59,8 @@ services:
       dockerfile: Dockerfile
     container_name: english-class-reverb
     working_dir: /app
+    environment:
+      CONTAINER_ROLE: reverb
     command: php artisan reverb:start --host="0.0.0.0" --port=8080
     volumes:
       - .:/app
@@ -74,7 +85,8 @@ services:
     networks:
       - english-network
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     restart: unless-stopped
 
   db:
@@ -112,7 +124,8 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token  ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
-      - nginx
+      nginx:
+        condition: service_started
 
 volumes:
   dbdata:

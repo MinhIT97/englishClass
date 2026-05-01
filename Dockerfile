@@ -21,7 +21,8 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libicu-dev \
     libfreetype6-dev \
-    libjpeg62-turbo-dev
+    libjpeg62-turbo-dev \
+    libfcgi-bin
 
 # Cài đặt PHP extensions (bao gồm Redis cho Reverb/Queue)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
