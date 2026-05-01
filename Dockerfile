@@ -1,63 +1,95 @@
-# --- Giai đoạn 1: Build Assets (Vite/NPM) ---
-FROM node:18-alpine AS asset-builder
+# ------------------------------------
+# Giai đoạn 1: Build Vite Assets (Node)
+# ------------------------------------
+FROM node:20-alpine AS frontend
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
 
-# --- Giai đoạn 2: Ứng dụng chính (PHP) ---
-FROM php:8.4-fpm
+# ------------------------------------
+# Giai đoạn 2: Install Composer Dependencies
+# ------------------------------------
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --no-plugins \
+    --no-scripts \
+    --prefer-dist \
+    --optimize-autoloader
+COPY . .
+RUN composer dump-autoload --no-dev --optimize --no-scripts
 
-# Cài đặt system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    libzip-dev \
-    libicu-dev \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libfcgi-bin
+# ------------------------------------
+# Giai đoạn 3: Production Runtime Image (Alpine)
+# ------------------------------------
+FROM php:8.4-fpm-alpine AS production
 
-# Cài đặt PHP extensions (bao gồm Redis cho Reverb/Queue)
+# Cài đặt dependencies hệ thống cần thiết
+RUN apk add --no-cache \
+        bash \
+        curl \
+        libzip-dev \
+        libpng-dev \
+        libjpeg-turbo-dev \
+        freetype-dev \
+        icu-dev \
+        oniguruma-dev \
+        libxml2-dev \
+        zip \
+        unzip \
+        mysql-client \
+        fcgi
+
+# Cài đặt PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) pdo pdo_mysql mbstring exif pcntl bcmath gd zip intl
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        zip \
+        intl \
+        opcache \
+        sockets
 
-RUN pecl install redis && docker-php-ext-enable redis
+# Cài đặt Redis extension
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del .build-deps
 
-# Đảm bảo PHP-FPM lắng nghe trên tất cả các interface (0.0.0.0) để Nginx có thể kết nối
-RUN sed -i 's/listen = 127.0.0.1:9000/listen = 9000/g' /usr/local/etc/php-fpm.d/www.conf 2>/dev/null || true \
-    && sed -i 's/listen = 127.0.0.1:9000/listen = 9000/g' /usr/local/etc/php-fpm.d/zz-docker.conf 2>/dev/null || true
-
-# Copy Composer từ image chính thức
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# PHP production configuration
+RUN { \
+    echo "memory_limit = 256M"; \
+    echo "upload_max_filesize = 100M"; \
+    echo "post_max_size = 100M"; \
+    echo "max_execution_time = 300"; \
+    echo "expose_php = Off"; \
+} > /usr/local/etc/php/conf.d/custom.ini
 
 WORKDIR /app
 
-# Copy toàn bộ code vào container
-COPY . /app
+# Copy toàn bộ source từ vendor stage
+COPY --from=vendor --chown=www-data:www-data /app /app
 
-# Copy assets đã build từ Giai đoạn 1 sang
-COPY --from=asset-builder /app/public/build /app/public/build
+# Copy Vite build assets từ frontend stage
+COPY --from=frontend --chown=www-data:www-data /app/public/build /app/public/build
 
-# Tự động cài đặt thư viện PHP (Optimized cho Production)
-RUN composer install --no-interaction --optimize-autoloader --no-dev
-
-# Phân quyền tự động cho các thư mục cache/storage
-RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
-    && chmod -R 775 /app/storage /app/bootstrap/cache
-
-# Cài đặt Entrypoint
-COPY docker-entrypoint.sh /usr/local/bin/
+# Copy entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Sử dụng user www-data để bảo mật (Optional, but entrypoint needs root for some tasks)
-# USER www-data
+# Đảm bảo quyền sở hữu cho www-data
+RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
+
+EXPOSE 9000
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["php-fpm"]

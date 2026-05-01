@@ -2,21 +2,26 @@
 set -e
 
 # -------------------------------------------------------
-# 1. Đảm bảo các thư mục tồn tại (Rất nhanh)
+# 1. Đảm bảo các thư mục tồn tại
 # -------------------------------------------------------
-mkdir -p storage/app/public storage/framework/{cache/data,sessions,views} storage/logs
+mkdir -p storage/app/public storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
+# Không dùng chown -R ở đây để tránh chậm startup, Dockerfile đã chown sẵn rồi.
 
 # -------------------------------------------------------
 # 2. Chỉ chạy các tác vụ nặng cho container App
 # -------------------------------------------------------
 if [ "$CONTAINER_ROLE" = "app" ]; then
-    # Kiểm tra nhanh Database (không đợi quá lâu)
+    echo "🚀 Starting App Role..."
+
+    # Kiểm tra nhanh Database
     if [ -n "$DB_HOST" ]; then
+        echo "⏳ Checking database connection ($DB_HOST)..."
         timeout 5s bash -c "until (echo > /dev/tcp/$DB_HOST/${DB_PORT:-3306}) >/dev/null 2>&1; do sleep 1; done" || echo "⚠️ DB not ready, skipping wait..."
     fi
 
     # Chỉ chạy migration nếu được yêu cầu
     if [ "$RUN_MIGRATIONS" = "true" ]; then
+        echo "🔄 Running migrations..."
         php artisan migrate --force --no-interaction || echo "❌ Migration failed!"
     fi
 
@@ -25,11 +30,14 @@ if [ "$CONTAINER_ROLE" = "app" ]; then
         php artisan storage:link || true
     fi
 
-    # Sync Assets (Chỉ copy nếu có thay đổi và không chown lại toàn bộ)
+    # Sync Assets ra shared volume cho Nginx
     if [ -d "/app/public_shared" ]; then
+        echo "📂 Syncing assets to Nginx volume..."
         cp -ru /app/public/. /app/public_shared/
     fi
+    
+    echo "✨ App is ready!"
 fi
 
-# Thực thi lệnh chính (PHP-FPM hoặc Queue)
+# Thực thi lệnh chính
 exec "$@"
