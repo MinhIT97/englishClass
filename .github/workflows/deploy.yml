@@ -49,7 +49,6 @@ jobs:
       - name: Show startup logs
         run: |
           cd /home/minhnv/projects/englishClass
-          sleep 15
           docker compose ps
           docker compose logs --tail=60 app
 
