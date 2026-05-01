@@ -1,72 +1,102 @@
-version: '3.8'
+version: '3.9'
 
 services:
   app:
     build:
       context: .
-    restart: always
+      dockerfile: Dockerfile
+    container_name: english-class-app
+    working_dir: /app
     volumes:
-      - .:/var/www
+      # storage: user-generated files (uploads, sessions, logs, views)
+      - app_storage:/app/storage
+      # public_shared: populated by entrypoint.sh, đọc bởi Nginx
+      - app_public:/app/public_shared
+      # bootstrap/cache KHÔNG mount — dùng cache đã build trong image
     networks:
-      - laravel_network
+      - english-network
     depends_on:
-      - redis
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    restart: unless-stopped
 
-  web:
-    image: nginx:stable-alpine
-    restart: always
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: english-class-reverb
+    working_dir: /app
+    command: php artisan reverb:start --host="0.0.0.0" --port=8080
+    env_file:
+      - .env
+    networks:
+      - english-network
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: english-class-nginx
     ports:
       - "8080:80"
     volumes:
-      - .:/var/www
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - app_public:/app/public:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
-      - laravel_network
+      - english-network
     depends_on:
       - app
-
-  queue:
-    build: .
-    restart: always
-    command: php artisan queue:work redis --sleep=2 --tries=3 --timeout=60 --backoff=5
-    volumes:
-      - .:/var/www
-    networks:
-      - laravel_network
-    depends_on:
-      - redis
-      - db
-
-  reverb:
-    build: .
-    restart: always
-    command: php artisan reverb:start --host=0.0.0.0 --port=8080
-    ports:
-      - "8080:8080"
-    volumes:
-      - .:/var/www
-    networks:
-      - laravel_network
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:alpine
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    restart: always
-    networks:
-      - laravel_network
+    restart: unless-stopped
 
   db:
     image: mysql:8.0
-    restart: always
+    container_name: english-class-db
+    # Ép MySQL dùng native_password để tương thích với mọi client
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3307:3306"
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-englishclass}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - dbdata:/var/lib/mysql
     networks:
-      - laravel_network
+      - english-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: english-class-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - english-network
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: english-class-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token  eyJhIjoiMGM0NWVlYzFlMmFjY2E1NTAyMjgzMGFjMGIyNTNlMGIiLCJ0IjoiZGM4NGFkNWEtYWNlYi00NDA0LWFiYjgtMTYzMTU3N2U3NTI1IiwicyI6Ik1qZ3pOalkzTURndE1EbGhOUzAwWWpZNUxUazVNREF0TjJKalpUUTROMk5oWm1WaiJ9
+    depends_on:
+      - nginx # Đảm bảo Web Server chạy trước khi Tunnel mở
+
+volumes:
+  dbdata:
+  app_storage:
+  app_public:
 
 networks:
-  laravel_network:
+  english-network:
     driver: bridge
