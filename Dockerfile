@@ -43,7 +43,8 @@ RUN apk add --no-cache \
         zip \
         unzip \
         mysql-client \
-        fcgi
+        fcgi \
+        linux-headers
 
 # Cài đặt PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
