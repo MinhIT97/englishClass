@@ -59,8 +59,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         opcache \
         sockets
 
-# Cài đặt Redis extension
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+# Cài đặt Redis extension và sockets headers
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS linux-headers \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apk del .build-deps
