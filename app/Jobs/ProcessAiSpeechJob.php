@@ -44,7 +44,7 @@ class ProcessAiSpeechJob implements ShouldQueue
         try {
             // 1. Chuyển đổi Giọng nói sang Văn bản (STT)
             if ($this->audioBase64) {
-                $transcript = $voiceService->transcribe($this->audioBase64);
+                $transcript = $voiceService->stt($this->audioBase64);
                 
                 if ($transcript) {
                     $this->userMessage->update(['content' => $transcript]);
@@ -97,6 +97,7 @@ class ProcessAiSpeechJob implements ShouldQueue
             'audio_url'       => $audioUrl,
         ]);
 
+        // Broadcast gói tin (Bây giờ đã an toàn vì audio_url chỉ là một chuỗi ngắn)
         broadcast(new AiResponseReady($this->conversation->user_id, $assistantMessage->toArray()));
     }
 }

@@ -4,42 +4,34 @@ namespace Modules\Speaking\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Modules\Speaking\Services\VoiceService;
 use Modules\Speaking\Services\VoiceSessionManager;
+use App\Jobs\ProcessVoiceChunkJob;
 
 class VoiceController extends Controller
 {
-    protected VoiceService $voiceService;
-    protected VoiceSessionManager $sessionManager;
-
-    public function __construct(VoiceService $voiceService, VoiceSessionManager $sessionManager)
-    {
-        $this->voiceService = $voiceService;
-        $this->sessionManager = $sessionManager;
-    }
+    public function __construct(protected VoiceSessionManager $manager) {}
 
     /**
-     * Nhận chunk âm thanh và quyết định khi nào kích hoạt pipeline
+     * Nhận chunk âm thanh Realtime từ Frontend
      */
     public function handleChunk(Request $request)
     {
         $request->validate([
             'session_id' => 'required|string',
-            'chunk'      => 'required|string', // Base64
+            'chunk'      => 'required|string',
             'history'    => 'required|array'
         ]);
 
         $sessionId = $request->session_id;
 
-        // 1. Thêm vào buffer
-        $this->sessionManager->appendChunk($sessionId, $request->chunk);
+        // 1. Lưu vào buffer Redis
+        $this->manager->append($sessionId, $request->chunk);
 
-        // 2. Nếu buffer đủ lớn (~2 giây), kích hoạt xử lý AI
-        if ($this->sessionManager->shouldProcess($sessionId)) {
-            // Chạy trong background hoặc xử lý trực tiếp nếu muốn low latency cực thấp
-            $this->voiceService->processVoice($sessionId, $request->history);
+        // 2. Kiểm tra ngưỡng để kích hoạt Job xử lý
+        if ($this->manager->shouldProcess($sessionId)) {
+            ProcessVoiceChunkJob::dispatch($sessionId, $request->history);
         }
 
-        return response()->json(['status' => 'received']);
+        return response()->json(['status' => 'buffered']);
     }
 }
