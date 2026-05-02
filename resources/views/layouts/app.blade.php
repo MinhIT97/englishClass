@@ -22,331 +22,84 @@
 
     <!-- Styles & Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
-    <style>
-        .layout-wrapper {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* ===== Sidebar ===== */
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--glass-border);
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100vh;
-            z-index: 200;
-            transition: transform 0.3s ease;
-            overflow-y: auto;
-        }
-
-        .sidebar-header {
-            padding: 2rem;
-            text-align: center;
-            flex-shrink: 0;
-        }
-
-        .sidebar-header h2 {
-            font-size: 1.5rem;
-            color: var(--text-main);
-        }
-
-        .sidebar-nav {
-            flex: 1;
-            padding: 1rem;
-            overflow-y: auto;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            padding: 0.875rem 1.25rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            border-radius: var(--radius);
-            margin-bottom: 0.5rem;
-            transition: all 0.2s ease;
-        }
-
-        .nav-item:hover, .nav-item.active {
-            background: var(--glass);
-            color: var(--primary);
-        }
-
-        .nav-icon {
-            margin-right: 1rem;
-            width: 20px;
-            text-align: center;
-        }
-
-        .sidebar-footer {
-            padding: 1.5rem;
-            border-top: 1px solid var(--glass-border);
-            flex-shrink: 0;
-        }
-
-        /* ===== Mobile overlay backdrop ===== */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            z-index: 150;
-            backdrop-filter: blur(4px);
-        }
-        .sidebar-overlay.active { display: block; }
-
-        /* ===== Hamburger Button ===== */
-        .hamburger-btn {
-            display: none;
-            background: none;
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            border-radius: 8px;
-            padding: 0.4rem 0.6rem;
-            font-size: 1.2rem;
-            cursor: pointer;
-            margin-right: auto;
-            transition: background 0.2s;
-        }
-        .hamburger-btn:hover { background: var(--glass); }
-
-        /* ===== Main Content ===== */
-        .main-content {
-            flex: 1;
-            margin-left: var(--sidebar-width);
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
-
-        .top-nav {
-            height: var(--header-height);
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding: 0 1.5rem;
-            position: sticky;
-            top: 0;
-            z-index: 90;
-            gap: 1rem;
-        }
-
-        .user-pill {
-            display: flex;
-            align-items: center;
-            padding: 0.5rem 1rem;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 50px;
-            font-size: 0.875rem;
-            color: var(--text-main);
-        }
-
-        .content-body {
-            padding: 2.5rem;
-            max-width: 1200px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        /* ===== RESPONSIVE BREAKPOINTS ===== */
-        @media (max-width: 1024px) {
-            :root { --sidebar-width: 240px; }
-            .content-body { padding: 2rem 1.5rem; }
-        }
-
-        @media (max-width: 768px) {
-            /* Sidebar hidden off-screen by default on mobile */
-            .sidebar {
-                transform: translateX(-100%);
-                width: 280px;
-            }
-            .sidebar.mobile-open {
-                transform: translateX(0);
-            }
-            /* Main content takes full width */
-            .main-content {
-                margin-left: 0;
-            }
-            /* Show hamburger */
-            .hamburger-btn {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            /* Content padding adjustments */
-            .content-body {
-                padding: 1.25rem 1rem;
-            }
-            /* Top nav: compact */
-            .top-nav {
-                padding: 0 1rem;
-                justify-content: flex-start;
-            }
-            /* User pill: collapse name on mobile */
-            .user-pill .user-name { display: none; }
-            /* Glass card responsive */
-            .glass-card { padding: 1.25rem; }
-            /* Notification dropdown full width */
-            .notification-dropdown {
-                width: calc(100vw - 2rem);
-                right: auto;
-                left: 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            h1 { font-size: 1.5rem !important; }
-            h2 { font-size: 1.25rem !important; }
-        }
-        
-        .badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 50px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .badge-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
-        .badge-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-
-        /* Notifications */
-        .notification-dropdown {
-            position: absolute;
-            top: calc(var(--header-height) - 10px);
-            right: 0;
-            width: 360px;
-            max-height: 480px;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 1000;
-        }
-
-        .notification-dropdown.active {
-            display: flex;
-        }
-
-        .notification-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .notification-list {
-            overflow-y: auto;
-            flex: 1;
-        }
-
-        .notification-item {
-            padding: 1rem;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            gap: 1rem;
-            transition: background 0.2s;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .notification-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .notification-item.unread {
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        #notification-badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            background: #ef4444;
-            color: white;
-            font-size: 0.65rem;
-            padding: 0 4px;
-            border-radius: 10px;
-            min-width: 16px;
-            height: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #0f172a;
-            display: none;
-        }
-    </style>
 </head>
 <body>
+    <!-- Background Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
     <div class="layout-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>IELTS <span style="color: var(--primary)">AI</span></h2>
+                <div class="logo-wrapper">
+                    <h2>IELTS <span class="text-primary-glow">AI</span></h2>
+                    <div class="logo-glow"></div>
+                </div>
+                
+                <!-- Quick User Stats (Reference Style) -->
+                <div class="sidebar-user-stats animate-fade-in" style="animation-delay: 0.1s">
+                    <div class="stat-card glass">
+                        <div class="stat-label">{{ __('ui.welcome_back') }},</div>
+                        <div class="stat-value">{{ auth()->user()->name }}</div>
+                        <div class="stat-meta">
+                            <span class="meta-item">🔥 {{ __('ui.day_streak', ['days' => auth()->user()->streak ?? 0]) }}</span>
+                            <span class="meta-item">⚡ {{ auth()->user()->xp ?? 0 }} XP</span>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <nav class="sidebar-nav">
                 @if(auth()->user()->role === 'admin')
                     <a href="/admin/dashboard" class="nav-item {{ request()->is('admin/dashboard') ? 'active' : '' }}">
-                        <span class="nav-icon">📊</span> Dashboard
+                        <span class="nav-icon">📊</span> {{ __('ui.dashboard') }}
                     </a>
                     <a href="/admin/users" class="nav-item {{ request()->is('admin/users') ? 'active' : '' }}">
-                        <span class="nav-icon">👥</span> Users Approval
+                        <span class="nav-icon">👥</span> {{ __('ui.users_approval') }}
                     </a>
                     <a href="/admin/questions" class="nav-item {{ request()->is('admin/questions') ? 'active' : '' }}">
-                        <span class="nav-icon">📝</span> Question Bank
+                        <span class="nav-icon">📝</span> {{ __('ui.question_bank') }}
                     </a>
                     <a href="/classroom" class="nav-item {{ request()->is('classroom*') ? 'active' : '' }}">
-                        <span class="nav-icon">🏫</span> Classrooms
+                        <span class="nav-icon">🏫</span> {{ __('ui.classrooms') }}
                     </a>
                     <a href="/courses" class="nav-item {{ request()->is('courses*') ? 'active' : '' }}">
-                        <span class="nav-icon">📚</span> Courses
+                        <span class="nav-icon">📚</span> {{ __('ui.courses') }}
                     </a>
                 @else
                     <a href="/student/dashboard" class="nav-item {{ request()->is('student/dashboard') ? 'active' : '' }}">
-                        <span class="nav-icon">🏠</span> Home
+                        <span class="nav-icon">🏠</span> {{ __('ui.dashboard') }}
                     </a>
                     <a href="/classroom" class="nav-item {{ request()->is('classroom*') ? 'active' : '' }}">
-                        <span class="nav-icon">🏫</span> Classrooms
+                        <span class="nav-icon">🏫</span> {{ __('ui.classrooms') }}
                     </a>
                     <a href="/student/practice" class="nav-item {{ request()->is('student/practice') ? 'active' : '' }}">
-                        <span class="nav-icon">⚡</span> Practice Mode
+                        <span class="nav-icon">⚡</span> {{ __('ui.practice') }}
                     </a>
                     <a href="/student/writing" class="nav-item {{ request()->is('student/writing*') ? 'active' : '' }}">
-                        <span class="nav-icon">✍️</span> Writing AI
+                        <span class="nav-icon">✍️</span> {{ __('ui.writing') }}
                     </a>
                     <a href="/student/speaking" class="nav-item {{ request()->is('student/speaking*') ? 'active' : '' }}">
-                        <span class="nav-icon">🗣️</span> Speaking AI
+                        <span class="nav-icon">🗣️</span> {{ __('ui.speaking') }}
                     </a>
                     <a href="/student/flashcards" class="nav-item {{ request()->is('student/flashcards*') ? 'active' : '' }}">
-                        <span class="nav-icon">🗂️</span> Flashcards
+                        <span class="nav-icon">🗂️</span> {{ __('ui.flashcards') }}
                     </a>
                     <a href="/student/test" class="nav-item {{ request()->is('student/test') ? 'active' : '' }}">
-                        <span class="nav-icon">🏆</span> Mock Tests
+                        <span class="nav-icon">🏆</span> {{ __('ui.mock_tests') }}
                     </a>
                     <a href="/student/leaderboard" class="nav-item {{ request()->is('student/leaderboard') ? 'active' : '' }}">
-                        <span class="nav-icon">🏅</span> Leaderboard
+                        <span class="nav-icon">🏅</span> {{ __('ui.leaderboard') }}
                     </a>
                     <a href="/courses" class="nav-item {{ request()->is('courses*') ? 'active' : '' }}">
-                        <span class="nav-icon">📚</span> Courses
+                        <span class="nav-icon">📚</span> {{ __('ui.courses') }}
                     </a>
                 @endif
                 
                 <a href="/settings" class="nav-item {{ request()->is('settings') ? 'active' : '' }}">
-                    <span class="nav-icon">⚙️</span> Settings
+                    <span class="nav-icon">⚙️</span> {{ __('ui.settings') }}
                 </a>
 
                 <div style="margin-top: 2rem; padding: 0 1rem;">
@@ -367,8 +120,8 @@
             <div class="sidebar-footer">
                 <form method="POST" action="/logout">
                     @csrf
-                    <button class="btn btn-outline" style="width: 100%; border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">
-                        🚪 Logout
+                    <button class="btn btn-outline btn-logout" style="width: 100%">
+                        🚪 {{ __('ui.logout') }}
                     </button>
                 </form>
             </div>
@@ -383,6 +136,21 @@
                 <!-- Hamburger (mobile only) -->
                 <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu">☰</button>
                 <div style="display: flex; align-items: center; gap: 1.5rem">
+                    <!-- Language Switcher -->
+                    <div style="display: flex; gap: 0.5rem">
+                        <a href="{{ route('set.locale', 'vi') }}" class="glass {{ app()->getLocale() === 'vi' ? 'active-lang' : '' }}" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border-radius: 50%; color: var(--text-main); text-decoration: none">
+                            VI
+                        </a>
+                        <a href="{{ route('set.locale', 'en') }}" class="glass {{ app()->getLocale() === 'en' ? 'active-lang' : '' }}" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border-radius: 50%; color: var(--text-main); text-decoration: none">
+                            EN
+                        </a>
+                    </div>
+
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="glass" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; cursor: pointer; border-radius: 50%">
+                        🌙
+                    </button>
+
                     <!-- Notification Bell -->
                     <div style="position: relative" id="notification-wrapper">
                         <button id="notification-btn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-main); position: relative; display: flex; align-items: center">
@@ -436,9 +204,27 @@
                 {{ $slot }}
             </div>
         </main>
-    <!-- Hamburger Menu JS -->
+    <!-- Theme Toggle & Hamburger JS -->
     <script>
         (function() {
+            // Theme Toggle Logic
+            const themeToggle = document.getElementById('theme-toggle');
+            const body = document.body;
+            
+            // Check for saved theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                body.classList.add('light-mode');
+                themeToggle.innerText = '☀️';
+            }
+
+            themeToggle.addEventListener('click', () => {
+                const isLight = body.classList.toggle('light-mode');
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+                themeToggle.innerText = isLight ? '☀️' : '🌙';
+            });
+
+            // Hamburger Menu Logic
             const hamburger = document.getElementById('hamburger-btn');
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.getElementById('sidebar-overlay');

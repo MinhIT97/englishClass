@@ -1,20 +1,20 @@
 <x-app-layout>
     <div class="speaking-header-wrap">
         <div>
-            <h1 style="font-size: 2rem; margin-bottom: 0.5rem">AI Speaking Simulator</h1>
-            <p style="color: var(--text-muted)">Practice your speaking with Gemini AI acting as an IELTS examiner.</p>
+            <h1 style="font-size: 2rem; margin-bottom: 0.5rem">{{ __('ui.ai_speaking_sim') }}</h1>
+            <p style="color: var(--text-muted)">{{ __('ui.speaking_desc') }}</p>
         </div>
         <button onclick="startSession()" id="start-btn" class="btn btn-primary" style="gap: 0.5rem; padding: 0.8rem 2rem;">
-            <span id="start-btn-icon">🔴</span> <span id="start-btn-text">Start Interview Session</span>
+            <span id="start-btn-icon">🔴</span> <span id="start-btn-text">{{ __('ui.start_interview') }}</span>
         </button>
     </div>
 
     <div class="instruction-box" id="how-to-use">
-        <h3 style="font-size: 1rem; margin-bottom: 1rem">How to use:</h3>
-        <p style="margin-bottom: 0.5rem">1. Click <strong>"Start Interview Session"</strong> to begin.</p>
-        <p style="margin-bottom: 0.5rem">2. The AI Examiner will introduce themselves and ask the first question via voice.</p>
-        <p style="margin-bottom: 0.5rem">3. Respond by speaking or typing. Use the <strong>Mic</strong> button to talk.</p>
-        <p>4. Receive real-time grammar tips and feedback on the sidebar.</p>
+        <h3 style="font-size: 1rem; margin-bottom: 1rem">{{ __('ui.how_to_use') }}</h3>
+        <p style="margin-bottom: 0.5rem">1. {!! __('ui.step_1') !!}</p>
+        <p style="margin-bottom: 0.5rem">2. {{ __('ui.step_2') }}</p>
+        <p style="margin-bottom: 0.5rem">3. {!! __('ui.step_3') !!}</p>
+        <p>4. {{ __('ui.step_4') }}</p>
     </div>
 
     <div id="simulator-container" class="speaking-grid" style="display: none; height: 650px;">
@@ -37,11 +37,11 @@
                     <button onclick="toggleMic()" id="mic-btn" class="btn-mic" title="Speak">
                         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                     </button>
-                    <input type="text" id="student-input" class="form-control" placeholder="Type or speak your response..." autocomplete="off">
-                    <button onclick="sendMessage()" id="send-btn" class="btn btn-primary" style="padding: 0.8rem 1.5rem">Send</button>
+                    <input type="text" id="student-input" class="form-control" placeholder="{{ __('ui.type_placeholder') }}" autocomplete="off">
+                    <button onclick="sendMessage()" id="send-btn" class="btn btn-primary" style="padding: 0.8rem 1.5rem">{{ __('ui.send') }}</button>
                 </div>
                 <div style="display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 1rem">
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0">Tip: Press the Mic to start, and press it again to Stop & Send.</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0">{{ __('ui.mic_tip') }}</p>
                 </div>
             </div>
         </div>
@@ -49,21 +49,21 @@
         <!-- Feedback & Stats Sidebar -->
         <div class="speaking-sidebar">
             <div class="glass-card">
-                <h3 style="margin-bottom: 1.5rem; font-size: 1rem">✨ Real-time Coaching</h3>
+                <h3 style="margin-bottom: 1.5rem; font-size: 1rem">✨ {{ __('ui.realtime_coaching') }}</h3>
                 <div id="live-feedback" style="color: var(--text-muted); font-size: 0.875rem">
-                    The AI is analyzing your speaking patterns. Start talking to see feedback.
+                    {{ __('ui.ai_analyzing') }}
                 </div>
             </div>
 
             <div class="glass-card" style="border-color: var(--primary)">
                 <h3 style="margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem">
-                    🎯 Exam Tips
+                    🎯 {{ __('ui.exam_tips') }}
                 </h3>
                 <ul class="tips-list">
-                    <li><strong>Fluency:</strong> Keep speaking even if you make a mistake.</li>
-                    <li><strong>Coherence:</strong> Use linking words like "However", "In addition".</li>
-                    <li><strong>Vocabulary:</strong> Avoid basic words like "good" or "bad".</li>
-                    <li><strong>Grammar:</strong> Use a mix of simple and complex tenses.</li>
+                    <li><strong>{{ __('ui.fluency') }}:</strong> {{ __('ui.fluency_tip') }}</li>
+                    <li><strong>{{ __('ui.coherence') }}:</strong> {{ __('ui.coherence_tip') }}</li>
+                    <li><strong>{{ __('ui.vocabulary') }}:</strong> {{ __('ui.vocab_tip') }}</li>
+                    <li><strong>{{ __('ui.grammar') }}:</strong> {{ __('ui.grammar_tip') }}</li>
                 </ul>
             </div>
         </div>
@@ -125,7 +125,7 @@
             const btn     = document.getElementById('start-btn');
             const btnText = document.getElementById('start-btn-text');
             btn.disabled  = true;
-            btnText.textContent = 'Connecting…';
+            btnText.textContent = '{{ __('ui.connecting') }}';
 
             try {
                 const res = await fetch('{{ route("student.speaking.start") }}', {
@@ -159,7 +159,7 @@
                 alert('Could not start session. Check the console.');
             } finally {
                 btn.disabled        = false;
-                btnText.textContent = 'Restart Session';
+                btnText.textContent = '{{ __('ui.restart_session') }}';
             }
         }
 
@@ -174,7 +174,7 @@
             input.value      = '';
             input.disabled   = true;
             sendBtn.disabled = true;
-            setStatus('AI IS THINKING…');
+            setStatus('{{ __('ui.ai_thinking') }}');
             showThinking();
 
             try {
@@ -211,7 +211,7 @@
             const localUrl = URL.createObjectURL(blob);
             addMessage('Student', '🎤 Voice message', localUrl);
             showThinking();
-            setStatus('AI IS THINKING…');
+            setStatus('{{ __('ui.ai_thinking') }}');
 
             const formData = new FormData();
             formData.append('session_id', sessionId);

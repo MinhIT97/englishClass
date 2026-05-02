@@ -2,11 +2,11 @@
     <!-- Page Header -->
     <div class="course-header-wrap">
         <div>
-            <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem">IELTS Master Courses 🎓</h1>
-            <p style="color: var(--text-muted)">Unlock your potential with our expert-led modules.</p>
+            <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem">{{ __('ui.master_courses') }}</h1>
+            <p style="color: var(--text-muted)">{{ __('ui.course_desc') }}</p>
         </div>
         <form action="{{ route('course.index') }}" method="GET" class="course-search-form">
-            <input type="text" name="title" value="{{ request('title') }}" placeholder="Search courses..."
+            <input type="text" name="title" value="{{ request('title') }}" placeholder="{{ __('ui.search_courses') }}"
                    style="flex: 1; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 50px; padding: 0.6rem 1.25rem; color: white; outline: none; font-size: 0.875rem; min-width: 0">
             <button type="submit" class="btn btn-primary" style="padding: 0.6rem 1.1rem; border-radius: 50px; flex-shrink: 0">🔍</button>
         </form>
@@ -45,14 +45,14 @@
                         {{ Str::limit($course->description, 110) }}
                     </p>
                     <div style="display: flex; gap: 0.6rem">
-                        <a href="{{ route('course.show', $course->id) }}" class="btn btn-outline" style="flex: 1; text-align: center; font-size: 0.82rem; padding: 0.55rem">Learn More</a>
+                        <a href="{{ route('course.show', $course->id) }}" class="btn btn-outline" style="flex: 1; text-align: center; font-size: 0.82rem; padding: 0.55rem">{{ __('ui.learn_more') }}</a>
                         @php $isEnrolled = auth()->user()->enrolledCourses()->where('course_id', $course->id)->exists(); @endphp
                         @if($isEnrolled)
-                            <a href="{{ route('course.show', $course->id) }}" class="btn btn-primary" style="flex: 1; text-align: center; font-size: 0.82rem; padding: 0.55rem; background: #10b981">Enrolled ✓</a>
+                            <a href="{{ route('course.show', $course->id) }}" class="btn btn-primary" style="flex: 1; text-align: center; font-size: 0.82rem; padding: 0.55rem; background: #10b981">{{ __('ui.enrolled') }}</a>
                         @else
                             <form action="{{ route('course.enroll', $course->id) }}" method="POST" style="flex: 1">
                                 @csrf
-                                <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 0.82rem; padding: 0.55rem">Enroll Now</button>
+                                <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 0.82rem; padding: 0.55rem">{{ __('ui.enroll_now') }}</button>
                             </form>
                         @endif
                     </div>
@@ -61,9 +61,9 @@
         @empty
             <div style="grid-column: 1/-1; text-align: center; padding: 4rem 1rem">
                 <div style="font-size: 3rem; margin-bottom: 1rem">🍃</div>
-                <h3>No courses found</h3>
-                <p style="color: var(--text-muted)">Maybe try a different search term?</p>
-                <a href="{{ route('course.index') }}" style="color: var(--primary); text-decoration: underline; margin-top: 1rem; display: inline-block">View all courses</a>
+                <h3>{{ __('ui.no_courses') }}</h3>
+                <p style="color: var(--text-muted)">{{ __('ui.search_try_different') }}</p>
+                <a href="{{ route('course.index') }}" style="color: var(--primary); text-decoration: underline; margin-top: 1rem; display: inline-block">{{ __('ui.view_all_courses') }}</a>
             </div>
         @endforelse
     </div>

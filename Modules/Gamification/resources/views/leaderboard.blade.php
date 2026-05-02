@@ -1,7 +1,7 @@
 <x-app-layout>
     <div class="leaderboard-header">
-        <h1 class="page-title">Global Leaderboard</h1>
-        <p class="page-subtitle">See how you rank against other IELTS aspirants world-wide.</p>
+        <h1 class="page-title">{{ __('ui.global_leaderboard') }}</h1>
+        <p class="page-subtitle">{{ __('ui.leaderboard_subtitle') }}</p>
     </div>
 
     <div class="leaderboard-grid">
@@ -9,7 +9,7 @@
         <div class="glass-card table-card" style="padding: 0">
             <div class="card-header">
                 <h3 style="display: flex; align-items: center; gap: 0.5rem; margin: 0">
-                    <span>🏆</span> Top Hall of Fame (XP)
+                    <span>🏆</span> {{ __('ui.hall_of_fame') }}
                 </h3>
             </div>
             
@@ -17,10 +17,10 @@
                 <table class="leaderboard-table">
                     <thead>
                         <tr>
-                            <th>Rank</th>
-                            <th>Student</th>
-                            <th class="hide-mobile">Target</th>
-                            <th style="text-align: right">Total XP</th>
+                            <th>{{ __('ui.rank') }}</th>
+                            <th>{{ __('ui.student') }}</th>
+                            <th class="hide-mobile">{{ __('ui.target') }}</th>
+                            <th style="text-align: right">{{ __('ui.total_xp') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,8 +52,8 @@
         <!-- Streaks Sidebar -->
         <div class="sidebar-grid">
             <!-- Burning Streaks -->
-            <div class="glass-card" style="border-color: rgba(16, 185, 129, 0.3)">
-                <h3 style="margin-bottom: 1.5rem; font-size: 1.125rem">🔥 Burning Streaks</h3>
+            <div class="glass-card" style="border-color: var(--accent-glow)">
+                <h3 style="margin-bottom: 1.5rem; font-size: 1.125rem">{{ __('ui.burning_streaks') }}</h3>
                 <div class="streak-list">
                     @foreach($activeStreaks as $streakUser)
                         <div class="streak-item">
@@ -66,11 +66,11 @@
 
             <!-- Keep it up -->
             <div class="glass-card active-card">
-                <h3 style="color: white; margin-bottom: 0.5rem">Keep it up!</h3>
+                <h3 style="color: white; margin-bottom: 0.5rem">{{ __('ui.keep_it_up') }}</h3>
                 <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.875rem; margin-bottom: 1.5rem">
-                    Your current streak is <strong>{{ auth()->user()->streak }} days</strong>. Complete a drill today to keep the fire burning!
+                    {{ __('ui.streak_status', ['days' => auth()->user()->streak]) }}
                 </p>
-                <a href="{{ route('student.practice.index') }}" class="btn btn-outline" style="width: 100%; border-color: white; color: white">Practice Now</a>
+                <a href="{{ route('student.practice.index') }}" class="btn btn-primary" style="width: 100%; background: #fff; color: var(--primary); border: none">{{ __('ui.practice_now') }}</a>
             </div>
         </div>
     </div>
@@ -125,9 +125,17 @@
         .streak-name { font-size: 0.875rem; }
         .streak-value { font-weight: 700; color: #f59e0b; }
 
+        .sidebar-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            align-content: start;
+        }
+
         .active-card {
             background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
             border: none;
+            box-shadow: 0 20px 40px var(--primary-glow);
         }
 
         @media (max-width: 991px) {
