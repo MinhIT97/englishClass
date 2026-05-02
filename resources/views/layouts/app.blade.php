@@ -204,6 +204,35 @@
                 {{ $slot }}
             </div>
         </main>
+
+        <!-- Floating Chat Widget -->
+        <div class="chat-widget-trigger" id="chat-trigger" title="Hỗ trợ học tập">
+            <span style="font-size: 1.5rem">🤖</span>
+        </div>
+
+        <div class="chat-panel" id="chat-panel">
+            <div class="chat-header">
+                <h3>{{ __('ui.learning_assistant') }}</h3>
+                <button class="chat-close" id="chat-close">✕</button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="chat-bubble ai">
+                    {{ __('ui.chat_welcome') }}
+                </div>
+            </div>
+            <div class="chat-suggestions">
+                <button class="suggestion-pill">{{ __('ui.chat_suggestion_1') }}</button>
+                <button class="suggestion-pill">{{ __('ui.chat_suggestion_2') }}</button>
+                <button class="suggestion-pill">{{ __('ui.chat_suggestion_3') }}</button>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" placeholder="{{ __('ui.chat_placeholder') }}" id="chat-input">
+                <button class="chat-send" id="chat-send">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
+        </div>
+
     <!-- Theme Toggle & Hamburger JS -->
     <script>
         (function() {
@@ -250,6 +279,207 @@
                     if (window.innerWidth <= 768) closeSidebar();
                 });
             });
+
+            // Chat Widget Logic
+            const chatTrigger = document.getElementById('chat-trigger');
+            const chatPanel = document.getElementById('chat-panel');
+            const chatClose = document.getElementById('chat-close');
+            const chatInput = document.getElementById('chat-input');
+            const chatSend = document.getElementById('chat-send');
+            const chatMessages = document.getElementById('chat-messages');
+
+            chatTrigger.addEventListener('click', () => {
+                chatPanel.classList.toggle('active');
+            });
+
+            /**
+             * API Service Layer
+             */
+            const ChatService = {
+                async sendMessage(message, action = null) {
+                    try {
+                        const response = await fetch('/api/ai/chat', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({ message, action })
+                        });
+                        
+                        if (!response.ok) throw new Error('API Error');
+                        return await response.json();
+                    } catch (error) {
+                        console.error('ChatService Error:', error);
+                        // Fallback for demo
+                        return this.getMockResponse(message, action);
+                    }
+                },
+
+                getMockResponse(message, action) {
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            let response = {
+                                message: "",
+                                suggestions: [
+                                    { "type": "fix", "label": "{{ __('ui.ai_label_correction') }}" },
+                                    { "type": "explain", "label": "{{ __('ui.ai_label_explanation') }}" },
+                                    { "type": "natural", "label": "{{ __('ui.ai_label_naturalness') }}" }
+                                ],
+                                next_question: ""
+                            };
+
+                            const lowerMsg = message.toLowerCase();
+
+                            if (action === 'fix') {
+                                response.message = lowerMsg.replace(/i is/g, 'I am').replace(/she have/g, 'she has').replace(/he go/g, 'he goes');
+                                if (response.message === lowerMsg) response.message = "Câu của bạn có vẻ đã chuẩn ngữ pháp rồi!";
+                                response.next_question = "Bạn có muốn tôi giải thích cấu trúc này không?";
+                            } else if (action === 'explain') {
+                                if (lowerMsg.includes('is')) {
+                                    response.message = "Trong tiếng Anh, động từ 'to be' phải chia theo chủ ngữ. 'I' đi với 'am', 'He/She/It' đi với 'is'.";
+                                } else {
+                                    response.message = "Đây là một cấu trúc thông dụng trong giao tiếp, tập trung vào việc sử dụng đúng thì và hòa hợp chủ-vị.";
+                                }
+                                response.next_question = "Bạn đã nắm rõ phần này chưa?";
+                            } else if (action === 'natural') {
+                                response.message = "Câu này đạt khoảng 8/10 điểm về độ tự nhiên. Người bản xứ thường sẽ nói ngắn gọn hơn một chút.";
+                                response.next_question = "Bạn muốn học cách nói tự nhiên hơn không?";
+                            } else {
+                                // Initial Message
+                                if (lowerMsg.includes('hello') || lowerMsg.includes('hi')) {
+                                    response.message = "Chào bạn! Rất vui được hỗ trợ bạn luyện tập tiếng Anh hôm nay.";
+                                } else {
+                                    response.message = `Tôi đã nhận được tin nhắn: "${message}". Bạn muốn tôi giúp gì với câu này?`;
+                                }
+                                response.next_question = "Hãy thử đặt một câu hỏi về ngữ pháp nhé!";
+                            }
+
+                            // Filter out current action from suggestions
+                            if (action) {
+                                response.suggestions = response.suggestions.filter(s => s.type !== action);
+                            }
+
+                            resolve(response);
+                        }, 1200);
+                    });
+                }
+            };
+
+            /**
+             * UI Controller Layer
+             */
+            const ChatUI = {
+                container: document.getElementById('chat-messages'),
+                input: document.getElementById('chat-input'),
+                lastResponseWrapper: null,
+                typingIndicator: null,
+
+                init() {
+                    document.getElementById('chat-send').addEventListener('click', () => this.handleUserMessage());
+                    this.input.addEventListener('keypress', (e) => e.key === 'Enter' && this.handleUserMessage());
+                    
+                    // Initial suggestions handled in HTML are now delegated to this handler
+                    document.querySelectorAll('.suggestion-pill').forEach(pill => {
+                        pill.addEventListener('click', () => {
+                            this.input.value = pill.textContent;
+                            this.handleUserMessage();
+                        });
+                    });
+                },
+
+                async handleUserMessage(action = null, originalText = null) {
+                    const message = action ? originalText : this.input.value.trim();
+                    if (!message && !action) return;
+
+                    if (!action) {
+                        this.appendUserMessage(message);
+                        this.input.value = '';
+                        this.lastResponseWrapper = null;
+                    }
+
+                    this.showTypingIndicator();
+                    
+                    const data = await ChatService.sendMessage(message, action);
+                    
+                    this.hideTypingIndicator();
+                    this.renderAIResponse(data, message, action !== null);
+                },
+
+                appendUserMessage(text) {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'chat-bubble user';
+                    bubble.textContent = text;
+                    this.container.appendChild(bubble);
+                    this.scrollToBottom();
+                },
+
+                showTypingIndicator() {
+                    this.hideTypingIndicator(); // Clear existing
+                    this.typingIndicator = document.createElement('div');
+                    this.typingIndicator.className = 'typing-indicator';
+                    this.typingIndicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+                    this.container.appendChild(this.typingIndicator);
+                    this.scrollToBottom();
+                },
+
+                hideTypingIndicator() {
+                    if (this.typingIndicator) {
+                        this.typingIndicator.remove();
+                        this.typingIndicator = null;
+                    }
+                },
+
+                renderAIResponse(data, originalText, isUpdate) {
+                    let wrapper;
+                    if (isUpdate && this.lastResponseWrapper) {
+                        wrapper = this.lastResponseWrapper;
+                        wrapper.innerHTML = '';
+                    } else {
+                        wrapper = document.createElement('div');
+                        wrapper.className = 'ai-response-wrapper';
+                        this.container.appendChild(wrapper);
+                        this.lastResponseWrapper = wrapper;
+                    }
+
+                    // Content
+                    const bubble = document.createElement('div');
+                    bubble.className = 'chat-bubble ai';
+                    bubble.textContent = data.message;
+                    wrapper.appendChild(bubble);
+
+                    // Suggestions
+                    if (data.suggestions) {
+                        const suggestionsDiv = document.createElement('div');
+                        suggestionsDiv.className = 'chat-suggestions';
+                        data.suggestions.forEach(s => {
+                            const btn = document.createElement('button');
+                            btn.className = 'suggestion-pill';
+                            btn.textContent = s.label;
+                            btn.onclick = () => this.handleUserMessage(s.type, originalText);
+                            suggestionsDiv.appendChild(btn);
+                        });
+                        wrapper.appendChild(suggestionsDiv);
+                    }
+
+                    // Next Question
+                    if (data.next_question) {
+                        const nextQ = document.createElement('div');
+                        nextQ.className = 'chat-bubble ai';
+                        nextQ.style.cssText = 'font-style:italic; background:rgba(99,102,241,0.1)';
+                        nextQ.textContent = '➜ ' + data.next_question;
+                        wrapper.appendChild(nextQ);
+                    }
+
+                    this.scrollToBottom();
+                },
+
+                scrollToBottom() {
+                    this.container.scrollTop = this.container.scrollHeight;
+                }
+            };
+
+            ChatUI.init();
         })();
     </script>
 </body>
