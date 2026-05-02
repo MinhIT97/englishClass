@@ -296,15 +296,15 @@
              * API Service Layer
              */
             const ChatService = {
-                async sendMessage(message, action = null) {
+                async sendMessage(message, action = null, history = []) {
                     try {
-                        const response = await fetch('/api/ai/chat', {
+                        const response = await fetch('/ai/chat', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
-                            body: JSON.stringify({ message, action })
+                            body: JSON.stringify({ message, action, history })
                         });
                         
                         if (!response.ok) throw new Error('API Error');
@@ -374,12 +374,12 @@
                 input: document.getElementById('chat-input'),
                 lastResponseWrapper: null,
                 typingIndicator: null,
+                history: [], // Track last few messages for context
 
                 init() {
                     document.getElementById('chat-send').addEventListener('click', () => this.handleUserMessage());
                     this.input.addEventListener('keypress', (e) => e.key === 'Enter' && this.handleUserMessage());
                     
-                    // Initial suggestions handled in HTML are now delegated to this handler
                     document.querySelectorAll('.suggestion-pill').forEach(pill => {
                         pill.addEventListener('click', () => {
                             this.input.value = pill.textContent;
@@ -396,14 +396,20 @@
                         this.appendUserMessage(message);
                         this.input.value = '';
                         this.lastResponseWrapper = null;
+                        this.history.push({ role: 'user', content: message });
                     }
 
                     this.showTypingIndicator();
                     
-                    const data = await ChatService.sendMessage(message, action);
+                    // Send history along with current message and action
+                    const data = await ChatService.sendMessage(message, action, this.history.slice(-10));
                     
                     this.hideTypingIndicator();
                     this.renderAIResponse(data, message, action !== null);
+                    
+                    if (!action) {
+                        this.history.push({ role: 'assistant', content: data.message });
+                    }
                 },
 
                 appendUserMessage(text) {

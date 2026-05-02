@@ -19,8 +19,9 @@ class AIChatController extends Controller
     {
         $message = $request->input('message');
         $action = $request->input('action');
+        $history = $request->input('history', []);
 
-        $prompt = $this->buildPrompt($message, $action);
+        $prompt = $this->buildPrompt($message, $action, $history);
         $result = $this->aiService->generate($prompt);
 
         if (!$result) {
@@ -38,8 +39,14 @@ class AIChatController extends Controller
         return response()->json($result);
     }
 
-    protected function buildPrompt($message, $action)
+    protected function buildPrompt($message, $action, $history)
     {
+        $historyContext = "";
+        foreach ($history as $chat) {
+            $role = $chat['role'] === 'user' ? 'Student' : 'Assistant';
+            $historyContext .= "{$role}: {$chat['content']}\n";
+        }
+
         $actionDesc = "";
         if ($action === 'fix') {
             $actionDesc = "Hãy tập trung vào việc sửa lỗi ngữ pháp cho câu này.";
@@ -53,7 +60,11 @@ class AIChatController extends Controller
 
         return <<<PROMPT
 You are an IELTS English learning assistant.
-User input: "{$message}"
+
+Conversation History:
+{$historyContext}
+
+Current User input: "{$message}"
 Instruction: {$actionDesc}
 
 Return ONLY a JSON response with the following structure:
