@@ -85,7 +85,25 @@
 
     <!-- Styles & Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Inline Fix for Server-side CSS Cache/Build Issues -->
+    <style>
+        .feedback-select, .feedback-input, .feedback-textarea {
+            background: rgba(15, 23, 42, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+        }
+        .feedback-select option {
+            background: #0f172a !important;
+            color: white !important;
+        }
+        .feedback-input:-webkit-autofill {
+            -webkit-text-fill-color: white !important;
+            -webkit-box-shadow: 0 0 0px 1000px rgba(15, 23, 42, 0.9) inset !important;
+        }
+    </style>
 </head>
+
 
 <body>
     <!-- Background Orbs -->
