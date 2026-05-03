@@ -1,5 +1,6 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- VERSION_FEEDBACK_FIX_FORCE_DARK -->
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 
 <head>
     <meta charset="utf-8">
@@ -309,13 +310,14 @@
             <form id="feedback-form">
                 <div class="form-group">
                     <label class="feedback-label">{{ __('ui.feedback_type') }}</label>
-                    <select id="feedback-type" name="feedback_type" required class="feedback-select">
-                        <option value="">{{ __('ui.feedback_type_placeholder') }}</option>
-                        <option value="bug">{{ __('ui.cat_bug') }}</option>
-                        <option value="ux">{{ __('ui.cat_ux') }}</option>
-                        <option value="feature">{{ __('ui.cat_feature') }}</option>
-                        <option value="other">{{ __('ui.cat_other') }}</option>
+                    <select id="feedback-type" name="feedback_type" required class="feedback-select" style="background: rgba(15, 23, 42, 0.9) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
+                        <option value="" style="background: #0f172a; color: white;">{{ __('ui.feedback_type_placeholder') }}</option>
+                        <option value="bug" style="background: #0f172a; color: white;">{{ __('ui.cat_bug') }}</option>
+                        <option value="ux" style="background: #0f172a; color: white;">{{ __('ui.cat_ux') }}</option>
+                        <option value="feature" style="background: #0f172a; color: white;">{{ __('ui.cat_feature') }}</option>
+                        <option value="other" style="background: #0f172a; color: white;">{{ __('ui.cat_other') }}</option>
                     </select>
+
                 </div>
 
                 <div class="form-group">
@@ -332,13 +334,14 @@
 
                 <div class="form-group">
                     <label class="feedback-label">{{ __('ui.feedback_message') }}</label>
-                    <textarea id="feedback-message" name="message" required placeholder="{{ __('ui.feedback_placeholder') }}" class="feedback-textarea"></textarea>
+                    <textarea id="feedback-message" name="message" required placeholder="{{ __('ui.feedback_placeholder') }}" class="feedback-textarea" style="background: rgba(15, 23, 42, 0.9) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;"></textarea>
                 </div>
 
                 <div class="form-group">
                     <label class="feedback-label">{{ __('ui.feedback_email') }}</label>
-                    <input id="feedback-email" type="email" name="email" placeholder="name@example.com" class="feedback-input">
+                    <input id="feedback-email" type="email" name="email" placeholder="name@example.com" class="feedback-input" style="background: rgba(15, 23, 42, 0.9) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
                 </div>
+
 
                 <p id="feedback-error" style="display: none; color: #ef4444; font-size: 0.8rem; margin-bottom: 1rem;"></p>
 
@@ -570,5 +573,18 @@
                 ChatUI.init();
             })();
         </script>
-</body>
+        <!-- Final Force Style Fix -->
+        <style>
+            .feedback-select, .feedback-input, .feedback-textarea {
+                background-color: #0f172a !important;
+                background: rgba(15, 23, 42, 0.95) !important;
+                color: white !important;
+                border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            }
+            .feedback-select option {
+                background: #0f172a !important;
+                color: white !important;
+            }
+        </style>
+    </body>
 </html>
