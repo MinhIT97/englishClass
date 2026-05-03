@@ -18,6 +18,16 @@ class User extends Authenticatable implements JWTSubject
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public function scopeStudents($query)
+    {
+        return $query->where('role', \App\Enums\UserRole::Student->value);
+    }
+
+    public function scopeWithStatus($query, string $status)
+    {
+        return $query->where('status', $status);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === \App\Enums\UserRole::Admin->value;

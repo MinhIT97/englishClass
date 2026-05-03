@@ -7,18 +7,24 @@ use Modules\Auth\Http\Requests\RegisterRequest;
 use Modules\Auth\Http\Requests\LoginRequest;
 use Modules\Auth\Http\Resources\UserResource;
 use Modules\Auth\Services\AuthService;
+use App\Services\DashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Modules\Gamification\Services\GamificationService;
 
 class AuthController extends Controller
 {
     protected $authService;
+    protected DashboardService $dashboardService;
+    protected GamificationService $gamificationService;
 
-    public function __construct(AuthService $authService)
+    public function __construct(AuthService $authService, DashboardService $dashboardService, GamificationService $gamificationService)
     {
         $this->authService = $authService;
+        $this->dashboardService = $dashboardService;
+        $this->gamificationService = $gamificationService;
     }
 
     /* --- WEB METHODS --- */
@@ -30,12 +36,7 @@ class AuthController extends Controller
 
     public function adminDashboard()
     {
-        // Simple stats for now
-        $stats = [
-            'total_students' => \App\Models\User::where('role', 'student')->count(),
-            'pending_approvals' => \App\Models\User::where('role', 'student')->where('status', 'pending')->count(),
-            'active_students' => \App\Models\User::where('role', 'student')->where('status', 'active')->count(),
-        ];
+        $stats = $this->dashboardService->adminStats();
 
         return view('auth::admin.dashboard', compact('stats'));
     }
@@ -44,31 +45,14 @@ class AuthController extends Controller
     {
         $user = auth()->user();
         
-        // Level Data
-        $gamified = app(\Modules\Gamification\Services\GamificationService::class);
-        $levelData = $gamified->getLevelData($user);
-        
-        // Performance Stats
-        $answers = \Modules\Practice\Models\UserAnswer::where('user_id', $user->id)->get();
-        $totalAnswers = $answers->count();
-        $correctAnswers = $answers->where('is_correct', true)->count();
-        $accuracy = $totalAnswers > 0 ? round(($correctAnswers / $totalAnswers) * 100) : 0;
-        
-        // Skill Breakdown for Chart
-        $skills = ['reading', 'listening', 'writing', 'speaking'];
-        $skillStats = [];
-        foreach ($skills as $skill) {
-            $skillAnswers = \Modules\Practice\Models\UserAnswer::where('user_id', $user->id)
-                ->whereHas('question', function($q) use ($skill) {
-                    $q->where('skill', $skill);
-                })->get();
-            
-            $skillTotal = $skillAnswers->count();
-            $skillCorrect = $skillAnswers->where('is_correct', true)->count();
-            $skillStats[$skill] = $skillTotal > 0 ? round(($skillCorrect / $skillTotal) * 100) : 0;
-        }
+        $levelData = $this->gamificationService->getLevelData($user);
+        $performance = $this->dashboardService->studentPerformance($user->id);
 
-        return view('auth::student.dashboard', compact('levelData', 'accuracy', 'skillStats'));
+        return view('auth::student.dashboard', [
+            'levelData' => $levelData,
+            'accuracy' => $performance['accuracy'],
+            'skillStats' => $performance['skill_stats'],
+        ]);
     }
 
     public function showRegister()
@@ -79,15 +63,10 @@ class AuthController extends Controller
     /**
      * Handle Web Login.
      */
-    public function webLogin(Request $request)
+    public function webLogin(LoginRequest $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
         try {
-            $data = $this->authService->login($credentials);
+            $data = $this->authService->login($request->validated());
             
             // Web Session Login
             Auth::login($data['user'], $request->boolean('remember'));
@@ -106,18 +85,10 @@ class AuthController extends Controller
     /**
      * Handle Web Register.
      */
-    public function webRegister(Request $request)
+    public function webRegister(RegisterRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'target_band' => 'nullable|string'
-        ]);
+        $this->authService->register($request->validated());
 
-        $user = $this->authService->register($data);
-
-        // Notify user about pending status
         return redirect()->route('login')->with('success', 'Registration successful! Please wait for admin approval.');
     }
 

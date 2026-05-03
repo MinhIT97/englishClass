@@ -2,20 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Feedback;
-
-
 use App\Http\Requests\Feedback\StoreFeedbackRequest;
 use App\Repositories\Feedback\FeedbackRepositoryInterface;
+use Illuminate\Support\Facades\Cache;
 
 class FeedbackController extends Controller
 {
-    protected $feedbackRepository;
-
-    public function __construct(FeedbackRepositoryInterface $feedbackRepository)
+    public function __construct(protected FeedbackRepositoryInterface $feedbackRepository)
     {
-        $this->feedbackRepository = $feedbackRepository;
     }
 
     public function store(StoreFeedbackRequest $request)
@@ -28,11 +22,11 @@ class FeedbackController extends Controller
             'email' => $request->email,
         ]);
 
+        Cache::forget('admin.pending_feedback_count');
+
         return response()->json([
             'success' => true,
-            'message' => __('ui.feedback_success')
+            'message' => __('ui.feedback_success'),
         ]);
     }
 }
-
-

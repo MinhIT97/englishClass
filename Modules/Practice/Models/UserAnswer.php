@@ -19,6 +19,16 @@ class UserAnswer extends Model
         'points_earned',
     ];
 
+    public function scopeForUser($query, int $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopeCorrect($query)
+    {
+        return $query->where('is_correct', true);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

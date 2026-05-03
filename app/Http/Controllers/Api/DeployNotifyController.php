@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DeployNotifyRequest;
 use App\Services\TelegramNotifierService;
-use Illuminate\Http\Request;
 
 class DeployNotifyController extends Controller
 {
@@ -15,16 +15,9 @@ class DeployNotifyController extends Controller
         $this->telegram = $telegram;
     }
 
-    public function notify(Request $request)
+    public function notify(DeployNotifyRequest $request)
     {
-        $request->validate([
-            'status' => 'required|string|in:success,failed',
-            'branch' => 'nullable|string',
-            'commit' => 'nullable|string',
-            'health' => 'nullable|array'
-        ]);
-
-        $this->telegram->sendDeployNotification($request->all());
+        $this->telegram->sendDeployNotification($request->validated());
 
         return response()->json(['message' => 'Notification sent']);
     }

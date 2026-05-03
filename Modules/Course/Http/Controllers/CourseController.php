@@ -22,13 +22,15 @@ class CourseController extends Controller
      */
     public function index(Request $request)
     {
-        $courses = $this->service->paginate($request->get('limit', 12));
+        $filters = $request->only(['title', 'status']);
+        $courses = $this->service->paginate($filters, $request->integer('limit', 12));
+        $enrolledCourseIds = $this->service->enrolledCourseIds($request->user());
         
         if ($request->expectsJson() || $request->ajax()) {
             return CourseResource::collection($courses);
         }
 
-        return view('course::index', compact('courses'));
+        return view('course::index', compact('courses', 'enrolledCourseIds'));
     }
 
     /**
@@ -43,15 +45,15 @@ class CourseController extends Controller
     /**
      * Show the specified resource.
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $course = $this->service->find($id);
         
-        if (request()->expectsJson() || request()->ajax()) {
+        if ($request->expectsJson() || $request->ajax()) {
             return new CourseResource($course);
         }
 
-        $isEnrolled = auth()->user()->enrolledCourses()->where('course_id', $id)->exists();
+        $isEnrolled = $this->service->isEnrolled($request->user(), (int) $id);
 
         return view('course::show', compact('course', 'isEnrolled'));
     }
@@ -62,9 +64,9 @@ class CourseController extends Controller
     public function enroll(Request $request, $id)
     {
         $course = $this->service->find($id);
-        $user = auth()->user();
+        $user = $request->user();
 
-        if ($user->enrolledCourses()->where('course_id', $id)->exists()) {
+        if ($this->service->isEnrolled($user, (int) $id)) {
             return redirect()->back()->with('error', 'You are already enrolled in this course.');
         }
 

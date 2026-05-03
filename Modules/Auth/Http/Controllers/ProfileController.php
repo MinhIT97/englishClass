@@ -3,9 +3,7 @@
 namespace Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
+use Modules\Auth\Http\Requests\UpdateProfileRequest;
 
 class ProfileController extends Controller
 {
@@ -16,15 +14,9 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(UpdateProfileRequest $request)
     {
         $user = auth()->user();
-
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'target_band' => ['nullable', 'numeric', 'between:1,9'],
-            'password' => ['nullable', 'confirmed', Password::defaults()],
-        ]);
 
         $user->name = $request->name;
         
@@ -33,7 +25,7 @@ class ProfileController extends Controller
         }
 
         if ($request->filled('password')) {
-            $user->password = Hash::make($request->password);
+            $user->password = $request->password;
         }
 
         $user->save();

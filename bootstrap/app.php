@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
         ]);
 
+        $middleware->alias([
+            'auth.deploy' => \App\Http\Middleware\AuthenticateDeployHook::class,
+        ]);
+
         $middleware->validateCsrfTokens(except: [
             'telegram/webhook',
         ]);

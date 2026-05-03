@@ -46,8 +46,7 @@
                     </p>
                     <div style="display: flex; gap: 0.6rem">
                         <a href="{{ route('course.show', $course->id) }}" class="btn btn-outline" style="flex: 1; text-align: center; font-size: 0.82rem; padding: 0.55rem">{{ __('ui.learn_more') }}</a>
-                        @php $isEnrolled = auth()->user()->enrolledCourses()->where('course_id', $course->id)->exists(); @endphp
-                        @if($isEnrolled)
+                        @if(in_array($course->id, $enrolledCourseIds, true))
                             <a href="{{ route('course.show', $course->id) }}" class="btn btn-primary" style="flex: 1; text-align: center; font-size: 0.82rem; padding: 0.55rem; background: #10b981">{{ __('ui.enrolled') }}</a>
                         @else
                             <form action="{{ route('course.enroll', $course->id) }}" method="POST" style="flex: 1">
