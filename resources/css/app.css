@@ -950,21 +950,38 @@ h1, h2, h3, h4, h5, h6 {
 
 .feedback-select, .feedback-input, .feedback-textarea {
     width: 100%;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 14px;
     padding: 0.875rem 1.25rem;
-    color: white;
+    color: white !important;
     font-size: 0.95rem;
     transition: all 0.2s ease;
     margin-bottom: 1.25rem;
+    appearance: none;
+}
+
+.feedback-select option {
+    background: #0f172a;
+    color: white;
 }
 
 .feedback-select:focus, .feedback-input:focus, .feedback-textarea:focus {
     outline: none;
-    border-color: var(--primary);
-    background: rgba(0, 0, 0, 0.3);
+    border-color: var(--primary) !important;
+    background: rgba(0, 0, 0, 0.3) !important;
 }
+
+
+/* Fix browser autocomplete white background */
+.feedback-input:-webkit-autofill,
+.feedback-input:-webkit-autofill:hover, 
+.feedback-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: white !important;
+    -webkit-box-shadow: 0 0 0px 1000px rgba(15, 23, 42, 0.9) inset !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
 
 .feedback-label {
     display: block;
