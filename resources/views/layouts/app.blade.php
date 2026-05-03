@@ -209,14 +209,13 @@
             </nav>
 
             <div class="sidebar-footer">
-                <button class="btn btn-outline" id="feedback-trigger" style="width: 100%; margin-bottom: 0.75rem; border-color: var(--accent); color: var(--accent)">
-                    💬 {{ __('ui.feedback_title') }}
+                <button class="btn btn-outline" id="feedback-trigger" style="border-color: var(--accent); color: var(--accent)">
+                    <span>💬</span> {{ __('ui.feedback_title') }}
                 </button>
-                <form method="POST" action="/logout">
-
+                <form method="POST" action="/logout" style="width: 100%">
                     @csrf
-                    <button class="btn btn-outline btn-logout" style="width: 100%">
-                        🚪 {{ __('ui.logout') }}
+                    <button class="btn btn-outline btn-logout">
+                        <span>🚪</span> {{ __('ui.logout') }}
                     </button>
                 </form>
             </div>

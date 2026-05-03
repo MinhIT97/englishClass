@@ -17,7 +17,7 @@
         <p>4. {{ __('ui.step_4') }}</p>
     </div>
 
-    <div id="simulator-container" class="speaking-grid" style="display: none; height: 650px;">
+    <div id="simulator-container" class="speaking-grid">
         <!-- Visual & Chat -->
         <div class="glass-card" style="display: flex; flex-direction: column; padding: 0; overflow: hidden">
             <!-- AI Visualizer Area -->
@@ -148,7 +148,7 @@
                 lastMessageId = null;
 
                 document.getElementById('how-to-use').style.display        = 'none';
-                document.getElementById('simulator-container').style.display = 'grid';
+                document.getElementById('simulator-container').classList.add('active');
                 document.getElementById('chat-history').innerHTML           = '';
 
                 addMessage('AI', data.ai_message || 'Hello! I am your IELTS Examiner.', null, null, data.voice_url);
@@ -517,11 +517,16 @@
             gap: 1.5rem;
         }
         .speaking-grid {
-            display: grid;
+            display: none;
             grid-template-columns: 1fr 350px;
             gap: 1.5rem;
+            height: 650px;
         }
         
+        .speaking-grid.active {
+            display: grid;
+        }
+
         .speaking-sidebar {
             display: flex;
             flex-direction: column;
@@ -529,16 +534,13 @@
         }
 
         @media (max-width: 900px) {
-            #simulator-container {
+            .speaking-grid.active {
                 height: auto !important;
                 display: flex !important;
                 flex-direction: column;
             }
             .chat-area {
                 height: 400px;
-            }
-            .speaking-grid {
-                grid-template-columns: 1fr;
             }
             .speaking-header-wrap {
                 flex-direction: column;
