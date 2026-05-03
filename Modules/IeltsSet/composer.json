@@ -1,0 +1,21 @@
+{
+    "name": "nwidart/ieltset",
+    "description": "IELTS Sets module",
+    "authors": [
+        {
+            "name": "OpenAI",
+            "email": "support@openai.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Modules\\IeltsSet\\": ""
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    }
+}

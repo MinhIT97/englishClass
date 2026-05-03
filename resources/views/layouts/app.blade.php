@@ -169,6 +169,9 @@
                     <a href="/student/practice" class="nav-item {{ request()->is('student/practice') ? 'active' : '' }}">
                         <span class="nav-icon">⚡</span> {{ __('ui.practice') }}
                     </a>
+                    <a href="/student/sets" class="nav-item {{ request()->is('student/sets*') ? 'active' : '' }}">
+                        <span class="nav-icon">📂</span> IELTS Sets
+                    </a>
                     <a href="/student/writing" class="nav-item {{ request()->is('student/writing*') ? 'active' : '' }}">
                         <span class="nav-icon">✍️</span> {{ __('ui.writing') }}
                     </a>
