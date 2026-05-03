@@ -14,17 +14,14 @@ jobs:
       - name: Pull latest code
         run: |
           cd /home/minhnv/projects/englishClass
-          # Sửa lỗi Permission bằng Docker (do GitHub Action không có quyền sudo có pass)
-          # Chạy một container tạm thời để trả lại quyền sở hữu cho user hiện tại
           docker run --rm -v $(pwd):/app alpine chown -R $(id -u):$(id -g) /app
           git fetch origin master
           git reset --hard origin/master
 
-      - name: Build & start containers
+      - name: Build and recreate app-facing containers
         run: |
           cd /home/minhnv/projects/englishClass
-          # Sử dụng lệnh deploy.sh đã tối ưu hoặc chạy trực tiếp docker-compose
-          docker compose up -d --build --remove-orphans --scale queue=4
+          docker compose up -d --build --force-recreate --remove-orphans --scale queue=4 app queue reverb nginx
 
       - name: Clear Laravel cache
         run: |
@@ -46,30 +43,32 @@ jobs:
           cd /home/minhnv/projects/englishClass
           docker compose restart reverb
 
+      - name: Reload Nginx upstream
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T nginx nginx -s reload || docker compose restart nginx
+
       - name: Show startup logs
         run: |
           cd /home/minhnv/projects/englishClass
           docker compose ps
-          docker compose logs --tail=60 app
+          docker compose logs --tail=60 app nginx
 
       - name: Verify containers are up
         run: |
           cd /home/minhnv/projects/englishClass
           if docker compose ps | grep -E "Exit|Error|Restarting"; then
-            echo "❌ Container error detected"
+            echo "Container error detected"
             docker compose logs
             exit 1
           fi
-          echo "✅ All containers are running!"
+          echo "All containers are running"
 
-      - name: Verify Health and Notify Telegram
+      - name: Verify health and notify Telegram
         run: |
           cd /home/minhnv/projects/englishClass
+          HEALTH_RESPONSE=$(curl -s http://localhost:8080/up || echo '{"status":"failed"}')
 
-          # 1. Get Health Status from /up (Laravel 11 default health check)
-          HEALTH_RESPONSE=$(curl -s http://localhost/up || echo '{"status":"failed"}')
-
-          # 2. Determine final status
           if echo "$HEALTH_RESPONSE" | grep -q "OK"; then
             DEPLOY_STATUS="success"
             HEALTH_JSON='{"app":"ok","db":"ok","redis":"ok"}'
@@ -78,8 +77,7 @@ jobs:
             HEALTH_JSON='{"app":"failed"}'
           fi
 
-          # 3. Send Notification to Telegram via Laravel API
-          curl -X POST http://localhost/api/deploy/notify \
+          curl -X POST http://localhost:8080/api/deploy/notify \
             -H "Content-Type: application/json" \
             -d "{
               \"status\": \"$DEPLOY_STATUS\",
@@ -92,4 +90,4 @@ jobs:
         run: docker image prune -af || true
 
       - name: Deploy success
-        run: echo "✅ Deploy completed successfully!"
+        run: echo "Deploy completed successfully"
