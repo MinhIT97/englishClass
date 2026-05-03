@@ -18,6 +18,11 @@ jobs:
           git fetch origin master
           git reset --hard origin/master
 
+      - name: Build frontend assets
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker run --rm -v $(pwd):/app -w /app node:20-alpine sh -lc "npm ci && npm run build"
+
       - name: Build and recreate app-facing containers
         run: |
           cd /home/minhnv/projects/englishClass
