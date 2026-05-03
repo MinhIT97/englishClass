@@ -229,25 +229,25 @@
         <main class="main-content">
             <header class="top-nav">
                 <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu">☰</button>
-                <div style="display: flex; align-items: center; gap: 1.5rem">
+                <div class="top-nav-actions">
                     <!-- Language Switcher -->
-                    <div style="display: flex; gap: 0.5rem">
-                        <a href="{{ route('set.locale', 'vi') }}" class="glass {{ app()->getLocale() === 'vi' ? 'active-lang' : '' }}" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border-radius: 50%; color: var(--text-main); text-decoration: none">
+                    <div class="top-nav-lang">
+                        <a href="{{ route('set.locale', 'vi') }}" class="glass top-nav-chip {{ app()->getLocale() === 'vi' ? 'active-lang' : '' }}">
                             VI
                         </a>
-                        <a href="{{ route('set.locale', 'en') }}" class="glass {{ app()->getLocale() === 'en' ? 'active-lang' : '' }}" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border-radius: 50%; color: var(--text-main); text-decoration: none">
+                        <a href="{{ route('set.locale', 'en') }}" class="glass top-nav-chip {{ app()->getLocale() === 'en' ? 'active-lang' : '' }}">
                             EN
                         </a>
                     </div>
 
                     <!-- Theme Toggle -->
-                    <button id="theme-toggle" class="glass" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; cursor: pointer; border-radius: 50%">
+                    <button id="theme-toggle" class="glass top-nav-chip top-nav-icon-btn">
                         🌙
                     </button>
 
                     <!-- Notification Bell -->
-                    <div style="position: relative" id="notification-wrapper">
-                        <button id="notification-btn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-main); position: relative; display: flex; align-items: center">
+                    <div class="notification-wrapper" id="notification-wrapper">
+                        <button id="notification-btn" class="top-nav-icon-btn notification-btn">
                             🔔
                             <span id="notification-badge">0</span>
                         </button>

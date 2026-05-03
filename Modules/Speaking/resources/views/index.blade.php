@@ -193,9 +193,11 @@
                 } else {
                     const d = await res.json();
                     addMessage('AI', `Error: ${d.error || 'Unknown error'}`);
+                    hideThinking();
                 }
             } catch (err) {
                 addMessage('AI', 'Network error. Please try again.');
+                hideThinking();
             } finally {
                 input.disabled   = false;
                 sendBtn.disabled = false;
@@ -213,16 +215,14 @@
             showThinking();
             setStatus('{{ __('ui.ai_thinking') }}');
 
-            const formData = new FormData();
-            formData.append('session_id', sessionId);
-            formData.append('audio', blob, 'recording.webm');
-            // Also convert to base64 for the JSON endpoint
+            // Convert to base64 for the JSON endpoint
             const base64 = await blobToBase64(blob);
 
             try {
                 const res = await fetch('{{ route("student.speaking.chat") }}', {
                     method: 'POST',
                     headers: {
+                        'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'Accept': 'application/json',
                     },
@@ -230,12 +230,7 @@
                         session_id: sessionId,
                         message: '[Audio message]',
                         audio: base64,
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                    },
+                    })
                 });
 
                 if (res.ok) {
@@ -261,9 +256,8 @@
         }
 
         // ── Polling for AI Response ────────────────────────────────────────────
-        // Polls /speaking/poll every 2s until a new assistant message appears.
         function startPolling() {
-            if (pollingInterval) return; // Already polling
+            if (pollingInterval) return; 
             pollingInterval = setInterval(pollForResponse, 2000);
         }
 
@@ -332,7 +326,6 @@
                 audioHtml = `<audio controls src="${audioUrl}" style="margin-top:8px;height:32px;width:100%;border-radius:20px;outline:none;"></audio>`;
             }
 
-            // For AI messages with grammar correction, show the corrected version inline
             let correctionHtml = '';
             if (feedback && feedback.corrected && feedback.corrected !== feedback.original) {
                 correctionHtml = `<div style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:6px;font-size:0.8rem;color:#10b981">
@@ -388,259 +381,6 @@
             40% { transform: scale(1); opacity: 1; }
         }
 
-        async function initAudio() {
-            if (mediaRecorder) return;
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    audioChunks = [];
-                    
-                    // Convert to Base64 to send via JSON
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = async () => {
-                        const base64Audio = reader.result.split(',')[1];
-                        sendAudioMessage(base64Audio);
-                    };
-                };
-            } catch (err) {
-                console.error("Microphone access denied:", err);
-                alert("Please allow microphone access to use this feature.");
-            }
-        }
-
-        async function toggleMic() {
-            await initAudio();
-            
-            if (mediaRecorder.state === 'inactive') {
-                audioChunks = [];
-                mediaRecorder.start();
-                setMicStatus(true);
-            } else {
-                mediaRecorder.stop();
-                setMicStatus(false);
-                document.getElementById('visual-status-text').textContent = 'PROCESSING AUDIO...';
-            }
-        }
-
-        function setMicStatus(active) {
-            const micBtn = document.getElementById('mic-btn');
-            const statusText = document.getElementById('visual-status-text');
-            if (active) {
-                micBtn.classList.add('recording');
-                statusText.textContent = 'RECORDING... (Press Mic again to Stop & Send)';
-            } else {
-                micBtn.classList.remove('recording');
-                statusText.textContent = 'IELTS EXAMINER ACTIVE';
-            }
-        }
-
-        async function sendAudioMessage(base64Audio) {
-            if (!sessionId) return;
-            
-            // Create a blob URL for local playback
-            const byteCharacters = atob(base64Audio);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], {type: 'audio/webm'});
-            const audioUrl = URL.createObjectURL(blob);
-            
-            addMessage('Student', '🎤 Audio Response Sent', audioUrl);
-            
-            try {
-                const response = await fetch('{{ route("student.speaking.chat") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        audio: base64Audio
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.ai_message) {
-                    addMessage('AI', data.ai_message);
-                    if (data.voice_url) {
-                        const audio = new Audio(data.voice_url);
-                        audio.play();
-                    }
-                    if (data.feedback) {
-                        showLiveFeedback(data.feedback);
-                    }
-                }
-            } catch (error) {
-                console.error("Error sending audio:", error);
-                addMessage('AI', "Sorry, I couldn't process your voice. Please try again.");
-            } finally {
-                document.getElementById('visual-status-text').textContent = 'IELTS EXAMINER ACTIVE';
-            }
-        }
-
-        function setupEchoListener(sessId) {
-            // No longer needed for basic chat, but kept for future features
-        }
-
-        async function startSession() {
-            const btn = document.getElementById('start-btn');
-            const btnText = document.getElementById('start-btn-text');
-            const btnIcon = document.getElementById('start-btn-icon');
-            
-            btn.disabled = true;
-            btnText.textContent = 'Connecting...';
-            btnIcon.style.animation = 'pulse 1s infinite';
-
-            try {
-                let response;
-                try {
-                    response = await fetch('{{ route("student.speaking.start") }}', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json', 
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            'Accept': 'application/json' // Force JSON response even on errors
-                        }
-                    });
-                } catch (netErr) {
-                    alert('Network error: Could not reach the server.');
-                    return;
-                }
-                
-                if (!response.ok) {
-                    const text = await response.text();
-                    console.error("Server Error:", text);
-                    alert(`Server returned ${response.status}: ${text.substring(0, 100)}`);
-                    return;
-                }
-                
-                const data = await response.json();
-                sessionId = data.session_id;
-                setupEchoListener(sessionId);
-                
-                document.getElementById('how-to-use').style.display = 'none';
-                document.getElementById('simulator-container').style.display = 'grid';
-                document.getElementById('chat-history').innerHTML = '';
-                
-                // Show the actual AI greeting from the examiner
-                addMessage('AI', data.ai_message || "Hello! I am your IELTS Examiner. Shall we begin?");
-
-                // Play the greeting voice if available
-                if (data.voice_url) {
-                    const audio = new Audio(data.voice_url);
-                    audio.play().catch(e => console.log("Auto-play blocked or failed", e));
-                    document.getElementById('waveform').classList.add('ai-speaking');
-                    audio.onended = () => document.getElementById('waveform').classList.remove('ai-speaking');
-                }
-                
-            } catch (error) {
-                console.error(error);
-                alert('Could not start session.');
-            } finally {
-                btn.disabled = false;
-                btnText.textContent = 'Start Interview Session';
-            }
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('student-input');
-            const message = input.value.trim();
-            const sendBtn = document.getElementById('send-btn');
-            
-            if(!message || !sessionId) return;
-            
-            addMessage('Student', message);
-            input.value = '';
-            input.disabled = true;
-            sendBtn.disabled = true;
-
-            try {
-                const response = await fetch('{{ route("student.speaking.chat") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        message: message
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.ai_message) {
-                    addMessage('AI', data.ai_message);
-                    if (data.feedback) {
-                        showLiveFeedback(data.feedback);
-                    }
-                }
-            } catch (error) {
-                console.error("Chat error:", error);
-                addMessage('AI', "Sorry, I encountered an error. Please try again.");
-            } finally {
-                input.disabled = false;
-                sendBtn.disabled = false;
-                input.focus();
-            }
-        }
-
-        function addMessage(sender, text, audioUrl = null) {
-            const history = document.getElementById('chat-history');
-            const msgDiv = document.createElement('div');
-            msgDiv.style.alignSelf = sender === 'AI' ? 'flex-start' : 'flex-end';
-            msgDiv.style.maxWidth = '85%';
-            msgDiv.style.animation = 'fadeInUp 0.3s ease-out';
-            
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            let audioHtml = '';
-            if (audioUrl) {
-                audioHtml = `<audio controls src="${audioUrl}" style="margin-top: 10px; height: 35px; width: 100%; outline: none; border-radius: 20px;"></audio>`;
-            }
-
-            msgDiv.innerHTML = `
-                <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.25rem; text-align: ${sender === 'AI' ? 'left' : 'right'}">${sender.toUpperCase()} • ${time}</div>
-                <div class="glass" style="padding: 1.25rem; border-radius: 16px; position: relative; background: ${sender === 'AI' ? 'var(--glass)' : 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)'}; color: ${sender === 'AI' ? 'inherit' : 'white'}; border: none;">
-                    ${text}
-                    ${audioHtml}
-                </div>
-            `;
-            
-            history.appendChild(msgDiv);
-            history.scrollTo({ top: history.scrollHeight, behavior: 'smooth' });
-        }
-
-        function showLiveFeedback(feedback) {
-            const fbArea = document.getElementById('live-feedback');
-            fbArea.innerHTML = `
-                ${feedback.grammar_correction ? `
-                    <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2)">
-                        <div style="color: #ef4444; font-weight: 700; font-size: 0.75rem; margin-bottom: 0.25rem">⚠️ GRAMMAR</div>
-                        <div style="color: var(--text-main)">${feedback.grammar_correction}</div>
-                    </div>
-                ` : ''}
-                ${feedback.pronunciation ? `
-                    <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(99, 102, 241, 0.1); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.2)">
-                        <div style="color: var(--primary); font-weight: 700; font-size: 0.75rem; margin-bottom: 0.25rem">🎙️ PRONUNCIATION</div>
-                        <div style="color: var(--text-main)">${feedback.pronunciation}</div>
-                    </div>
-                ` : ''}
-                ${feedback.tip ? `
-                    <div style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2)">
-                        <div style="color: #10b981; font-weight: 700; font-size: 0.75rem; margin-bottom: 0.25rem">💡 IMPROVEMENT TIP</div>
-                        <div style="color: var(--text-main)">${feedback.tip}</div>
-                    </div>
-                ` : ''}
-            `;
-        }
-    </script>
-
-    <style>
         .instruction-box {
             background: rgba(99, 102, 241, 0.05);
             padding: 2rem;
@@ -782,6 +522,12 @@
             gap: 1.5rem;
         }
         
+        .speaking-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
         @media (max-width: 900px) {
             #simulator-container {
                 height: auto !important;
