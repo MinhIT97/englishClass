@@ -4,6 +4,8 @@ namespace Modules\Classroom\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 // use Modules\Classroom\Database\Factories\ClassroomPostFactory;
 
 class ClassroomPost extends Model
@@ -24,22 +26,22 @@ class ClassroomPost extends Model
         'feedback_by',
     ];
 
-    public function feedbackBy()
+    public function feedbackBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'feedback_by');
     }
 
-    public function classroom()
+    public function classroom(): BelongsTo
     {
         return $this->belongsTo(Classroom::class);
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class);
     }
 
-    public function comments()
+    public function comments(): HasMany
     {
         return $this->hasMany(ClassroomComment::class)->oldest();
     }

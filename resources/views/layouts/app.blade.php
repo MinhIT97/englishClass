@@ -292,6 +292,10 @@
                 chatPanel.classList.toggle('active');
             });
 
+            chatClose.addEventListener('click', () => {
+                chatPanel.classList.remove('active');
+            });
+
             /**
              * API Service Layer
              */

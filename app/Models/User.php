@@ -18,6 +18,16 @@ class User extends Authenticatable implements JWTSubject
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public function isAdmin(): bool
+    {
+        return $this->role === \App\Enums\UserRole::Admin->value;
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->role === \App\Enums\UserRole::Teacher->value;
+    }
+
     public function classrooms()
     {
         return $this->belongsToMany(\Modules\Classroom\Models\Classroom::class, 'classroom_user')
