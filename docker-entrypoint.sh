@@ -41,7 +41,8 @@ if [ "$CONTAINER_ROLE" = "app" ]; then
     # Sync Assets ra shared volume cho Nginx
     if [ -d "/app/public_shared" ]; then
         echo "📂 Syncing assets to Nginx volume..."
-        cp -ru /app/public/. /app/public_shared/
+        find /app/public_shared -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        cp -a /app/public/. /app/public_shared/
     fi
     
     echo "✨ App is ready!"

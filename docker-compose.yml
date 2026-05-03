@@ -14,7 +14,6 @@ services:
       - /app/vendor
       - app_storage:/app/storage
       - app_public:/app/public_shared
-      - /app/public/build
     networks:
       - english-network
     depends_on:
@@ -43,7 +42,6 @@ services:
       - .:/app
       - /app/vendor
       - app_storage:/app/storage
-      - /app/public/build
     networks:
       - english-network
     depends_on:
@@ -66,7 +64,6 @@ services:
     volumes:
       - .:/app
       - /app/vendor
-      - /app/public/build
     env_file: .env
     networks:
       - english-network
