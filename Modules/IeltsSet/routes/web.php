@@ -9,5 +9,6 @@ Route::middleware(['auth', 'can:active-user'])->prefix('student/sets')->group(fu
     Route::post('/{set}/start', [IeltsSetController::class, 'start'])->name('student.sets.start');
     Route::get('/{set}/sections/{section}', [IeltsSetController::class, 'section'])->name('student.sets.section');
     Route::post('/{set}/sections/{section}', [IeltsSetController::class, 'submitSection'])->name('student.sets.section.submit');
+    Route::post('/{set}/sections/{section}/complete-speaking', [IeltsSetController::class, 'completeSpeakingSection'])->name('student.sets.section.complete-speaking');
     Route::post('/{set}/sections/{section}/time', [IeltsSetController::class, 'updateSectionTime'])->name('student.sets.section.time');
 });

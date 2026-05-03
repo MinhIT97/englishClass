@@ -2,6 +2,7 @@
 
 namespace Modules\Question\database\seeders;
 
+use App\Support\IeltsTopicCatalog;
 use Illuminate\Database\Seeder;
 use Modules\Question\Models\Question;
 
@@ -9,318 +10,203 @@ class SampleQuestionSeeder extends Seeder
 {
     public function run(): void
     {
-        $questions = [
-            // READING
-            [
-                'skill' => 'reading',
-                'type' => 'mcq',
-                'topic' => 'Climate Change',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Climate change is significantly impacting polar regions. The melting of Arctic ice leads to rising sea levels, which threatens coastal cities globally. Scientists suggest that immediate reduction in carbon emissions is required to mitigate these effects.\n\nAccording to the passage, why are coastal cities threatened?",
-                    'answer' => 'Rising sea levels caused by melting ice',
-                    'options' => [
-                        'Heavy rainfall in summer',
-                        'Rising sea levels caused by melting ice',
-                        'Increase in global tourism',
-                        'Lack of proper drainage systems',
-                    ],
-                    'explanation' => "The passage explains that melting Arctic ice raises sea levels, which directly threatens coastal cities.",
-                ],
-            ],
-            [
-                'skill' => 'reading',
-                'type' => 'mcq',
-                'topic' => 'Ancient Egypt',
-                'difficulty' => 'hard',
-                'content' => [
-                    'text' => "The Great Pyramid of Giza was built for the Pharaoh Khufu. It remained the tallest man-made structure in the world for over 3,800 years. Its construction involved millions of limestone blocks and advanced engineering techniques that still baffle researchers today.\n\nHow long did the Great Pyramid hold the record for the tallest structure?",
-                    'answer' => 'Over 3,800 years',
-                    'options' => [
-                        'Around 100 years',
-                        'Over 3,800 years',
-                        'Less than 1,000 years',
-                        'Exactly 5,000 years',
-                    ],
-                    'explanation' => "The text explicitly says the pyramid remained the tallest structure for over 3,800 years.",
-                ],
-            ],
-            [
-                'skill' => 'reading',
-                'type' => 'mcq',
-                'topic' => 'Space Exploration',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Private companies have changed the pace of space exploration by reducing launch costs and increasing mission frequency. Reusable rocket technology has made it possible to send satellites, scientific instruments, and even astronauts into orbit more efficiently than before.\n\nWhat is the main benefit of reusable rockets mentioned in the passage?",
-                    'answer' => 'They lower the cost of launching missions',
-                    'options' => [
-                        'They can travel faster than traditional rockets',
-                        'They lower the cost of launching missions',
-                        'They replace the need for satellites',
-                        'They make space tourism free',
-                    ],
-                    'explanation' => "The passage links reusable rockets to reduced launch costs and better mission efficiency.",
-                ],
-            ],
-            [
-                'skill' => 'reading',
-                'type' => 'mcq',
-                'topic' => 'Nutrition',
-                'difficulty' => 'easy',
-                'content' => [
-                    'text' => "Nutritionists recommend eating a balanced diet that includes vegetables, fruit, lean protein, and whole grains. While vitamin supplements can help in some cases, they are not considered a replacement for healthy eating habits.\n\nAccording to the passage, what should not replace healthy eating habits?",
-                    'answer' => 'Vitamin supplements',
-                    'options' => [
-                        'Whole grains',
-                        'Vegetables',
-                        'Vitamin supplements',
-                        'Lean protein',
-                    ],
-                    'explanation' => "The text clearly says supplements may help but should not replace healthy eating habits.",
-                ],
-            ],
-            [
-                'skill' => 'reading',
-                'type' => 'mcq',
-                'topic' => 'Remote Work',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Remote work offers flexibility and saves commuting time, but it also requires workers to manage distractions and maintain communication with colleagues. Many companies now use virtual meetings and project tools to keep teams connected.\n\nWhy do companies use virtual meetings and project tools?",
-                    'answer' => 'To keep remote teams connected',
-                    'options' => [
-                        'To shorten lunch breaks',
-                        'To keep remote teams connected',
-                        'To replace internet access',
-                        'To reduce employee salaries',
-                    ],
-                    'explanation' => "The passage states these tools are used to keep distributed teams connected.",
-                ],
-            ],
-            [
-                'skill' => 'reading',
-                'type' => 'mcq',
-                'topic' => 'Urban Farming',
-                'difficulty' => 'hard',
-                'content' => [
-                    'text' => "Urban farming has emerged as a practical response to food insecurity in densely populated areas. Rooftop gardens and hydroponic systems allow residents to produce fresh vegetables even where traditional farmland is unavailable. Although yields are often smaller than rural farms, urban farming can shorten supply chains and reduce transport emissions.\n\nWhat is one environmental advantage of urban farming?",
-                    'answer' => 'It can reduce transport emissions',
-                    'options' => [
-                        'It eliminates all food waste',
-                        'It can reduce transport emissions',
-                        'It replaces the need for water',
-                        'It guarantees larger harvests than rural farms',
-                    ],
-                    'explanation' => "The final sentence notes that urban farming can shorten supply chains and reduce transport emissions.",
-                ],
-            ],
-
-            // LISTENING
-            [
-                'skill' => 'listening',
-                'type' => 'gap_fill',
-                'topic' => 'Campus Orientation',
-                'difficulty' => 'easy',
-                'content' => [
-                    'text' => "Student: Where is the main library located?\nOfficer: It's right next to the [____] building behind the cafeteria.\n\n(Audio transcript hint: The library is next to the Science building).",
-                    'answer' => 'Science',
-                    'explanation' => "The speaker says the library is next to the Science building.",
-                ],
-            ],
-            [
-                'skill' => 'listening',
-                'type' => 'gap_fill',
-                'topic' => 'Airport Announcement',
-                'difficulty' => 'easy',
-                'content' => [
-                    'text' => "Announcement: Passengers travelling to Singapore on flight GA218 should proceed to Gate [____] immediately.\n\n(Audio transcript hint: The gate number is twelve.)",
-                    'answer' => '12',
-                    'explanation' => "The announcement tells passengers for flight GA218 to proceed to Gate 12.",
-                ],
-            ],
-            [
-                'skill' => 'listening',
-                'type' => 'gap_fill',
-                'topic' => 'Doctor Appointment',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Receptionist: Dr. Brown can see you on Thursday at [____] in the morning.\n\n(Audio transcript hint: The appointment is at 10:30 a.m.)",
-                    'answer' => '10:30',
-                    'explanation' => "The receptionist offers an appointment time of 10:30 in the morning.",
-                ],
-            ],
-            [
-                'skill' => 'listening',
-                'type' => 'gap_fill',
-                'topic' => 'Hotel Booking',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Guest: I'd like to book a room for three nights.\nClerk: Certainly. May I have your [____], please?\n\n(Audio transcript hint: The clerk asks for the guest's passport.)",
-                    'answer' => 'passport',
-                    'explanation' => "The hotel clerk requests the guest's passport for the booking.",
-                ],
-            ],
-            [
-                'skill' => 'listening',
-                'type' => 'gap_fill',
-                'topic' => 'Community Event',
-                'difficulty' => 'hard',
-                'content' => [
-                    'text' => "Organizer: The charity run will begin at the town [____], and volunteers should arrive thirty minutes earlier.\n\n(Audio transcript hint: The event begins at the town square.)",
-                    'answer' => 'square',
-                    'explanation' => "The organizer says the charity run starts at the town square.",
-                ],
-            ],
-            [
-                'skill' => 'listening',
-                'type' => 'gap_fill',
-                'topic' => 'Online Order',
-                'difficulty' => 'easy',
-                'content' => [
-                    'text' => "Agent: Your package was sent yesterday and should arrive by [____].\n\n(Audio transcript hint: It is expected to arrive by Friday.)",
-                    'answer' => 'Friday',
-                    'explanation' => "The delivery estimate given by the agent is Friday.",
-                ],
-            ],
-
-            // WRITING
-            [
-                'skill' => 'writing',
-                'type' => 'task_2',
-                'topic' => 'Technology & Society',
-                'difficulty' => 'hard',
-                'content' => [
-                    'text' => "Some people believe that the increasing use of technology is making us more isolated, while others argue that it brings people closer together. Discuss both views and give your opinion.",
-                    'answer' => 'Discuss both views and give your opinion on technology and social connection.',
-                    'explanation' => "A strong answer should discuss both isolation and connectivity before presenting a clear personal view.",
-                ],
-            ],
-            [
-                'skill' => 'writing',
-                'type' => 'task_2',
-                'topic' => 'Education Policy',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Some people think all university students should study whatever they like. Others believe they should only be allowed to study subjects that will be useful in the future, such as science and technology. Discuss both views and give your own opinion.",
-                    'answer' => 'Discuss freedom of subject choice versus job-focused education.',
-                    'explanation' => "Candidates should balance personal interest against economic demand and support their own position clearly.",
-                ],
-            ],
-            [
-                'skill' => 'writing',
-                'type' => 'task_2',
-                'topic' => 'Work-Life Balance',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Many people nowadays work long hours and have little time for leisure activities. Why is this happening, and what can be done to solve this problem?",
-                    'answer' => 'Explain causes of long working hours and propose realistic solutions.',
-                    'explanation' => "A successful essay should identify social or economic causes and offer practical solutions from employers and governments.",
-                ],
-            ],
-            [
-                'skill' => 'writing',
-                'type' => 'task_2',
-                'topic' => 'Environmental Responsibility',
-                'difficulty' => 'hard',
-                'content' => [
-                    'text' => "Some people say that individuals can do little to improve the environment, and only governments and large companies can make a real difference. To what extent do you agree or disagree?",
-                    'answer' => 'Evaluate the roles of individuals, governments, and companies in environmental action.',
-                    'explanation' => "A high-band essay should show a nuanced argument instead of treating the issue as entirely one-sided.",
-                ],
-            ],
-            [
-                'skill' => 'writing',
-                'type' => 'task_1',
-                'topic' => 'Tourism Statistics',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "The chart below shows the number of international tourists visiting three different countries between 2010 and 2020. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.",
-                    'answer' => 'Summarise trends, highlight main comparisons, and avoid giving opinions.',
-                    'explanation' => "Task 1 responses should focus on overview, key changes, and comparisons rather than reasons or personal views.",
-                ],
-            ],
-            [
-                'skill' => 'writing',
-                'type' => 'task_1',
-                'topic' => 'Office Energy Use',
-                'difficulty' => 'easy',
-                'content' => [
-                    'text' => "The diagram illustrates how electricity is used in a modern office building over a typical working day. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.",
-                    'answer' => 'Describe major stages, peak periods, and comparisons in energy use.',
-                    'explanation' => "Task 1 diagram answers should describe process or patterns clearly and logically.",
-                ],
-            ],
-
-            // SPEAKING
-            [
-                'skill' => 'speaking',
-                'type' => 'part_1',
-                'topic' => 'Hometown',
-                'difficulty' => 'easy',
-                'content' => [
-                    'text' => "Can you tell me about the town or city where you grew up?",
-                    'answer' => 'A natural personal description with details and examples.',
-                    'explanation' => "Part 1 answers should be personal, direct, and slightly extended rather than one-word replies.",
-                ],
-            ],
-            [
-                'skill' => 'speaking',
-                'type' => 'part_1',
-                'topic' => 'Daily Routine',
-                'difficulty' => 'easy',
-                'content' => [
-                    'text' => "What is the busiest part of your day, and why?",
-                    'answer' => 'A clear explanation of a daily routine with reasons.',
-                    'explanation' => "Candidates should answer naturally and support their ideas with small details.",
-                ],
-            ],
-            [
-                'skill' => 'speaking',
-                'type' => 'part_2',
-                'topic' => 'Memorable Teacher',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Describe a teacher who has influenced you. You should say who the person is, what subject they taught, how they influenced you, and explain why you still remember them.",
-                    'answer' => 'A structured long-turn response with detail and reflection.',
-                    'explanation' => "Part 2 answers should cover all prompts and include a personal explanation.",
-                ],
-            ],
-            [
-                'skill' => 'speaking',
-                'type' => 'part_2',
-                'topic' => 'Useful App',
-                'difficulty' => 'medium',
-                'content' => [
-                    'text' => "Describe an app you use regularly. You should say what the app is, what you use it for, when you started using it, and explain why it is useful to you.",
-                    'answer' => 'A well-organized response about an app, with examples and reasons.',
-                    'explanation' => "Part 2 should sound fluent and connected rather than like a list of short answers.",
-                ],
-            ],
-            [
-                'skill' => 'speaking',
-                'type' => 'part_3',
-                'topic' => 'Public Transport',
-                'difficulty' => 'hard',
-                'content' => [
-                    'text' => "Do you think governments should invest more in public transport than in building new roads? Why or why not?",
-                    'answer' => 'A reasoned opinion with comparison and supporting arguments.',
-                    'explanation' => "Part 3 requires abstract thinking, comparison, and clear justification.",
-                ],
-            ],
-            [
-                'skill' => 'speaking',
-                'type' => 'part_3',
-                'topic' => 'Artificial Intelligence',
-                'difficulty' => 'hard',
-                'content' => [
-                    'text' => "How do you think artificial intelligence will change the way people work over the next decade?",
-                    'answer' => 'A thoughtful discussion of future impacts, benefits, and risks.',
-                    'explanation' => "A strong answer should include prediction, examples, and balanced reasoning.",
-                ],
-            ],
-        ];
+        $questions = array_merge(
+            $this->buildTopicDrivenQuestionBank(),
+            $this->buildTaskOneQuestionBank()
+        );
 
         foreach ($questions as $question) {
             Question::firstOrCreate($question);
         }
+    }
+
+    private function buildTopicDrivenQuestionBank(): array
+    {
+        $catalog = IeltsTopicCatalog::all();
+        $questions = [];
+        $difficultyCycle = ['easy', 'medium', 'hard'];
+        $readingTemplates = [
+            [
+                'text' => 'An article about {topic} explains that {a} creates pressure on long-term planning. It also notes that {b} shapes public attitudes. However, the writer concludes that the most durable progress comes from {c}, because it changes behaviour in a more lasting way than temporary campaigns.',
+                'question' => 'According to the passage, what creates the most durable progress in {topic}?',
+                'answer' => '{c}',
+                'options' => ['{a}', '{b}', '{c}', 'short-term publicity'],
+                'explanation' => 'The final sentence says the most durable progress comes from {c}.',
+            ],
+            [
+                'text' => 'Researchers studying {topic} compared several strategies. Their findings suggest that {a} can bring quick results, but these changes are often short-lived. In contrast, {b} is slower to implement yet has broader effects. The report finally recommends combining both approaches, with particular emphasis on {c} in areas that need structural reform.',
+                'question' => 'What does the report place particular emphasis on?',
+                'answer' => '{c}',
+                'options' => ['{a}', '{b}', '{c}', 'private advertising only'],
+                'explanation' => 'The report recommends combining approaches but gives particular emphasis to {c}.',
+            ],
+            [
+                'text' => 'A survey on {topic} found that people often support change in theory but behave differently in practice. The main reason, according to the report, is that {a} remains difficult for ordinary citizens. Although {b} has improved in recent years, experts argue that real progress still depends on {c}, especially when governments want lasting results.',
+                'question' => 'Why do experts believe real progress still depends on {c}?',
+                'answer' => 'Because governments want lasting results',
+                'options' => [
+                    'Because it is cheaper than every other solution',
+                    'Because it attracts more tourists',
+                    'Because governments want lasting results',
+                    'Because it removes the need for public debate',
+                ],
+                'explanation' => 'The passage directly states that {c} matters most when governments want lasting results.',
+            ],
+        ];
+        $listeningTemplates = [
+            [
+                'text' => 'Host: Today we are discussing {topic}. Guest: The first challenge is {a}, but the practical priority is to improve {b}. Host: So the note for next year should be [____].\n\n(Audio transcript hint: The speaker says the note for next year should be {b}.)',
+                'question' => 'Complete the note with the exact phrase used by the speaker.',
+                'answer' => '{b}',
+                'explanation' => 'The guest says the practical priority is to improve {b}.',
+            ],
+            [
+                'text' => 'Lecturer: In this session on {topic}, remember that {a} is often visible first, while {b} appears more gradually. If you are asked about the central recommendation, write down [____].\n\n(Audio transcript hint: The lecturer says the central recommendation is {c}.)',
+                'question' => 'Write the recommendation in no more than two words.',
+                'answer' => '{c}',
+                'explanation' => 'The lecturer identifies {c} as the central recommendation.',
+            ],
+            [
+                'text' => 'Coordinator: We have reviewed the {topic} proposal. The team agreed that {a} is still a concern, yet the immediate action should focus on {c}. Please enter [____] on the summary form.\n\n(Audio transcript hint: The immediate action is {c}.)',
+                'question' => 'Complete the summary form with the immediate action.',
+                'answer' => '{c}',
+                'explanation' => 'The coordinator says the immediate action should focus on {c}.',
+            ],
+        ];
+
+        $index = 0;
+        foreach ($catalog as $topic => $topicData) {
+            $vocabulary = array_values($topicData['vocabulary']);
+            $promptQuestions = array_values($topicData['questions']);
+            $difficulty = $difficultyCycle[$index % count($difficultyCycle)];
+            $tokens = [
+                '{topic}' => $topic,
+                '{a}' => $vocabulary[0] ?? 'long-term planning',
+                '{b}' => $vocabulary[1] ?? 'public awareness',
+                '{c}' => $vocabulary[2] ?? ($vocabulary[0] ?? 'community support'),
+            ];
+
+            foreach ($readingTemplates as $templateIndex => $template) {
+                $questions[] = [
+                    'skill' => 'reading',
+                    'type' => 'mcq',
+                    'topic' => $topic,
+                    'difficulty' => $difficultyCycle[($index + $templateIndex) % count($difficultyCycle)],
+                    'content' => [
+                        'text' => strtr($template['text'], $tokens),
+                        'question' => strtr($template['question'], $tokens),
+                        'answer' => strtr($template['answer'], $tokens),
+                        'options' => array_map(fn (string $option) => strtr($option, $tokens), $template['options']),
+                        'explanation' => strtr($template['explanation'], $tokens),
+                    ],
+                ];
+            }
+
+            foreach ($listeningTemplates as $templateIndex => $template) {
+                $questions[] = [
+                    'skill' => 'listening',
+                    'type' => 'gap_fill',
+                    'topic' => $topic,
+                    'difficulty' => $difficultyCycle[($index + $templateIndex) % count($difficultyCycle)],
+                    'content' => [
+                        'text' => strtr($template['text'], $tokens),
+                        'question' => strtr($template['question'], $tokens),
+                        'answer' => strtr($template['answer'], $tokens),
+                        'explanation' => strtr($template['explanation'], $tokens),
+                    ],
+                ];
+            }
+
+            $questions[] = [
+                'skill' => 'writing',
+                'type' => 'task_2',
+                'topic' => $topic,
+                'difficulty' => $difficulty,
+                'content' => [
+                    'text' => $topicData['writing_task'],
+                    'question' => $topicData['writing_task'],
+                    'answer' => "Develop a clear position on {$topic}, support it with relevant examples, and keep the response logically organised.",
+                    'explanation' => "A strong Task 2 essay should present a clear thesis, balanced development, and relevant examples connected to {$topic}.",
+                ],
+            ];
+
+            $questions[] = [
+                'skill' => 'speaking',
+                'type' => 'part_1',
+                'topic' => $topic,
+                'difficulty' => 'easy',
+                'content' => [
+                    'text' => $promptQuestions[0] ?? "What are your first thoughts about {$topic}?",
+                    'question' => $promptQuestions[0] ?? "What are your first thoughts about {$topic}?",
+                    'answer' => 'A natural personal answer with one or two supporting details is enough for a good Part 1 response.',
+                    'explanation' => 'Part 1 answers should sound personal, direct, and slightly extended.',
+                ],
+            ];
+
+            $questions[] = [
+                'skill' => 'speaking',
+                'type' => 'part_2',
+                'topic' => $topic,
+                'difficulty' => 'medium',
+                'content' => [
+                    'text' => "Describe an experience, person, or situation connected to {$topic}. You should say what it was, when it happened, why it was memorable, and explain what you learned from it.",
+                    'question' => "Describe an experience, person, or situation connected to {$topic}.",
+                    'cue_card' => 'You should say what it was, when it happened, why it was memorable, and explain what you learned from it.',
+                    'answer' => 'A strong Part 2 answer should cover each cue point, use linking phrases, and include one clear personal example.',
+                    'explanation' => 'Part 2 responses should be organised, extended, and easy to follow.',
+                ],
+            ];
+
+            $questions[] = [
+                'skill' => 'speaking',
+                'type' => 'part_3',
+                'topic' => $topic,
+                'difficulty' => 'hard',
+                'content' => [
+                    'text' => $promptQuestions[2] ?? "How might {$topic} change in the future?",
+                    'question' => $promptQuestions[2] ?? "How might {$topic} change in the future?",
+                    'follow_up' => $promptQuestions[1] ?? null,
+                    'answer' => 'A strong Part 3 answer should compare viewpoints, explain reasons, and give a broader perspective.',
+                    'explanation' => 'Part 3 requires analysis, comparison, and clear reasoning rather than a short personal answer.',
+                ],
+            ];
+
+            $index++;
+        }
+
+        return $questions;
+    }
+
+    private function buildTaskOneQuestionBank(): array
+    {
+        $taskOnePrompts = [
+            ['topic' => 'University Enrollment Trends', 'difficulty' => 'medium', 'text' => 'The line graph shows changes in university enrollment in three subjects between 2005 and 2025. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'City Transport Usage', 'difficulty' => 'medium', 'text' => 'The bar chart compares how residents in four cities used different forms of public transport in one year. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Household Energy Consumption', 'difficulty' => 'easy', 'text' => 'The pie charts illustrate how energy was used in an average household in 1995 and 2025. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Tourism Revenue Overview', 'difficulty' => 'medium', 'text' => 'The table gives information about tourism revenue in five countries over a ten-year period. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Office Water Cycle', 'difficulty' => 'easy', 'text' => 'The diagram shows how water is recycled in a large office building. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Online Shopping Growth', 'difficulty' => 'hard', 'text' => 'The line graph illustrates the percentage of people in five age groups who shopped online between 2010 and 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Hospital Departments', 'difficulty' => 'medium', 'text' => 'The bar chart compares the number of patients treated in six hospital departments during a typical month. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Urban Waste Process', 'difficulty' => 'hard', 'text' => 'The process diagram illustrates how waste is sorted and processed in a modern recycling plant. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Library Membership Changes', 'difficulty' => 'easy', 'text' => 'The table compares library membership in five districts between 2012 and 2022. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Airport Expansion Plan', 'difficulty' => 'hard', 'text' => 'The diagrams show the layout of an airport now and the planned changes after redevelopment. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Factory Production Process', 'difficulty' => 'medium', 'text' => 'The process diagram illustrates how packaged food is produced in a modern factory. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+            ['topic' => 'Student Device Ownership', 'difficulty' => 'medium', 'text' => 'The bar chart shows the percentage of students who owned different digital devices in 2010, 2017 and 2025. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.'],
+        ];
+
+        return array_map(function (array $prompt) {
+            return [
+                'skill' => 'writing',
+                'type' => 'task_1',
+                'topic' => $prompt['topic'],
+                'difficulty' => $prompt['difficulty'],
+                'content' => [
+                    'text' => $prompt['text'],
+                    'question' => $prompt['text'],
+                    'answer' => 'Write an overview first, then compare the key features without adding personal opinions.',
+                    'explanation' => 'Task 1 responses should focus on trends, comparisons, or stages clearly and objectively.',
+                ],
+            ];
+        }, $taskOnePrompts);
     }
 }

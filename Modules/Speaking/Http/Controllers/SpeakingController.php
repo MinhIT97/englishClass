@@ -15,9 +15,13 @@ class SpeakingController extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return view('speaking::index');
+        return view('speaking::index', [
+            'returnTo' => $request->query('return_to'),
+            'setLabel' => $request->query('set'),
+            'sectionLabel' => $request->query('section'),
+        ]);
     }
 
     public function start(Request $request)

@@ -27,9 +27,29 @@
         </div>
 
         <div class="glass-card">
-            <h3 style="margin-bottom: 1rem">Study Flow</h3>
-            <p style="color: var(--text-muted); margin-bottom: 1rem">
-                These sets are designed to keep revision focused. Work through each section in order and review the target skill before moving on.
+            <h3 style="margin-bottom: 1rem">Set Progress</h3>
+            @php
+                $totalActiveSeconds = $progress['total_active_seconds'] ?? 0;
+                $progressHours = intdiv($totalActiveSeconds, 3600);
+                $progressMinutes = intdiv($totalActiveSeconds % 3600, 60);
+                $progressSeconds = $totalActiveSeconds % 60;
+            @endphp
+            <div class="set-progress-grid">
+                <div class="set-progress-stat">
+                    <strong>{{ $progress['completed_sections'] }}/{{ $progress['total_sections'] }}</strong>
+                    <span>Sections completed</span>
+                </div>
+                <div class="set-progress-stat">
+                    <strong>{{ $latestAttempt?->score_percent !== null ? number_format((float) $latestAttempt->score_percent, 0) . '%' : 'Pending' }}</strong>
+                    <span>Auto-scored accuracy</span>
+                </div>
+                <div class="set-progress-stat">
+                    <strong>{{ $progressHours > 0 ? sprintf('%02d:%02d:%02d', $progressHours, $progressMinutes, $progressSeconds) : sprintf('%02d:%02d', $progressMinutes, $progressSeconds) }}</strong>
+                    <span>Tracked active time</span>
+                </div>
+            </div>
+            <p style="color: var(--text-muted); margin-top: 1rem">
+                A full IELTS set should cover reading, listening, writing, and speaking. Reading, listening, and writing are submitted inside the set. Speaking is completed through the AI speaking simulator and then marked back into the same set attempt.
             </p>
             @if($latestAttempt)
                 <div class="set-latest-attempt">
@@ -48,7 +68,7 @@
         </div>
     </div>
 
-    @if(isset($attemptHistory) && $attemptHistory->isNotEmpty())
+    @if($attemptHistory->isNotEmpty())
         <div class="glass-card" style="margin-bottom: 2rem">
             <h3 style="margin-bottom: 1rem">Attempt History</h3>
             <div class="set-history-list">
@@ -74,11 +94,28 @@
 
     <div class="set-sections-list">
         @foreach($set->sections as $section)
+            @php
+                $sectionState = $progress['sections'][$section->id] ?? [
+                    'status' => 'not_started',
+                    'answered_count' => 0,
+                    'question_count' => $section->questions->count(),
+                    'correct_count' => 0,
+                    'active_seconds' => 0,
+                    'score_percent' => null,
+                ];
+                $sectionSeconds = (int) ($sectionState['active_seconds'] ?? 0);
+                $sectionHours = intdiv($sectionSeconds, 3600);
+                $sectionMinutes = intdiv($sectionSeconds % 3600, 60);
+                $sectionRemainder = $sectionSeconds % 60;
+            @endphp
             <div class="glass-card set-section-card">
                 <div class="set-section-header">
                     <div>
                         <span class="badge" style="background: rgba(99, 102, 241, 0.12); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.18)">
                             {{ strtoupper($section->skill) }}
+                        </span>
+                        <span class="badge set-status-badge set-status-{{ $sectionState['status'] }}" style="margin-left: 0.5rem">
+                            {{ str_replace('_', ' ', $sectionState['status']) }}
                         </span>
                         <h3 style="margin-top: 0.85rem">{{ $loop->iteration }}. {{ $section->title }}</h3>
                     </div>
@@ -92,6 +129,25 @@
 
                 <p style="color: var(--text-muted); margin: 1rem 0 1.25rem">{{ $section->instructions }}</p>
 
+                <div class="set-section-stats">
+                    <div class="set-section-stat-chip">
+                        <strong>
+                            {{ $section->skill === 'speaking'
+                                ? ($sectionState['status'] === 'completed' ? 'Done' : 'Pending')
+                                : $sectionState['answered_count'] . '/' . $sectionState['question_count'] }}
+                        </strong>
+                        <span>{{ $section->skill === 'speaking' ? 'Completion' : 'Answered' }}</span>
+                    </div>
+                    <div class="set-section-stat-chip">
+                        <strong>{{ $sectionState['score_percent'] !== null ? $sectionState['score_percent'] . '%' : 'Pending' }}</strong>
+                        <span>{{ $section->skill === 'speaking' ? 'Scored outside set' : 'Section score' }}</span>
+                    </div>
+                    <div class="set-section-stat-chip">
+                        <strong>{{ $sectionHours > 0 ? sprintf('%02d:%02d:%02d', $sectionHours, $sectionMinutes, $sectionRemainder) : sprintf('%02d:%02d', $sectionMinutes, $sectionRemainder) }}</strong>
+                        <span>Active time</span>
+                    </div>
+                </div>
+
                 <div class="set-question-preview-list">
                     @foreach($section->questions as $question)
                         <div class="set-question-preview">
@@ -102,15 +158,21 @@
                 </div>
 
                 <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end">
-                    @if($section->skill === 'speaking')
-                        <a href="{{ route('student.speaking.index') }}" class="btn btn-outline" style="padding: 0.8rem 1.4rem">
-                            Open Speaking Module
-                        </a>
-                    @else
-                        <a href="{{ route('student.sets.section', [$set, $section]) }}" class="btn btn-primary" style="padding: 0.8rem 1.4rem">
+                    <a
+                        href="{{ route('student.sets.section', [$set, $section]) }}"
+                        class="btn {{ $sectionState['status'] === 'completed' ? 'btn-outline' : 'btn-primary' }}"
+                        style="padding: 0.8rem 1.4rem"
+                    >
+                        @if($sectionState['status'] === 'completed')
+                            Review Section
+                        @elseif($sectionState['status'] === 'in_progress')
+                            Continue Section
+                        @elseif($section->skill === 'speaking')
+                            Start Speaking Section
+                        @else
                             Work on This Section
-                        </a>
-                    @endif
+                        @endif
+                    </a>
                 </div>
             </div>
         @endforeach
@@ -124,34 +186,9 @@
             }
 
             const startedAt = new Date(startedEl.dataset.startedAt);
-            const locale = document.documentElement.lang?.startsWith('vi') ? 'vi' : 'en';
+
             function formatRelativeTime(date) {
                 const elapsedSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-
-                if (locale === 'vi') {
-                    if (elapsedSeconds < 60) {
-                        return `${elapsedSeconds} giây trước`;
-                    }
-
-                    if (elapsedSeconds < 3600) {
-                        const minutes = Math.floor(elapsedSeconds / 60);
-                        const seconds = elapsedSeconds % 60;
-                        return seconds > 0
-                            ? `${minutes} phút ${seconds} giây trước`
-                            : `${minutes} phút trước`;
-                    }
-
-                    if (elapsedSeconds < 86400) {
-                        const hours = Math.floor(elapsedSeconds / 3600);
-                        const minutes = Math.floor((elapsedSeconds % 3600) / 60);
-                        return minutes > 0
-                            ? `${hours} giờ ${minutes} phút trước`
-                            : `${hours} giờ trước`;
-                    }
-
-                    const days = Math.floor(elapsedSeconds / 86400);
-                    return `${days} ngày trước`;
-                }
 
                 if (elapsedSeconds < 60) {
                     return `${elapsedSeconds} second${elapsedSeconds === 1 ? '' : 's'} ago`;
@@ -178,8 +215,7 @@
             }
 
             function renderStartedTime() {
-                const prefix = locale === 'vi' ? 'Bắt đầu' : 'Started';
-                startedEl.textContent = `${prefix} ${formatRelativeTime(startedAt)}`;
+                startedEl.textContent = `Started ${formatRelativeTime(startedAt)}`;
             }
 
             renderStartedTime();
@@ -224,12 +260,38 @@
             color: var(--text-main);
         }
 
+        .set-progress-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.85rem;
+        }
+
+        .set-progress-stat {
+            padding: 0.95rem 1rem;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .set-progress-stat strong {
+            font-size: 1rem;
+        }
+
+        .set-progress-stat span {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
         .set-latest-attempt {
             padding: 1rem;
             border-radius: 14px;
             background: rgba(16, 185, 129, 0.08);
             border: 1px solid rgba(16, 185, 129, 0.18);
             color: #10b981;
+            margin-top: 1rem;
         }
 
         .set-sections-list {
@@ -266,6 +328,32 @@
             align-items: flex-start;
         }
 
+        .set-section-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .set-section-stat-chip {
+            padding: 0.85rem 0.95rem;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .set-section-stat-chip strong {
+            font-size: 0.95rem;
+        }
+
+        .set-section-stat-chip span {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
         .set-question-preview-list {
             display: flex;
             flex-direction: column;
@@ -287,8 +375,33 @@
             flex-shrink: 0;
         }
 
+        .set-status-badge {
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .set-status-completed {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.18);
+        }
+
+        .set-status-in_progress {
+            background: rgba(245, 158, 11, 0.12);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.18);
+        }
+
+        .set-status-not_started {
+            background: rgba(148, 163, 184, 0.12);
+            color: #cbd5e1;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+        }
+
         @media (max-width: 768px) {
-            .set-overview-grid {
+            .set-overview-grid,
+            .set-progress-grid,
+            .set-section-stats {
                 grid-template-columns: 1fr;
             }
 

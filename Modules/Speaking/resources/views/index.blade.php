@@ -1,4 +1,18 @@
 <x-app-layout>
+    @if(!empty($returnTo))
+        <div class="glass-card speaking-return-card" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
+            <div>
+                <strong>IELTS Set Flow</strong>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem">
+                    Return to {{ $setLabel ?: 'your IELTS set' }}{{ $sectionLabel ? ' - ' . $sectionLabel : '' }} after finishing your speaking practice and mark the section as completed.
+                </div>
+            </div>
+            <a href="{{ $returnTo }}" class="btn btn-outline" style="padding: 0.75rem 1.25rem">
+                Back to Set Section
+            </a>
+        </div>
+    @endif
+
     <div class="speaking-header-wrap">
         <div>
             <h1 style="font-size: 2rem; margin-bottom: 0.5rem">{{ __('ui.ai_speaking_sim') }}</h1>
@@ -390,6 +404,13 @@
             color: var(--text-muted);
         }
 
+        .speaking-return-card {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+        }
+
         .ai-header-visual {
             height: 180px; 
             background: #0a0a0f; 
@@ -534,6 +555,11 @@
         }
 
         @media (max-width: 900px) {
+            .speaking-return-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
             .speaking-grid.active {
                 height: auto !important;
                 display: flex !important;
