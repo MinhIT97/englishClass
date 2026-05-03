@@ -132,6 +132,14 @@
                     <a href="/courses" class="nav-item {{ request()->is('courses*') ? 'active' : '' }}">
                         <span class="nav-icon">📚</span> {{ __('ui.courses') }}
                     </a>
+                    <a href="{{ route('admin.feedback.index') }}" class="nav-item {{ request()->is('admin/feedback*') ? 'active' : '' }}">
+                        <span class="nav-icon">💬</span> Feedback
+                        @if(isset($pendingFeedbackCount) && $pendingFeedbackCount > 0)
+                            <span class="badge" style="background: var(--primary); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: auto; font-weight: 700;">{{ $pendingFeedbackCount }}</span>
+                        @endif
+                    </a>
+
+
                 @else
                     <a href="/student/dashboard" class="nav-item {{ request()->is('student/dashboard') ? 'active' : '' }}">
                         <span class="nav-icon">🏠</span> {{ __('ui.dashboard') }}
@@ -182,7 +190,11 @@
             </nav>
 
             <div class="sidebar-footer">
+                <button class="btn btn-outline" id="feedback-trigger" style="width: 100%; margin-bottom: 0.75rem; border-color: var(--accent); color: var(--accent)">
+                    💬 {{ __('ui.feedback_title') }}
+                </button>
                 <form method="POST" action="/logout">
+
                     @csrf
                     <button class="btn btn-outline btn-logout" style="width: 100%">
                         🚪 {{ __('ui.logout') }}
@@ -263,9 +275,73 @@
                     </div>
                 @endif
 
-                {{ $slot }}
-            </div>
-        </main>
+        {{ $slot }}
+    </div>
+</main>
+
+<!-- Feedback Modal -->
+<div class="feedback-modal" id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+    <div class="feedback-content glass animate-fade-in" style="padding: 2.5rem; border-radius: 24px;">
+        <button class="feedback-close" id="feedback-close" type="button" aria-label="{{ __('ui.close') }}">×</button>
+
+        <div id="feedback-form-panel">
+            <h3 id="feedback-title" style="margin-bottom: 0.5rem; font-size: 1.5rem">{{ __('ui.feedback_title') }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem">{{ __('ui.feedback_desc') }}</p>
+
+            <form id="feedback-form">
+                <div class="form-group">
+                    <label class="feedback-label">{{ __('ui.feedback_type') }}</label>
+                    <select id="feedback-type" name="feedback_type" required class="feedback-select">
+                        <option value="">{{ __('ui.feedback_type_placeholder') }}</option>
+                        <option value="bug">{{ __('ui.cat_bug') }}</option>
+                        <option value="ux">{{ __('ui.cat_ux') }}</option>
+                        <option value="feature">{{ __('ui.cat_feature') }}</option>
+                        <option value="other">{{ __('ui.cat_other') }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="feedback-label">{{ __('ui.feedback_rating') }}</label>
+                    <div class="rating-grid">
+                        @foreach([1, 2, 3, 4, 5] as $rating)
+                            <label class="rating-pill" data-rating="{{ $rating }}">
+                                <input type="radio" name="rating" value="{{ $rating }}" required style="display: none">
+                                <span>{{ $rating }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="feedback-label">{{ __('ui.feedback_message') }}</label>
+                    <textarea id="feedback-message" name="message" required placeholder="{{ __('ui.feedback_placeholder') }}" class="feedback-textarea"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="feedback-label">{{ __('ui.feedback_email') }}</label>
+                    <input id="feedback-email" type="email" name="email" placeholder="name@example.com" class="feedback-input">
+                </div>
+
+                <p id="feedback-error" style="display: none; color: #ef4444; font-size: 0.8rem; margin-bottom: 1rem;"></p>
+
+                <button type="submit" class="feedback-submit-btn">
+                    🚀 {{ __('ui.submit_feedback') }}
+                </button>
+            </form>
+        </div>
+
+        <div id="feedback-success-panel" style="display: none; text-align: center; padding: 2rem 0;">
+            <div style="font-size: 4rem; margin-bottom: 1.5rem">🎉</div>
+            <h3 style="margin-bottom: 0.5rem">{{ __('ui.feedback_success') }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem">{{ __('ui.feedback_success_desc') }}</p>
+            <button type="button" id="feedback-success-close" class="btn btn-outline" style="min-width: 120px">
+                {{ __('ui.close') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+
 
         <!-- Floating Chat Widget -->
         <div class="chat-widget-trigger" id="chat-trigger" title="Hỗ trợ học tập">
@@ -275,7 +351,7 @@
         <div class="chat-panel" id="chat-panel">
             <div class="chat-header">
                 <h3>{{ __('ui.learning_assistant') }}</h3>
-                <button class="chat-close" id="chat-close">✕</button>
+                <button class="chat-close" id="chat-close">×</button>
             </div>
             <div class="chat-messages" id="chat-messages">
                 <div class="chat-bubble ai">
@@ -339,7 +415,90 @@
                     });
                 });
 
+                const feedbackModal = document.getElementById('feedback-modal');
+                const feedbackTrigger = document.getElementById('feedback-trigger');
+                const feedbackClose = document.getElementById('feedback-close');
+                const feedbackForm = document.getElementById('feedback-form');
+                const feedbackError = document.getElementById('feedback-error');
+                const feedbackFormPanel = document.getElementById('feedback-form-panel');
+                const feedbackSuccessPanel = document.getElementById('feedback-success-panel');
+                const feedbackSuccessClose = document.getElementById('feedback-success-close');
+
+                const closeFeedbackModal = () => {
+                    feedbackModal.classList.remove('active');
+                };
+
+                const openFeedbackModal = () => {
+                    feedbackModal.classList.add('active');
+                    feedbackFormPanel.style.display = 'block';
+                    feedbackSuccessPanel.style.display = 'none';
+                    feedbackError.style.display = 'none';
+                    feedbackError.textContent = '';
+                };
+
+                if (feedbackTrigger) {
+                    feedbackTrigger.addEventListener('click', openFeedbackModal);
+                }
+                if (feedbackClose) {
+                    feedbackClose.addEventListener('click', closeFeedbackModal);
+                }
+                if (feedbackSuccessClose) {
+                    feedbackSuccessClose.addEventListener('click', closeFeedbackModal);
+                }
+
+                // Rating Logic - Improved
+                document.querySelectorAll('.rating-pill').forEach(pill => {
+                    pill.addEventListener('click', () => {
+                        document.querySelectorAll('.rating-pill').forEach(p => p.classList.remove('active'));
+                        pill.classList.add('active');
+                        pill.querySelector('input').checked = true;
+                    });
+                });
+
+                // Submission Mock
+                if (feedbackForm) {
+                    feedbackForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+                        
+                        feedbackError.style.display = 'none';
+                        feedbackError.textContent = '';
+
+                        submitBtn.disabled = true;
+                        const defaultLabel = submitBtn.innerHTML;
+                        submitBtn.innerHTML = '<div class="mini-spinner"></div>';
+
+
+                        try {
+                            const response = await fetch('{{ route('feedback.store') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify(Object.fromEntries(new FormData(feedbackForm)))
+                            });
+
+                            if (!response.ok) throw new Error('Network response was not ok');
+
+                            feedbackForm.reset();
+                            document.querySelectorAll('.rating-pill').forEach(p => p.classList.remove('active'));
+                            feedbackFormPanel.style.display = 'none';
+                            feedbackSuccessPanel.style.display = 'block';
+                        } catch (error) {
+
+                            feedbackError.textContent = '{{ __('ui.feedback_error') }}';
+                            feedbackError.style.display = 'block';
+                        } finally {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = defaultLabel;
+                        }
+                    });
+                }
+
+
                 const chatTrigger = document.getElementById('chat-trigger');
+
                 const chatPanel = document.getElementById('chat-panel');
                 const chatClose = document.getElementById('chat-close');
                 const chatInput = document.getElementById('chat-input');

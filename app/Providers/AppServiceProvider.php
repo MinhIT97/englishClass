@@ -6,6 +6,9 @@ use Illuminate\Support\ServiceProvider;
 
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
+use App\Http\View\Composers\FeedbackComposer;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,8 +33,10 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        //
+        // View Composers
+        View::composer('layouts.app', FeedbackComposer::class);
 
+        //
         // View Share AI Status
         $aiService = app(\Modules\Speaking\Services\AiSpeakingService::class);
         view()->share('ai_live', $aiService->isLive());
