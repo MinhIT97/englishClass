@@ -72,12 +72,12 @@
             <div style="font-weight: 600; margin-bottom: 0.5rem">{{ __('ui.reading') }}</div>
             <div class="go" style="color: var(--primary); font-size: 0.75rem; font-weight: 700; opacity: 0; transition: opacity 0.2s">{{ __('ui.enter') }}</div>
         </div>
-        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onclick="window.location.href='{{ route('student.practice.drill', 'writing') }}'" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
+        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onclick="window.location.href='{{ route('student.writing.index') }}'" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
             <div style="font-size: 2.5rem; margin-bottom: 1rem">✍️</div>
             <div style="font-weight: 600; margin-bottom: 0.5rem">{{ __('ui.writing') }}</div>
             <div class="go" style="color: var(--primary); font-size: 0.75rem; font-weight: 700; opacity: 0; transition: opacity 0.2s">{{ __('ui.enter') }}</div>
         </div>
-        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onclick="window.location.href='{{ route('student.practice.drill', 'speaking') }}'" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
+        <div class="card" style="text-align: center; padding: 1.5rem; cursor: pointer" onclick="window.location.href='{{ route('student.speaking.index') }}'" onmouseover="this.querySelector('.go').style.opacity='1'" onmouseout="this.querySelector('.go').style.opacity='0'">
             <div style="font-size: 2.5rem; margin-bottom: 1rem">🗣️</div>
             <div style="font-weight: 600; margin-bottom: 0.5rem">{{ __('ui.speaking') }}</div>
             <div class="go" style="color: var(--primary); font-size: 0.75rem; font-weight: 700; opacity: 0; transition: opacity 0.2s">{{ __('ui.enter') }}</div>

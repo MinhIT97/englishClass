@@ -20,6 +20,14 @@ class PracticeController extends Controller
 
     public function showDrill(string $skill)
     {
+        if ($skill === 'writing') {
+            return redirect()->route('student.writing.index');
+        }
+
+        if ($skill === 'speaking') {
+            return redirect()->route('student.speaking.index');
+        }
+
         $question = $this->practiceSessionService->loadDrill($skill);
 
         if (!$question) {

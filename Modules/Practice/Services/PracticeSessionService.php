@@ -8,6 +8,7 @@ use Modules\Gamification\Services\GamificationService;
 use Modules\Practice\Models\UserAnswer;
 use Modules\Question\Models\Question;
 use Modules\Speaking\Services\AiSpeakingService;
+use Modules\Writing\Services\WritingGraderService;
 
 class PracticeSessionService
 {
@@ -15,6 +16,7 @@ class PracticeSessionService
         private readonly GamificationService $gamificationService,
         private readonly AiSpeakingService $speakingService,
         private readonly VoiceService $voiceService,
+        private readonly WritingGraderService $writingGraderService,
     ) {
     }
 
@@ -39,6 +41,11 @@ class PracticeSessionService
     public function submitAnswer(User $user, int $questionId, string $studentAnswer): array
     {
         $question = Question::query()->findOrFail($questionId);
+
+        if ($question->skill === 'writing') {
+            return $this->submitWritingAnswer($user, $question, $studentAnswer);
+        }
+
         $correctAnswer = (string) ($question->content['answer'] ?? '');
         $isCorrect = strcasecmp(trim($studentAnswer), trim($correctAnswer)) === 0;
         $points = $isCorrect ? 10 : 2;
@@ -58,6 +65,55 @@ class PracticeSessionService
             'correct_answer' => $correctAnswer,
             'points_earned' => $points,
             'feedback' => $question->content['explanation'] ?? ($isCorrect ? 'Well done!' : 'Keep practicing!'),
+        ];
+    }
+
+    private function submitWritingAnswer(User $user, Question $question, string $essayContent): array
+    {
+        $taskType = in_array($question->type, ['task_1', 'task_2'], true) ? $question->type : 'task_2';
+        $attempt = $this->writingGraderService->gradeEssay($user->id, $essayContent, $taskType);
+
+        if (!$attempt) {
+            return [
+                'is_correct' => false,
+                'correct_answer' => 'AI grading is temporarily unavailable.',
+                'points_earned' => 0,
+                'feedback' => 'We could not score your writing just now. Please try again in a moment.',
+            ];
+        }
+
+        $bandScore = (float) ($attempt->band_score ?? 0);
+        $isCorrect = $bandScore >= 6.0;
+        $points = max(4, (int) round($bandScore * 2));
+
+        UserAnswer::query()->create([
+            'user_id' => $user->id,
+            'question_id' => $question->id,
+            'student_answer' => $essayContent,
+            'is_correct' => $isCorrect,
+            'points_earned' => $points,
+        ]);
+
+        $this->gamificationService->awardPoints($user, $points);
+
+        $feedbackParts = [];
+        foreach ((array) ($attempt->feedback ?? []) as $label => $text) {
+            if (is_string($text) && trim($text) !== '') {
+                $feedbackParts[] = '<strong>' . ucfirst(str_replace('_', ' ', $label)) . ':</strong> ' . e($text);
+            }
+        }
+
+        $feedback = '<strong>Estimated Band:</strong> ' . number_format($bandScore, 1);
+
+        if ($feedbackParts !== []) {
+            $feedback .= '<br><br>' . implode('<br><br>', $feedbackParts);
+        }
+
+        return [
+            'is_correct' => $isCorrect,
+            'correct_answer' => 'Your essay has been graded by AI.',
+            'points_earned' => $points,
+            'feedback' => $feedback,
         ];
     }
 

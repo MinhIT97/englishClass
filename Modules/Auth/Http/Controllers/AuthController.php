@@ -8,6 +8,7 @@ use Modules\Auth\Http\Requests\LoginRequest;
 use Modules\Auth\Http\Resources\UserResource;
 use Modules\Auth\Services\AuthService;
 use App\Services\DashboardService;
+use App\Services\PerformanceAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,12 +19,19 @@ class AuthController extends Controller
 {
     protected $authService;
     protected DashboardService $dashboardService;
+    protected PerformanceAnalyticsService $performanceAnalyticsService;
     protected GamificationService $gamificationService;
 
-    public function __construct(AuthService $authService, DashboardService $dashboardService, GamificationService $gamificationService)
+    public function __construct(
+        AuthService $authService,
+        DashboardService $dashboardService,
+        PerformanceAnalyticsService $performanceAnalyticsService,
+        GamificationService $gamificationService
+    )
     {
         $this->authService = $authService;
         $this->dashboardService = $dashboardService;
+        $this->performanceAnalyticsService = $performanceAnalyticsService;
         $this->gamificationService = $gamificationService;
     }
 
@@ -44,14 +52,20 @@ class AuthController extends Controller
     public function studentDashboard()
     {
         $user = auth()->user();
-        
+
         $levelData = $this->gamificationService->getLevelData($user);
-        $performance = $this->dashboardService->studentPerformance($user->id);
+
+        $performance = $this->performanceAnalyticsService->studentPerformance($user->id);
 
         return view('auth::student.dashboard', [
             'levelData' => $levelData,
             'accuracy' => $performance['accuracy'],
+            'totalAnswers' => $performance['total_answers'],
+            'correctAnswers' => $performance['correct_answers'],
+            'incorrectAnswers' => $performance['incorrect_answers'],
             'skillStats' => $performance['skill_stats'],
+            'skillAttempts' => $performance['skill_attempts'],
+            'skillCorrectCounts' => $performance['skill_correct_counts'],
         ]);
     }
 
@@ -67,7 +81,7 @@ class AuthController extends Controller
     {
         try {
             $data = $this->authService->login($request->validated());
-            
+
             // Web Session Login
             Auth::login($data['user'], $request->boolean('remember'));
 
