@@ -47,7 +47,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             \Modules\Question\database\seeders\SampleQuestionSeeder::class,
-            \Modules\IeltsSet\Database\Seeders\IeltsSetDatabaseSeeder::class,
+            \Modules\IeltsSet\database\seeders\IeltsSetDatabaseSeeder::class,
         ]);
     }
 }

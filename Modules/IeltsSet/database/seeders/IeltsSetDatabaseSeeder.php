@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\IeltsSet\Database\Seeders;
+namespace Modules\IeltsSet\database\seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
