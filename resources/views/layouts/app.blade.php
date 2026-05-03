@@ -145,6 +145,9 @@
                     <a href="/admin/questions" class="nav-item {{ request()->is('admin/questions') ? 'active' : '' }}">
                         <span class="nav-icon">📝</span> {{ __('ui.question_bank') }}
                     </a>
+                    <a href="{{ route('admin.sets.index') }}" class="nav-item {{ request()->is('admin/sets*') ? 'active' : '' }}">
+                        <span class="nav-icon">S</span> IELTS Sets
+                    </a>
                     <a href="/classroom" class="nav-item {{ request()->is('classroom*') ? 'active' : '' }}">
                         <span class="nav-icon">🏫</span> {{ __('ui.classrooms') }}
                     </a>
