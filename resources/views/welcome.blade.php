@@ -4,6 +4,23 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('welcome.title') }}</title>
+    <meta name="description" content="Chinh phục IELTS cùng Trí tuệ Nhân tạo. Nền tảng luyện thi IELTS thông minh, chấm bài Writing tức thì, luyện Speaking 24/7 và hệ thống đề thi thử sát thực tế.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url('/') }}">
+    <meta property="og:title" content="{{ __('welcome.title') }}">
+    <meta property="og:description" content="Luyện thi IELTS đột phá với AI! Chấm bài Writing, luyện Speaking 24/7 và hệ thống đề thi thử sát thực tế. Nâng band điểm ngay hôm nay!">
+    <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ asset('images/favicon_io/favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/favicon_io/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon_io/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/favicon_io/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ asset('images/favicon_io/site.webmanifest') }}">
+
+
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -151,7 +168,7 @@
             </div>
             <div class="relative flex justify-center mt-8 md:mt-0">
                 <div class="relative z-10 floating">
-                    <img src="{{ asset('images/hero_student.png') }}" alt="IELTS AI Student" class="w-full max-w-[550px] rounded-[2.5rem] shadow-2xl">
+                    <img src="{{ asset('images/hero_student.png') }}" alt="IELTS AI Preparation Student" class="w-full max-w-[550px] rounded-[2.5rem] shadow-2xl" fetchpriority="high">
                     <div class="hidden sm:block absolute -bottom-6 -left-6 bg-[#030712]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 text-2xl">✓</div>

@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="user-id" content="{{ auth()->id() }}">
-    
+
     <!-- Reverb Config -->
     <meta name="reverb-key" content="{{ config('broadcasting.connections.reverb.key') }}">
     <meta name="reverb-host" content="{{ config('broadcasting.connections.reverb.options.host') == 'reverb' ? '' : config('broadcasting.connections.reverb.options.host') }}">
@@ -13,7 +14,69 @@
     <meta name="reverb-scheme" content="{{ config('broadcasting.connections.reverb.options.scheme') }}">
     {{ $head ?? '' }}
 
-    <title>{{ config('app.name', 'IELTS Mastery') }}</title>
+    <title>{{ $title ?? config('app.name', 'IELTS Mastery') }}</title>
+    <meta name="description" content="{{ $meta_description ?? 'Nền tảng luyện thi IELTS thông minh với AI. Chấm bài Writing, luyện Speaking 24/7 và hệ thống đề thi sát thực tế.' }}">
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="{{ $title ?? config('app.name', 'IELTS Mastery') }}">
+    <meta property="og:description" content="{{ $meta_description ?? 'Nền tảng luyện thi IELTS thông minh với AI. Chấm bài Writing, luyện Speaking 24/7 và hệ thống đề thi sát thực tế.' }}">
+    <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ url()->current() }}">
+    <meta property="twitter:title" content="{{ $title ?? config('app.name', 'IELTS Mastery') }}">
+    <meta property="twitter:description" content="{{ $meta_description ?? 'Nền tảng luyện thi IELTS thông minh với AI. Chấm bài Writing, luyện Speaking 24/7 và hệ thống đề thi sát thực tế.' }}">
+    <meta property="twitter:image" content="{{ asset('images/og-image.png') }}">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ asset('images/favicon_io/favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/favicon_io/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon_io/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/favicon_io/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ asset('images/favicon_io/site.webmanifest') }}">
+
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "Organization",
+            "name": "IELTS AI",
+            "url": "{{ url('/') }}",
+            "logo": "{{ asset('images/logo.png') }}",
+            "sameAs": [
+                "https://facebook.com/ieltsai",
+                "https://twitter.com/ieltsai"
+            ]
+        }
+    </script>
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "WebSite",
+            "url": "{{ url('/') }}",
+            "potentialAction": {
+                "@@type": "SearchAction",
+                "target": "{{ url('/') }}/search?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+            }
+        }
+    </script>
+
+
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HNJ2GMR1T8"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-HNJ2GMR1T8');
+    </script>
+
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,6 +86,7 @@
     <!-- Styles & Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
+
 <body>
     <!-- Background Orbs -->
     <div class="orb orb-1"></div>
@@ -37,8 +101,8 @@
                     <h2>IELTS <span class="text-primary-glow">AI</span></h2>
                     <div class="logo-glow"></div>
                 </div>
-                
-                <!-- Quick User Stats (Reference Style) -->
+
+                <!-- Quick User Stats -->
                 <div class="sidebar-user-stats animate-fade-in" style="animation-delay: 0.1s">
                     <div class="stat-card glass">
                         <div class="stat-label">{{ __('ui.welcome_back') }},</div>
@@ -50,7 +114,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <nav class="sidebar-nav">
                 @if(auth()->user()->role === 'admin')
                     <a href="/admin/dashboard" class="nav-item {{ request()->is('admin/dashboard') ? 'active' : '' }}">
@@ -97,7 +161,7 @@
                         <span class="nav-icon">📚</span> {{ __('ui.courses') }}
                     </a>
                 @endif
-                
+
                 <a href="/settings" class="nav-item {{ request()->is('settings') ? 'active' : '' }}">
                     <span class="nav-icon">⚙️</span> {{ __('ui.settings') }}
                 </a>
@@ -116,7 +180,7 @@
                     @endif
                 </div>
             </nav>
-            
+
             <div class="sidebar-footer">
                 <form method="POST" action="/logout">
                     @csrf
@@ -133,7 +197,6 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-nav">
-                <!-- Hamburger (mobile only) -->
                 <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu">☰</button>
                 <div style="display: flex; align-items: center; gap: 1.5rem">
                     <!-- Language Switcher -->
@@ -164,7 +227,6 @@
                                 <button id="mark-read-btn" style="background: none; border: none; color: var(--primary); font-size: 0.75rem; cursor: pointer">Mark all as read</button>
                             </div>
                             <div class="notification-list" id="notification-list">
-                                <!-- Notifications will be injected here -->
                                 <div style="padding: 2rem; text-align: center; color: var(--text-muted)">
                                     No new notifications
                                 </div>
@@ -181,7 +243,7 @@
                     </div>
                 </div>
             </header>
-            
+
             <div class="content-body">
                 @if(session('success'))
                     <div class="glass-card" style="padding: 1rem; margin-bottom: 1.5rem; border-color: #10b981; color: #10b981">
@@ -228,269 +290,108 @@
             <div class="chat-input-container">
                 <input type="text" class="chat-input" placeholder="{{ __('ui.chat_placeholder') }}" id="chat-input">
                 <button class="chat-send" id="chat-send">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
                 </button>
             </div>
         </div>
 
-    <!-- Theme Toggle & Hamburger JS -->
-    <script>
-        (function() {
-            // Theme Toggle Logic
-            const themeToggle = document.getElementById('theme-toggle');
-            const body = document.body;
-            
-            // Check for saved theme
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'light') {
-                body.classList.add('light-mode');
-                themeToggle.innerText = '☀️';
-            }
+        <script>
+            (function() {
+                const themeToggle = document.getElementById('theme-toggle');
+                const body = document.body;
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme === 'light') {
+                    body.classList.add('light-mode');
+                    themeToggle.innerText = '☀️';
+                }
 
-            themeToggle.addEventListener('click', () => {
-                const isLight = body.classList.toggle('light-mode');
-                localStorage.setItem('theme', isLight ? 'light' : 'dark');
-                themeToggle.innerText = isLight ? '☀️' : '🌙';
-            });
-
-            // Hamburger Menu Logic
-            const hamburger = document.getElementById('hamburger-btn');
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-
-            function openSidebar() {
-                sidebar.classList.add('mobile-open');
-                overlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-
-            function closeSidebar() {
-                sidebar.classList.remove('mobile-open');
-                overlay.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-
-            if (hamburger) hamburger.addEventListener('click', openSidebar);
-            if (overlay) overlay.addEventListener('click', closeSidebar);
-
-            // Close sidebar on nav-item click (mobile)
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    if (window.innerWidth <= 768) closeSidebar();
+                themeToggle.addEventListener('click', () => {
+                    const isLight = body.classList.toggle('light-mode');
+                    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+                    themeToggle.innerText = isLight ? '☀️' : '🌙';
                 });
-            });
 
-            // Chat Widget Logic
-            const chatTrigger = document.getElementById('chat-trigger');
-            const chatPanel = document.getElementById('chat-panel');
-            const chatClose = document.getElementById('chat-close');
-            const chatInput = document.getElementById('chat-input');
-            const chatSend = document.getElementById('chat-send');
-            const chatMessages = document.getElementById('chat-messages');
+                const hamburger = document.getElementById('hamburger-btn');
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.getElementById('sidebar-overlay');
 
-            chatTrigger.addEventListener('click', () => {
-                chatPanel.classList.toggle('active');
-            });
-
-            chatClose.addEventListener('click', () => {
-                chatPanel.classList.remove('active');
-            });
-
-            /**
-             * API Service Layer
-             */
-            const ChatService = {
-                async sendMessage(message, action = null, history = []) {
-                    try {
-                        const response = await fetch('/ai/chat', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({ message, action, history })
-                        });
-                        
-                        if (!response.ok) throw new Error('API Error');
-                        return await response.json();
-                    } catch (error) {
-                        console.error('ChatService Error:', error);
-                        // Fallback for demo
-                        return this.getMockResponse(message, action);
-                    }
-                },
-
-                getMockResponse(message, action) {
-                    return new Promise(resolve => {
-                        setTimeout(() => {
-                            let response = {
-                                message: "",
-                                suggestions: [
-                                    { "type": "fix", "label": "{{ __('ui.ai_label_correction') }}" },
-                                    { "type": "explain", "label": "{{ __('ui.ai_label_explanation') }}" },
-                                    { "type": "natural", "label": "{{ __('ui.ai_label_naturalness') }}" }
-                                ],
-                                next_question: ""
-                            };
-
-                            const lowerMsg = message.toLowerCase();
-
-                            if (action === 'fix') {
-                                response.message = lowerMsg.replace(/i is/g, 'I am').replace(/she have/g, 'she has').replace(/he go/g, 'he goes');
-                                if (response.message === lowerMsg) response.message = "Câu của bạn có vẻ đã chuẩn ngữ pháp rồi!";
-                                response.next_question = "Bạn có muốn tôi giải thích cấu trúc này không?";
-                            } else if (action === 'explain') {
-                                if (lowerMsg.includes('is')) {
-                                    response.message = "Trong tiếng Anh, động từ 'to be' phải chia theo chủ ngữ. 'I' đi với 'am', 'He/She/It' đi với 'is'.";
-                                } else {
-                                    response.message = "Đây là một cấu trúc thông dụng trong giao tiếp, tập trung vào việc sử dụng đúng thì và hòa hợp chủ-vị.";
-                                }
-                                response.next_question = "Bạn đã nắm rõ phần này chưa?";
-                            } else if (action === 'natural') {
-                                response.message = "Câu này đạt khoảng 8/10 điểm về độ tự nhiên. Người bản xứ thường sẽ nói ngắn gọn hơn một chút.";
-                                response.next_question = "Bạn muốn học cách nói tự nhiên hơn không?";
-                            } else {
-                                // Initial Message
-                                if (lowerMsg.includes('hello') || lowerMsg.includes('hi')) {
-                                    response.message = "Chào bạn! Rất vui được hỗ trợ bạn luyện tập tiếng Anh hôm nay.";
-                                } else {
-                                    response.message = `Tôi đã nhận được tin nhắn: "${message}". Bạn muốn tôi giúp gì với câu này?`;
-                                }
-                                response.next_question = "Hãy thử đặt một câu hỏi về ngữ pháp nhé!";
-                            }
-
-                            // Filter out current action from suggestions
-                            if (action) {
-                                response.suggestions = response.suggestions.filter(s => s.type !== action);
-                            }
-
-                            resolve(response);
-                        }, 1200);
-                    });
+                function openSidebar() {
+                    sidebar.classList.add('mobile-open');
+                    overlay.classList.add('active');
+                    document.body.style.overflow = 'hidden';
                 }
-            };
 
-            /**
-             * UI Controller Layer
-             */
-            const ChatUI = {
-                container: document.getElementById('chat-messages'),
-                input: document.getElementById('chat-input'),
-                lastResponseWrapper: null,
-                typingIndicator: null,
-                history: [], // Track last few messages for context
+                function closeSidebar() {
+                    sidebar.classList.remove('mobile-open');
+                    overlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
 
-                init() {
-                    document.getElementById('chat-send').addEventListener('click', () => this.handleUserMessage());
-                    this.input.addEventListener('keypress', (e) => e.key === 'Enter' && this.handleUserMessage());
-                    
-                    document.querySelectorAll('.suggestion-pill').forEach(pill => {
-                        pill.addEventListener('click', () => {
-                            this.input.value = pill.textContent;
-                            this.handleUserMessage();
-                        });
+                if (hamburger) hamburger.addEventListener('click', openSidebar);
+                if (overlay) overlay.addEventListener('click', closeSidebar);
+
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        if (window.innerWidth <= 768) closeSidebar();
                     });
-                },
+                });
 
-                async handleUserMessage(action = null, originalText = null) {
-                    const message = action ? originalText : this.input.value.trim();
-                    if (!message && !action) return;
+                const chatTrigger = document.getElementById('chat-trigger');
+                const chatPanel = document.getElementById('chat-panel');
+                const chatClose = document.getElementById('chat-close');
+                const chatInput = document.getElementById('chat-input');
+                const chatMessages = document.getElementById('chat-messages');
 
-                    if (!action) {
-                        this.appendUserMessage(message);
+                chatTrigger.addEventListener('click', () => chatPanel.classList.toggle('active'));
+                chatClose.addEventListener('click', () => chatPanel.classList.remove('active'));
+
+                const ChatService = {
+                    async sendMessage(message, action = null, history = []) {
+                        try {
+                            const response = await fetch('/ai/chat', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({ message, action, history })
+                            });
+                            if (!response.ok) throw new Error('API Error');
+                            return await response.json();
+                        } catch (error) {
+                            return { message: "I am having trouble connecting to the AI. Please try again later." };
+                        }
+                    }
+                };
+
+                const ChatUI = {
+                    container: document.getElementById('chat-messages'),
+                    input: document.getElementById('chat-input'),
+                    init() {
+                        document.getElementById('chat-send').addEventListener('click', () => this.handleUserMessage());
+                        this.input.addEventListener('keypress', (e) => e.key === 'Enter' && this.handleUserMessage());
+                    },
+                    async handleUserMessage() {
+                        const text = this.input.value.trim();
+                        if (!text) return;
+                        this.appendMessage(text, 'user');
                         this.input.value = '';
-                        this.lastResponseWrapper = null;
-                        this.history.push({ role: 'user', content: message });
+                        const data = await ChatService.sendMessage(text);
+                        this.appendMessage(data.message, 'ai');
+                    },
+                    appendMessage(text, type) {
+                        const bubble = document.createElement('div');
+                        bubble.className = `chat-bubble ${type}`;
+                        bubble.textContent = text;
+                        this.container.appendChild(bubble);
+                        this.container.scrollTop = this.container.scrollHeight;
                     }
-
-                    this.showTypingIndicator();
-                    
-                    // Send history along with current message and action
-                    const data = await ChatService.sendMessage(message, action, this.history.slice(-10));
-                    
-                    this.hideTypingIndicator();
-                    this.renderAIResponse(data, message, action !== null);
-                    
-                    if (!action) {
-                        this.history.push({ role: 'assistant', content: data.message });
-                    }
-                },
-
-                appendUserMessage(text) {
-                    const bubble = document.createElement('div');
-                    bubble.className = 'chat-bubble user';
-                    bubble.textContent = text;
-                    this.container.appendChild(bubble);
-                    this.scrollToBottom();
-                },
-
-                showTypingIndicator() {
-                    this.hideTypingIndicator(); // Clear existing
-                    this.typingIndicator = document.createElement('div');
-                    this.typingIndicator.className = 'typing-indicator';
-                    this.typingIndicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
-                    this.container.appendChild(this.typingIndicator);
-                    this.scrollToBottom();
-                },
-
-                hideTypingIndicator() {
-                    if (this.typingIndicator) {
-                        this.typingIndicator.remove();
-                        this.typingIndicator = null;
-                    }
-                },
-
-                renderAIResponse(data, originalText, isUpdate) {
-                    let wrapper;
-                    if (isUpdate && this.lastResponseWrapper) {
-                        wrapper = this.lastResponseWrapper;
-                        wrapper.innerHTML = '';
-                    } else {
-                        wrapper = document.createElement('div');
-                        wrapper.className = 'ai-response-wrapper';
-                        this.container.appendChild(wrapper);
-                        this.lastResponseWrapper = wrapper;
-                    }
-
-                    // Content
-                    const bubble = document.createElement('div');
-                    bubble.className = 'chat-bubble ai';
-                    bubble.textContent = data.message;
-                    wrapper.appendChild(bubble);
-
-                    // Suggestions
-                    if (data.suggestions) {
-                        const suggestionsDiv = document.createElement('div');
-                        suggestionsDiv.className = 'chat-suggestions';
-                        data.suggestions.forEach(s => {
-                            const btn = document.createElement('button');
-                            btn.className = 'suggestion-pill';
-                            btn.textContent = s.label;
-                            btn.onclick = () => this.handleUserMessage(s.type, originalText);
-                            suggestionsDiv.appendChild(btn);
-                        });
-                        wrapper.appendChild(suggestionsDiv);
-                    }
-
-                    // Next Question
-                    if (data.next_question) {
-                        const nextQ = document.createElement('div');
-                        nextQ.className = 'chat-bubble ai';
-                        nextQ.style.cssText = 'font-style:italic; background:rgba(99,102,241,0.1)';
-                        nextQ.textContent = '➜ ' + data.next_question;
-                        wrapper.appendChild(nextQ);
-                    }
-
-                    this.scrollToBottom();
-                },
-
-                scrollToBottom() {
-                    this.container.scrollTop = this.container.scrollHeight;
-                }
-            };
-
-            ChatUI.init();
-        })();
-    </script>
+                };
+                ChatUI.init();
+            })();
+        </script>
 </body>
 </html>
