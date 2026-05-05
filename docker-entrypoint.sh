@@ -8,6 +8,15 @@ mkdir -p storage/app/public storage/framework/{cache/data,sessions,views} storag
 # Không dùng chown -R ở đây để tránh chậm startup, Dockerfile đã chown sẵn rồi.
 
 # -------------------------------------------------------
+# 1b. Xóa bootstrap cache sinh từ môi trường dev
+# Bind mount source code có thể mang theo packages/services cache
+# tham chiếu tới dev providers không tồn tại trong image --no-dev.
+# -------------------------------------------------------
+rm -f \
+    /app/bootstrap/cache/packages.php \
+    /app/bootstrap/cache/services.php
+
+# -------------------------------------------------------
 # 2. Chỉ chạy các tác vụ nặng cho container App
 # -------------------------------------------------------
 if [ "$CONTAINER_ROLE" = "app" ]; then
