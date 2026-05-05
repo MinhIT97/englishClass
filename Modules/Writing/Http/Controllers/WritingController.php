@@ -3,9 +3,9 @@
 namespace Modules\Writing\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Modules\Writing\Http\Requests\SubmitWritingRequest;
 use Modules\Writing\Services\WritingGraderService;
 use Modules\Writing\Models\WritingAttempt;
-use Illuminate\Http\Request;
 
 class WritingController extends Controller
 {
@@ -21,24 +21,19 @@ class WritingController extends Controller
      */
     public function index()
     {
-        $attempts = WritingAttempt::where('user_id', auth()->id())->latest()->paginate(10);
+        $attempts = WritingAttempt::query()->forUser(auth()->id())->latest()->paginate(10);
         return view('writing::index', compact('attempts'));
     }
 
     /**
      * Submit essay for grading.
      */
-    public function submit(Request $request)
+    public function submit(SubmitWritingRequest $request)
     {
-        $request->validate([
-            'essay_content' => 'required|string|min:50',
-            'task_type' => 'required|in:task_1,task_2'
-        ]);
-
         $attempt = $this->graderService->gradeEssay(
             auth()->id(),
-            $request->get('essay_content'),
-            $request->get('task_type')
+            $request->string('essay_content')->toString(),
+            $request->string('task_type')->toString()
         );
 
         if (!$attempt) {
@@ -53,7 +48,7 @@ class WritingController extends Controller
      */
     public function show($id)
     {
-        $attempt = WritingAttempt::where('user_id', auth()->id())->findOrFail($id);
+        $attempt = WritingAttempt::query()->forUser(auth()->id())->findOrFail($id);
         return view('writing::show', compact('attempt'));
     }
 }

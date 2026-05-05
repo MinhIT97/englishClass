@@ -40,6 +40,15 @@ class UserRepositoryEloquent extends BaseRepository implements UserRepositoryInt
     }
 
     /**
+     * Get all users with admin role.
+     */
+    public function getAdmins()
+    {
+        return $this->findWhere(['role' => 'admin']);
+    }
+
+
+    /**
      * Boot up the repository, pushing criteria
      */
     public function boot()

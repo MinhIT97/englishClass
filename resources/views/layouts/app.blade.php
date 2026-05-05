@@ -1,13 +1,83 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- VERSION_FEEDBACK_FIX_FORCE_DARK -->
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="user-id" content="{{ auth()->id() }}">
+
+    <!-- Reverb Config -->
+    <meta name="reverb-key" content="{{ config('broadcasting.connections.reverb.key') }}">
+    <meta name="reverb-host" content="{{ config('broadcasting.connections.reverb.options.host') == 'reverb' ? '' : config('broadcasting.connections.reverb.options.host') }}">
+    <meta name="reverb-port" content="{{ config('broadcasting.connections.reverb.options.port') }}">
+    <meta name="reverb-scheme" content="{{ config('broadcasting.connections.reverb.options.scheme') }}">
     {{ $head ?? '' }}
 
-    <title>{{ config('app.name', 'IELTS Mastery') }}</title>
+    <title>{{ $title ?? config('app.name', 'IELTS Mastery') }}</title>
+    <meta name="description" content="{{ $meta_description ?? 'Nền tảng luyện thi IELTS thông minh với AI. Chấm bài Writing, luyện Speaking 24/7 và hệ thống đề thi sát thực tế.' }}">
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="{{ $title ?? config('app.name', 'IELTS Mastery') }}">
+    <meta property="og:description" content="{{ $meta_description ?? 'Nền tảng luyện thi IELTS thông minh với AI. Chấm bài Writing, luyện Speaking 24/7 và hệ thống đề thi sát thực tế.' }}">
+    <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ url()->current() }}">
+    <meta property="twitter:title" content="{{ $title ?? config('app.name', 'IELTS Mastery') }}">
+    <meta property="twitter:description" content="{{ $meta_description ?? 'Nền tảng luyện thi IELTS thông minh với AI. Chấm bài Writing, luyện Speaking 24/7 và hệ thống đề thi sát thực tế.' }}">
+    <meta property="twitter:image" content="{{ asset('images/og-image.png') }}">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ asset('images/favicon_io/favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/favicon_io/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon_io/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/favicon_io/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ asset('images/favicon_io/site.webmanifest') }}">
+
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "Organization",
+            "name": "IELTS AI",
+            "url": "{{ url('/') }}",
+            "logo": "{{ asset('images/logo.png') }}",
+            "sameAs": [
+                "https://facebook.com/ieltsai",
+                "https://twitter.com/ieltsai"
+            ]
+        }
+    </script>
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "WebSite",
+            "url": "{{ url('/') }}",
+            "potentialAction": {
+                "@@type": "SearchAction",
+                "target": "{{ url('/') }}/search?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+            }
+        }
+    </script>
+
+
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HNJ2GMR1T8"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-HNJ2GMR1T8');
+    </script>
+
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,331 +86,117 @@
 
     <!-- Styles & Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+
+    <!-- Inline Fix for Server-side CSS Cache/Build Issues -->
     <style>
-        .layout-wrapper {
-            display: flex;
-            min-height: 100vh;
+        .feedback-select, .feedback-input, .feedback-textarea {
+            background: rgba(15, 23, 42, 0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
         }
-
-        /* ===== Sidebar ===== */
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--glass-border);
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100vh;
-            z-index: 200;
-            transition: transform 0.3s ease;
-            overflow-y: auto;
+        .feedback-select option {
+            background: #0f172a !important;
+            color: white !important;
         }
-
-        .sidebar-header {
-            padding: 2rem;
-            text-align: center;
-            flex-shrink: 0;
-        }
-
-        .sidebar-header h2 {
-            font-size: 1.5rem;
-            color: var(--text-main);
-        }
-
-        .sidebar-nav {
-            flex: 1;
-            padding: 1rem;
-            overflow-y: auto;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            padding: 0.875rem 1.25rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            border-radius: var(--radius);
-            margin-bottom: 0.5rem;
-            transition: all 0.2s ease;
-        }
-
-        .nav-item:hover, .nav-item.active {
-            background: var(--glass);
-            color: var(--primary);
-        }
-
-        .nav-icon {
-            margin-right: 1rem;
-            width: 20px;
-            text-align: center;
-        }
-
-        .sidebar-footer {
-            padding: 1.5rem;
-            border-top: 1px solid var(--glass-border);
-            flex-shrink: 0;
-        }
-
-        /* ===== Mobile overlay backdrop ===== */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            z-index: 150;
-            backdrop-filter: blur(4px);
-        }
-        .sidebar-overlay.active { display: block; }
-
-        /* ===== Hamburger Button ===== */
-        .hamburger-btn {
-            display: none;
-            background: none;
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            border-radius: 8px;
-            padding: 0.4rem 0.6rem;
-            font-size: 1.2rem;
-            cursor: pointer;
-            margin-right: auto;
-            transition: background 0.2s;
-        }
-        .hamburger-btn:hover { background: var(--glass); }
-
-        /* ===== Main Content ===== */
-        .main-content {
-            flex: 1;
-            margin-left: var(--sidebar-width);
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
-
-        .top-nav {
-            height: var(--header-height);
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding: 0 1.5rem;
-            position: sticky;
-            top: 0;
-            z-index: 90;
-            gap: 1rem;
-        }
-
-        .user-pill {
-            display: flex;
-            align-items: center;
-            padding: 0.5rem 1rem;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 50px;
-            font-size: 0.875rem;
-            color: var(--text-main);
-        }
-
-        .content-body {
-            padding: 2.5rem;
-            max-width: 1200px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        /* ===== RESPONSIVE BREAKPOINTS ===== */
-        @media (max-width: 1024px) {
-            :root { --sidebar-width: 240px; }
-            .content-body { padding: 2rem 1.5rem; }
-        }
-
-        @media (max-width: 768px) {
-            /* Sidebar hidden off-screen by default on mobile */
-            .sidebar {
-                transform: translateX(-100%);
-                width: 280px;
-            }
-            .sidebar.mobile-open {
-                transform: translateX(0);
-            }
-            /* Main content takes full width */
-            .main-content {
-                margin-left: 0;
-            }
-            /* Show hamburger */
-            .hamburger-btn {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            /* Content padding adjustments */
-            .content-body {
-                padding: 1.25rem 1rem;
-            }
-            /* Top nav: compact */
-            .top-nav {
-                padding: 0 1rem;
-                justify-content: flex-start;
-            }
-            /* User pill: collapse name on mobile */
-            .user-pill .user-name { display: none; }
-            /* Glass card responsive */
-            .glass-card { padding: 1.25rem; }
-            /* Notification dropdown full width */
-            .notification-dropdown {
-                width: calc(100vw - 2rem);
-                right: auto;
-                left: 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            h1 { font-size: 1.5rem !important; }
-            h2 { font-size: 1.25rem !important; }
-        }
-        
-        .badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 50px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .badge-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
-        .badge-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-
-        /* Notifications */
-        .notification-dropdown {
-            position: absolute;
-            top: calc(var(--header-height) - 10px);
-            right: 0;
-            width: 360px;
-            max-height: 480px;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 1000;
-        }
-
-        .notification-dropdown.active {
-            display: flex;
-        }
-
-        .notification-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .notification-list {
-            overflow-y: auto;
-            flex: 1;
-        }
-
-        .notification-item {
-            padding: 1rem;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            gap: 1rem;
-            transition: background 0.2s;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .notification-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .notification-item.unread {
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        #notification-badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            background: #ef4444;
-            color: white;
-            font-size: 0.65rem;
-            padding: 0 4px;
-            border-radius: 10px;
-            min-width: 16px;
-            height: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #0f172a;
-            display: none;
+        .feedback-input:-webkit-autofill {
+            -webkit-text-fill-color: white !important;
+            -webkit-box-shadow: 0 0 0px 1000px rgba(15, 23, 42, 0.9) inset !important;
         }
     </style>
 </head>
+
+
 <body>
+    <!-- Background Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
     <div class="layout-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>IELTS <span style="color: var(--primary)">AI</span></h2>
+                <div class="logo-wrapper">
+                    <h2>IELTS <span class="text-primary-glow">AI</span></h2>
+                    <div class="logo-glow"></div>
+                </div>
+
+                <!-- Quick User Stats -->
+                <div class="sidebar-user-stats animate-fade-in" style="animation-delay: 0.1s">
+                    <div class="stat-card glass">
+                        <div class="stat-label">{{ __('ui.welcome_back') }},</div>
+                        <div class="stat-value">{{ auth()->user()->name }}</div>
+                        <div class="stat-meta">
+                            <span class="meta-item">🔥 {{ __('ui.day_streak', ['days' => auth()->user()->streak ?? 0]) }}</span>
+                            <span class="meta-item">⚡ {{ auth()->user()->xp ?? 0 }} XP</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
+
             <nav class="sidebar-nav">
                 @if(auth()->user()->role === 'admin')
                     <a href="/admin/dashboard" class="nav-item {{ request()->is('admin/dashboard') ? 'active' : '' }}">
-                        <span class="nav-icon">📊</span> Dashboard
+                        <span class="nav-icon">📊</span> {{ __('ui.dashboard') }}
                     </a>
                     <a href="/admin/users" class="nav-item {{ request()->is('admin/users') ? 'active' : '' }}">
-                        <span class="nav-icon">👥</span> Users Approval
+                        <span class="nav-icon">👥</span> {{ __('ui.users_approval') }}
                     </a>
                     <a href="/admin/questions" class="nav-item {{ request()->is('admin/questions') ? 'active' : '' }}">
-                        <span class="nav-icon">📝</span> Question Bank
+                        <span class="nav-icon">📝</span> {{ __('ui.question_bank') }}
+                    </a>
+                    <a href="{{ route('admin.sets.index') }}" class="nav-item {{ request()->is('admin/sets*') ? 'active' : '' }}">
+                        <span class="nav-icon">S</span> IELTS Sets
                     </a>
                     <a href="/classroom" class="nav-item {{ request()->is('classroom*') ? 'active' : '' }}">
-                        <span class="nav-icon">🏫</span> Classrooms
+                        <span class="nav-icon">🏫</span> {{ __('ui.classrooms') }}
                     </a>
                     <a href="/courses" class="nav-item {{ request()->is('courses*') ? 'active' : '' }}">
-                        <span class="nav-icon">📚</span> Courses
+                        <span class="nav-icon">📚</span> {{ __('ui.courses') }}
                     </a>
+                    <a href="{{ route('admin.feedback.index') }}" class="nav-item {{ request()->is('admin/feedback*') ? 'active' : '' }}">
+                        <span class="nav-icon">💬</span> Feedback
+                        @if(isset($pendingFeedbackCount) && $pendingFeedbackCount > 0)
+                            <span class="badge" style="background: var(--primary); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: auto; font-weight: 700;">{{ $pendingFeedbackCount }}</span>
+                        @endif
+                    </a>
+
+
                 @else
                     <a href="/student/dashboard" class="nav-item {{ request()->is('student/dashboard') ? 'active' : '' }}">
-                        <span class="nav-icon">🏠</span> Home
+                        <span class="nav-icon">🏠</span> {{ __('ui.dashboard') }}
                     </a>
                     <a href="/classroom" class="nav-item {{ request()->is('classroom*') ? 'active' : '' }}">
-                        <span class="nav-icon">🏫</span> Classrooms
+                        <span class="nav-icon">🏫</span> {{ __('ui.classrooms') }}
                     </a>
                     <a href="/student/practice" class="nav-item {{ request()->is('student/practice') ? 'active' : '' }}">
-                        <span class="nav-icon">⚡</span> Practice Mode
+                        <span class="nav-icon">⚡</span> {{ __('ui.practice') }}
+                    </a>
+                    <a href="/student/sets" class="nav-item {{ request()->is('student/sets*') ? 'active' : '' }}">
+                        <span class="nav-icon">📂</span> IELTS Sets
                     </a>
                     <a href="/student/writing" class="nav-item {{ request()->is('student/writing*') ? 'active' : '' }}">
-                        <span class="nav-icon">✍️</span> Writing AI
+                        <span class="nav-icon">✍️</span> {{ __('ui.writing') }}
                     </a>
                     <a href="/student/speaking" class="nav-item {{ request()->is('student/speaking*') ? 'active' : '' }}">
-                        <span class="nav-icon">🗣️</span> Speaking AI
+                        <span class="nav-icon">🗣️</span> {{ __('ui.speaking') }}
                     </a>
                     <a href="/student/flashcards" class="nav-item {{ request()->is('student/flashcards*') ? 'active' : '' }}">
-                        <span class="nav-icon">🗂️</span> Flashcards
+                        <span class="nav-icon">🗂️</span> {{ __('ui.flashcards') }}
                     </a>
                     <a href="/student/test" class="nav-item {{ request()->is('student/test') ? 'active' : '' }}">
-                        <span class="nav-icon">🏆</span> Mock Tests
+                        <span class="nav-icon">🏆</span> {{ __('ui.mock_tests') }}
                     </a>
                     <a href="/student/leaderboard" class="nav-item {{ request()->is('student/leaderboard') ? 'active' : '' }}">
-                        <span class="nav-icon">🏅</span> Leaderboard
+                        <span class="nav-icon">🏅</span> {{ __('ui.leaderboard') }}
                     </a>
                     <a href="/courses" class="nav-item {{ request()->is('courses*') ? 'active' : '' }}">
-                        <span class="nav-icon">📚</span> Courses
+                        <span class="nav-icon">📚</span> {{ __('ui.courses') }}
                     </a>
                 @endif
-                
+
                 <a href="/settings" class="nav-item {{ request()->is('settings') ? 'active' : '' }}">
-                    <span class="nav-icon">⚙️</span> Settings
+                    <span class="nav-icon">⚙️</span> {{ __('ui.settings') }}
                 </a>
 
                 <div style="margin-top: 2rem; padding: 0 1rem;">
@@ -357,12 +213,15 @@
                     @endif
                 </div>
             </nav>
-            
+
             <div class="sidebar-footer">
-                <form method="POST" action="/logout">
+                <button class="btn btn-outline" id="feedback-trigger" style="border-color: var(--accent); color: var(--accent)">
+                    <span>💬</span> {{ __('ui.feedback_title') }}
+                </button>
+                <form method="POST" action="/logout" style="width: 100%">
                     @csrf
-                    <button class="btn btn-outline" style="width: 100%; border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">
-                        🚪 Logout
+                    <button class="btn btn-outline btn-logout">
+                        <span>🚪</span> {{ __('ui.logout') }}
                     </button>
                 </form>
             </div>
@@ -374,12 +233,26 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-nav">
-                <!-- Hamburger (mobile only) -->
                 <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu">☰</button>
-                <div style="display: flex; align-items: center; gap: 1.5rem">
+                <div class="top-nav-actions">
+                    <!-- Language Switcher -->
+                    <div class="top-nav-lang">
+                        <a href="{{ route('set.locale', 'vi') }}" class="glass top-nav-chip {{ app()->getLocale() === 'vi' ? 'active-lang' : '' }}">
+                            VI
+                        </a>
+                        <a href="{{ route('set.locale', 'en') }}" class="glass top-nav-chip {{ app()->getLocale() === 'en' ? 'active-lang' : '' }}">
+                            EN
+                        </a>
+                    </div>
+
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="glass top-nav-chip top-nav-icon-btn">
+                        🌙
+                    </button>
+
                     <!-- Notification Bell -->
-                    <div style="position: relative" id="notification-wrapper">
-                        <button id="notification-btn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-main); position: relative; display: flex; align-items: center">
+                    <div class="notification-wrapper" id="notification-wrapper">
+                        <button id="notification-btn" class="top-nav-icon-btn notification-btn">
                             🔔
                             <span id="notification-badge">0</span>
                         </button>
@@ -390,7 +263,6 @@
                                 <button id="mark-read-btn" style="background: none; border: none; color: var(--primary); font-size: 0.75rem; cursor: pointer">Mark all as read</button>
                             </div>
                             <div class="notification-list" id="notification-list">
-                                <!-- Notifications will be injected here -->
                                 <div style="padding: 2rem; text-align: center; color: var(--text-muted)">
                                     No new notifications
                                 </div>
@@ -407,7 +279,7 @@
                     </div>
                 </div>
             </header>
-            
+
             <div class="content-body">
                 @if(session('success'))
                     <div class="glass-card" style="padding: 1rem; margin-bottom: 1.5rem; border-color: #10b981; color: #10b981">
@@ -427,38 +299,297 @@
                     </div>
                 @endif
 
-                {{ $slot }}
+        {{ $slot }}
+    </div>
+</main>
+
+<!-- Feedback Modal -->
+<div class="feedback-modal" id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+    <div class="feedback-content glass animate-fade-in" style="padding: 2.5rem; border-radius: 24px;">
+        <button class="feedback-close" id="feedback-close" type="button" aria-label="{{ __('ui.close') }}">×</button>
+
+        <div id="feedback-form-panel">
+            <h3 id="feedback-title" style="margin-bottom: 0.5rem; font-size: 1.5rem">{{ __('ui.feedback_title') }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem">{{ __('ui.feedback_desc') }}</p>
+
+            <form id="feedback-form">
+                <div class="form-group">
+                    <label class="feedback-label">{{ __('ui.feedback_type') }}</label>
+                    <select id="feedback-type" name="feedback_type" required class="feedback-select" style="background: rgba(15, 23, 42, 0.9) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
+                        <option value="" style="background: #0f172a; color: white;">{{ __('ui.feedback_type_placeholder') }}</option>
+                        <option value="bug" style="background: #0f172a; color: white;">{{ __('ui.cat_bug') }}</option>
+                        <option value="ux" style="background: #0f172a; color: white;">{{ __('ui.cat_ux') }}</option>
+                        <option value="feature" style="background: #0f172a; color: white;">{{ __('ui.cat_feature') }}</option>
+                        <option value="other" style="background: #0f172a; color: white;">{{ __('ui.cat_other') }}</option>
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+                    <label class="feedback-label">{{ __('ui.feedback_rating') }}</label>
+                    <div class="rating-grid">
+                        @foreach([1, 2, 3, 4, 5] as $rating)
+                            <label class="rating-pill" data-rating="{{ $rating }}">
+                                <input type="radio" name="rating" value="{{ $rating }}" required style="display: none">
+                                <span>{{ $rating }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="feedback-label">{{ __('ui.feedback_message') }}</label>
+                    <textarea id="feedback-message" name="message" required placeholder="{{ __('ui.feedback_placeholder') }}" class="feedback-textarea" style="background: rgba(15, 23, 42, 0.9) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="feedback-label">{{ __('ui.feedback_email') }}</label>
+                    <input id="feedback-email" type="email" name="email" placeholder="name@example.com" class="feedback-input" style="background: rgba(15, 23, 42, 0.9) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
+                </div>
+
+
+                <p id="feedback-error" style="display: none; color: #ef4444; font-size: 0.8rem; margin-bottom: 1rem;"></p>
+
+                <button type="submit" class="feedback-submit-btn">
+                    🚀 {{ __('ui.submit_feedback') }}
+                </button>
+            </form>
+        </div>
+
+        <div id="feedback-success-panel" style="display: none; text-align: center; padding: 2rem 0;">
+            <div style="font-size: 4rem; margin-bottom: 1.5rem">🎉</div>
+            <h3 style="margin-bottom: 0.5rem">{{ __('ui.feedback_success') }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem">{{ __('ui.feedback_success_desc') }}</p>
+            <button type="button" id="feedback-success-close" class="btn btn-outline" style="min-width: 120px">
+                {{ __('ui.close') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+
+
+        <!-- Floating Chat Widget -->
+        <div class="chat-widget-trigger" id="chat-trigger" title="Hỗ trợ học tập">
+            <span style="font-size: 1.5rem">🤖</span>
+        </div>
+
+        <div class="chat-panel" id="chat-panel">
+            <div class="chat-header">
+                <h3>{{ __('ui.learning_assistant') }}</h3>
+                <button class="chat-close" id="chat-close">×</button>
             </div>
-        </main>
-    <!-- Hamburger Menu JS -->
-    <script>
-        (function() {
-            const hamburger = document.getElementById('hamburger-btn');
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
+            <div class="chat-messages" id="chat-messages">
+                <div class="chat-bubble ai">
+                    {{ __('ui.chat_welcome') }}
+                </div>
+            </div>
+            <div class="chat-suggestions">
+                <button class="suggestion-pill">{{ __('ui.chat_suggestion_1') }}</button>
+                <button class="suggestion-pill">{{ __('ui.chat_suggestion_2') }}</button>
+                <button class="suggestion-pill">{{ __('ui.chat_suggestion_3') }}</button>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" placeholder="{{ __('ui.chat_placeholder') }}" id="chat-input">
+                <button class="chat-send" id="chat-send">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
 
-            function openSidebar() {
-                sidebar.classList.add('mobile-open');
-                overlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
+        <script>
+            (function() {
+                const themeToggle = document.getElementById('theme-toggle');
+                const body = document.body;
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme === 'light') {
+                    body.classList.add('light-mode');
+                    themeToggle.innerText = '☀️';
+                }
 
-            function closeSidebar() {
-                sidebar.classList.remove('mobile-open');
-                overlay.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-
-            if (hamburger) hamburger.addEventListener('click', openSidebar);
-            if (overlay) overlay.addEventListener('click', closeSidebar);
-
-            // Close sidebar on nav-item click (mobile)
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    if (window.innerWidth <= 768) closeSidebar();
+                themeToggle.addEventListener('click', () => {
+                    const isLight = body.classList.toggle('light-mode');
+                    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+                    themeToggle.innerText = isLight ? '☀️' : '🌙';
                 });
-            });
-        })();
-    </script>
-</body>
+
+                const hamburger = document.getElementById('hamburger-btn');
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.getElementById('sidebar-overlay');
+
+                function openSidebar() {
+                    sidebar.classList.add('mobile-open');
+                    overlay.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+
+                function closeSidebar() {
+                    sidebar.classList.remove('mobile-open');
+                    overlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+
+                if (hamburger) hamburger.addEventListener('click', openSidebar);
+                if (overlay) overlay.addEventListener('click', closeSidebar);
+
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        if (window.innerWidth <= 768) closeSidebar();
+                    });
+                });
+
+                const feedbackModal = document.getElementById('feedback-modal');
+                const feedbackTrigger = document.getElementById('feedback-trigger');
+                const feedbackClose = document.getElementById('feedback-close');
+                const feedbackForm = document.getElementById('feedback-form');
+                const feedbackError = document.getElementById('feedback-error');
+                const feedbackFormPanel = document.getElementById('feedback-form-panel');
+                const feedbackSuccessPanel = document.getElementById('feedback-success-panel');
+                const feedbackSuccessClose = document.getElementById('feedback-success-close');
+
+                const closeFeedbackModal = () => {
+                    feedbackModal.classList.remove('active');
+                };
+
+                const openFeedbackModal = () => {
+                    feedbackModal.classList.add('active');
+                    feedbackFormPanel.style.display = 'block';
+                    feedbackSuccessPanel.style.display = 'none';
+                    feedbackError.style.display = 'none';
+                    feedbackError.textContent = '';
+                };
+
+                if (feedbackTrigger) {
+                    feedbackTrigger.addEventListener('click', openFeedbackModal);
+                }
+                if (feedbackClose) {
+                    feedbackClose.addEventListener('click', closeFeedbackModal);
+                }
+                if (feedbackSuccessClose) {
+                    feedbackSuccessClose.addEventListener('click', closeFeedbackModal);
+                }
+
+                // Rating Logic - Improved
+                document.querySelectorAll('.rating-pill').forEach(pill => {
+                    pill.addEventListener('click', () => {
+                        document.querySelectorAll('.rating-pill').forEach(p => p.classList.remove('active'));
+                        pill.classList.add('active');
+                        pill.querySelector('input').checked = true;
+                    });
+                });
+
+                // Submission Mock
+                if (feedbackForm) {
+                    feedbackForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+                        
+                        feedbackError.style.display = 'none';
+                        feedbackError.textContent = '';
+
+                        submitBtn.disabled = true;
+                        const defaultLabel = submitBtn.innerHTML;
+                        submitBtn.innerHTML = '<div class="mini-spinner"></div>';
+
+
+                        try {
+                            const response = await fetch('{{ route('feedback.store') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify(Object.fromEntries(new FormData(feedbackForm)))
+                            });
+
+                            if (!response.ok) throw new Error('Network response was not ok');
+
+                            feedbackForm.reset();
+                            document.querySelectorAll('.rating-pill').forEach(p => p.classList.remove('active'));
+                            feedbackFormPanel.style.display = 'none';
+                            feedbackSuccessPanel.style.display = 'block';
+                        } catch (error) {
+
+                            feedbackError.textContent = '{{ __('ui.feedback_error') }}';
+                            feedbackError.style.display = 'block';
+                        } finally {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = defaultLabel;
+                        }
+                    });
+                }
+
+
+                const chatTrigger = document.getElementById('chat-trigger');
+
+                const chatPanel = document.getElementById('chat-panel');
+                const chatClose = document.getElementById('chat-close');
+                const chatInput = document.getElementById('chat-input');
+                const chatMessages = document.getElementById('chat-messages');
+
+                chatTrigger.addEventListener('click', () => chatPanel.classList.toggle('active'));
+                chatClose.addEventListener('click', () => chatPanel.classList.remove('active'));
+
+                const ChatService = {
+                    async sendMessage(message, action = null, history = []) {
+                        try {
+                            const response = await fetch('/ai/chat', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({ message, action, history })
+                            });
+                            if (!response.ok) throw new Error('API Error');
+                            return await response.json();
+                        } catch (error) {
+                            return { message: "I am having trouble connecting to the AI. Please try again later." };
+                        }
+                    }
+                };
+
+                const ChatUI = {
+                    container: document.getElementById('chat-messages'),
+                    input: document.getElementById('chat-input'),
+                    init() {
+                        document.getElementById('chat-send').addEventListener('click', () => this.handleUserMessage());
+                        this.input.addEventListener('keypress', (e) => e.key === 'Enter' && this.handleUserMessage());
+                    },
+                    async handleUserMessage() {
+                        const text = this.input.value.trim();
+                        if (!text) return;
+                        this.appendMessage(text, 'user');
+                        this.input.value = '';
+                        const data = await ChatService.sendMessage(text);
+                        this.appendMessage(data.message, 'ai');
+                    },
+                    appendMessage(text, type) {
+                        const bubble = document.createElement('div');
+                        bubble.className = `chat-bubble ${type}`;
+                        bubble.textContent = text;
+                        this.container.appendChild(bubble);
+                        this.container.scrollTop = this.container.scrollHeight;
+                    }
+                };
+                ChatUI.init();
+            })();
+        </script>
+        <!-- Final Force Style Fix -->
+        <style>
+            .feedback-select, .feedback-input, .feedback-textarea {
+                background-color: #0f172a !important;
+                background: rgba(15, 23, 42, 0.95) !important;
+                color: white !important;
+                border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            }
+            .feedback-select option {
+                background: #0f172a !important;
+                color: white !important;
+            }
+        </style>
+    </body>
 </html>

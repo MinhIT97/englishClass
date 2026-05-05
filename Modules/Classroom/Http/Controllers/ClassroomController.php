@@ -4,23 +4,30 @@ namespace Modules\Classroom\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
+use Modules\Classroom\Http\Requests\JoinClassroomRequest;
+use Modules\Classroom\Http\Requests\StoreClassroomCommentRequest;
+use Modules\Classroom\Http\Requests\StoreClassroomFeedbackRequest;
+use Modules\Classroom\Http\Requests\StoreClassroomPostRequest;
+use Modules\Classroom\Http\Requests\StoreClassroomRequest;
+use Modules\Classroom\Http\Resources\ClassroomCommentResource;
+use Modules\Classroom\Http\Resources\ClassroomPostResource;
 use Modules\Classroom\Models\Classroom;
-use Illuminate\Support\Str;
+use Modules\Classroom\Models\ClassroomPost;
+use Modules\Classroom\Services\Contracts\ClassroomServiceInterface;
 
 class ClassroomController extends Controller
 {
+    public function __construct(
+        protected ClassroomServiceInterface $classroomService
+    ) {
+    }
+
     /**
      * Display a listing of classrooms.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $user = auth()->user();
-        if ($user->role === 'admin' || $user->role === 'teacher') {
-            $classrooms = Classroom::where('teacher_id', $user->id)->get();
-        } else {
-            $classrooms = $user->classrooms; // Assuming relationship in User model
-        }
+        $classrooms = $this->classroomService->getUserClassrooms($request->user());
 
         return view('classroom::index', compact('classrooms'));
     }
@@ -28,19 +35,11 @@ class ClassroomController extends Controller
     /**
      * Store a newly created classroom.
      */
-    public function store(Request $request)
+    public function store(StoreClassroomRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-        ]);
+        $this->authorize('create', Classroom::class);
 
-        Classroom::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'teacher_id' => auth()->id(),
-            'invite_code' => strtoupper(Str::random(6)),
-        ]);
+        $this->classroomService->createClassroom($request->validated(), $request->user());
 
         return back()->with('success', 'Classroom created successfully!');
     }
@@ -48,54 +47,26 @@ class ClassroomController extends Controller
     /**
      * Show a specific classroom (Feed).
      */
-    public function show($id)
+    public function show(Classroom $classroom)
     {
-        $classroom = Classroom::with(['posts.user', 'posts.comments.user', 'students'])->findOrFail($id);
-        
+        $this->authorize('view', $classroom);
+
+        $classroom = $this->classroomService->getClassroomFeed($classroom);
+
         return view('classroom::show', compact('classroom'));
     }
 
     /**
      * Store a comment on a classroom post.
      */
-    public function storeComment(Request $request, $id)
+    public function storeComment(StoreClassroomCommentRequest $request, ClassroomPost $post)
     {
-        $post = \Modules\Classroom\Models\ClassroomPost::findOrFail($id);
-
-        $request->validate([
-            'content' => 'required|string|max:1000',
-        ]);
-
-        $comment = $post->comments()->create([
-            'user_id' => auth()->id(),
-            'content' => $request->content,
-        ]);
-
-        // Load user for broadcast
-        $comment->load('user');
-
-        // Broadcast comment
-        broadcast(new \App\Events\CommentPublished($comment))->toOthers();
-
-        // Notify post author if it's not the same person
-        if ($post->user_id !== auth()->id()) {
-            $post->user->notify(new \App\Notifications\ClassroomNotification(
-                'New comment on your post',
-                auth()->user()->name . ' commented on your post in ' . $post->classroom->name,
-                route('classroom.show', $post->classroom_id)
-            ));
-        }
+        $comment = $this->classroomService->createComment($post, $request->validated(), $request->user());
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'comment' => [
-                    'id' => $comment->id,
-                    'content' => $comment->content,
-                    'user_name' => $comment->user->name,
-                    'user_initial' => substr($comment->user->name, 0, 1),
-                    'created_at' => $comment->created_at->diffForHumans(),
-                ]
+                'comment' => (new ClassroomCommentResource($comment))->resolve(),
             ]);
         }
 
@@ -105,19 +76,9 @@ class ClassroomController extends Controller
     /**
      * Student join a classroom.
      */
-    public function join(Request $request)
+    public function join(JoinClassroomRequest $request)
     {
-        $request->validate([
-            'invite_code' => 'required|string',
-        ]);
-
-        $classroom = Classroom::where('invite_code', strtoupper($request->invite_code))->first();
-
-        if (!$classroom) {
-            return back()->withErrors(['invite_code' => 'Invalid invite code.']);
-        }
-
-        auth()->user()->classrooms()->syncWithoutDetaching([$classroom->id]);
+        $classroom = $this->classroomService->joinClassroom($request->validated('invite_code'), $request->user());
 
         return redirect()->route('classroom.show', $classroom->id)->with('success', 'Joined class successfully!');
     }
@@ -125,59 +86,14 @@ class ClassroomController extends Controller
     /**
      * Store a post in the classroom.
      */
-    public function storePost(Request $request, $id)
+    public function storePost(StoreClassroomPostRequest $request, Classroom $classroom)
     {
-        $classroom = Classroom::findOrFail($id);
-        
-        $request->validate([
-            'content' => 'required|string',
-            'type' => 'required|string|in:announcement,schedule,meeting,material,video,pronunciation',
-            'attachment' => 'nullable|file|max:51200', // max 50MB
-        ]);
-
-        $attachmentPath = null;
-        if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('classroom_attachments/' . $classroom->id, 'public');
-        }
-
-        $post = $classroom->posts()->create([
-            'user_id' => auth()->id(),
-            'content' => $request->content,
-            'type' => $request->type,
-            'attachment_path' => $attachmentPath,
-        ]);
-
-        // Broadcast notification
-        broadcast(new \App\Events\NewPostPublished($post))->toOthers();
-
-        // Notify all members of the classroom EXCEPT the author
-        $members = collect($classroom->students)->merge([$classroom->teacher])->filter(function ($member) {
-            return $member && $member->id !== auth()->id();
-        });
-
-        if ($members->count() > 0) {
-            \Illuminate\Support\Facades\Notification::send($members, new \App\Notifications\ClassroomNotification(
-                $classroom->name,
-                auth()->user()->name . ' posted a new ' . $request->type,
-                route('classroom.show', $classroom->id)
-            ));
-        }
+        $post = $this->classroomService->createPost($classroom, $request->validated(), $request->user());
 
         if ($request->wantsJson()) {
-            $post->load('user');
             return response()->json([
                 'success' => true,
-                'post' => [
-                    'id' => $post->id,
-                    'content' => $post->content,
-                    'type' => $post->type,
-                    'attachment_path' => $post->attachment_path,
-                    'attachment_url' => $post->attachment_path ? asset('storage/' . $post->attachment_path) : null,
-                    'user_name' => $post->user->name,
-                    'user_role' => $post->user->role,
-                    'user_initial' => substr($post->user->name, 0, 1),
-                    'created_at' => $post->created_at->diffForHumans(),
-                ]
+                'post' => (new ClassroomPostResource($post))->resolve(),
             ]);
         }
 
@@ -187,25 +103,9 @@ class ClassroomController extends Controller
     /**
      * Store feedback for a student's pronunciation task.
      */
-    public function storeFeedback(Request $request, $id)
+    public function storeFeedback(StoreClassroomFeedbackRequest $request, ClassroomPost $post)
     {
-        $post = \Modules\Classroom\Models\ClassroomPost::findOrFail($id);
-
-        // Only teacher or admin can give feedback
-        if (auth()->user()->role !== 'admin' && auth()->user()->role !== 'teacher') {
-            return back()->with('error', 'Unauthorized.');
-        }
-
-        $request->validate([
-            'feedback_content' => 'required|string',
-            'grade' => 'nullable|string|max:50',
-        ]);
-
-        $post->update([
-            'feedback_content' => $request->feedback_content,
-            'grade' => $request->grade,
-            'feedback_by' => auth()->id(),
-        ]);
+        $this->classroomService->addFeedback($post, $request->validated(), $request->user());
 
         return back()->with('success', 'Feedback submitted!');
     }

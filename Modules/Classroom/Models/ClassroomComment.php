@@ -4,6 +4,7 @@ namespace Modules\Classroom\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClassroomComment extends Model
 {
@@ -15,12 +16,12 @@ class ClassroomComment extends Model
         'content',
     ];
 
-    public function post()
+    public function post(): BelongsTo
     {
         return $this->belongsTo(ClassroomPost::class, 'classroom_post_id');
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class);
     }

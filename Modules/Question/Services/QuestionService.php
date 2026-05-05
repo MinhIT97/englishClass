@@ -43,6 +43,6 @@ class QuestionService
 
     public function generateVoice(string $text)
     {
-        return app(\App\Services\AI\GeminiService::class)->generateVoice($text);
+        return app(\Modules\Speaking\Services\AiSpeakingService::class)->generateTTS($text);
     }
 }

@@ -23,6 +23,11 @@ class WritingAttempt extends Model
         'feedback' => 'json',
     ];
 
+    public function scopeForUser($query, int $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

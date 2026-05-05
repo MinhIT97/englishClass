@@ -6,6 +6,9 @@ use Illuminate\Support\ServiceProvider;
 
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
+use App\Http\View\Composers\FeedbackComposer;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,7 +17,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        if ($this->app->environment('local') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+            $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
+            $this->app->register(\App\Providers\TelescopeServiceProvider::class);
+        }
     }
 
     /**
@@ -22,13 +28,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \Illuminate\Support\Facades\Event::listen(
-            \Laravel\Reverb\Events\MessageReceived::class,
-            \App\Listeners\ReverbMessageListener::class,
-        );
+        // Force HTTPS when behind a proxy like Cloudflare Tunnel
+        if (request()->header('x-forwarded-proto') === 'https' || str_contains(config('app.url'), 'https://')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
 
+        // View Composers
+        View::composer('layouts.app', FeedbackComposer::class);
+
+        //
         // View Share AI Status
-        $aiService = app(\App\Services\AI\GeminiService::class);
+        $aiService = app(\Modules\Speaking\Services\AiSpeakingService::class);
         view()->share('ai_live', $aiService->isLive());
 
         Gate::define('admin-access', function ($user) {

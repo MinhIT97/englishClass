@@ -19,11 +19,24 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Topic / Keyword</label>
-                <input type="text" id="gen-topic" class="form-control" placeholder="e.g. Climate Change, Education">
+                <input type="text" id="gen-topic" class="form-control" list="topic-presets" placeholder="e.g. Climate Change, Education">
+                <datalist id="topic-presets">
+                    @foreach($topics as $topic)
+                        <option value="{{ $topic }}"></option>
+                    @endforeach
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Target Band</label>
+                <select id="gen-band" class="form-control">
+                    @foreach($bands as $band)
+                        <option value="{{ $band }}">{{ $band }}</option>
+                    @endforeach
+                </select>
             </div>
             <div class="form-group">
                 <label class="form-label">Number of Questions</label>
-                <input type="number" id="gen-count" class="form-control" value="3" min="1" max="5">
+                <input type="number" id="gen-count" class="form-control" value="6" min="1" max="12">
             </div>
 
             <button onclick="generateAI()" class="btn btn-primary" style="width: 100%; gap: 0.5rem">
@@ -59,6 +72,7 @@
         async function generateAI() {
             const skill = document.getElementById('gen-skill').value;
             const topic = document.getElementById('gen-topic').value;
+            const band = document.getElementById('gen-band').value;
             const count = document.getElementById('gen-count').value;
 
             if(!topic) return alert('Please enter a topic');
@@ -74,7 +88,7 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({ skill, topic, count })
+                    body: JSON.stringify({ skill, topic, band, count })
                 });
 
                 generatedData = await response.json();

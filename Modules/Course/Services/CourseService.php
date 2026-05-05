@@ -2,8 +2,8 @@
 
 namespace Modules\Course\Services;
 
+use App\Models\User;
 use Modules\Course\Repositories\CourseRepository;
-use Illuminate\Pipeline\Pipeline;
 
 class CourseService
 {
@@ -17,15 +17,10 @@ class CourseService
     /**
      * Get list of courses with filtering.
      */
-    public function paginate(int $perPage = 15)
+    public function paginate(array $filters = [], int $perPage = 15)
     {
-        return app(Pipeline::class)
-            ->send($this->repository->model()::query())
-            ->through([
-                \Modules\Course\Filters\TitleFilter::class,
-                \Modules\Course\Filters\StatusFilter::class,
-            ])
-            ->thenReturn()
+        return $this->repository->model()::query()
+            ->filter($filters)
             ->paginate($perPage);
     }
 
@@ -43,6 +38,20 @@ class CourseService
     public function find(int $id)
     {
         return $this->repository->find($id);
+    }
+
+    public function enrolledCourseIds(User $user): array
+    {
+        return $user->enrolledCourses()
+            ->pluck('courses.id')
+            ->all();
+    }
+
+    public function isEnrolled(User $user, int $courseId): bool
+    {
+        return $user->enrolledCourses()
+            ->where('course_id', $courseId)
+            ->exists();
     }
 
     /**

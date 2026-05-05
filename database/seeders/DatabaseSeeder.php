@@ -13,37 +13,41 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Admin
-        User::create([
-            'name' => 'Admin Teacher',
-            'email' => 'admin@ielts.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-            'status' => 'active',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@ielts.com'],
+            [
+                'name' => 'Admin Teacher',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'status' => 'active',
+            ]
+        );
 
-        // Create Active Student
-        User::create([
-            'name' => 'Active Student',
-            'email' => 'student@ielts.com',
-            'password' => Hash::make('password'),
-            'role' => 'student',
-            'status' => 'active',
-            'target_band' => '7.5',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'student@ielts.com'],
+            [
+                'name' => 'Active Student',
+                'password' => Hash::make('password'),
+                'role' => 'student',
+                'status' => 'active',
+                'target_band' => '7.5',
+            ]
+        );
 
-        // Create Pending Student
-        User::create([
-            'name' => 'New Applicant',
-            'email' => 'pending@ielts.com',
-            'password' => Hash::make('password'),
-            'role' => 'student',
-            'status' => 'pending',
-            'target_band' => '6.5',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'pending@ielts.com'],
+            [
+                'name' => 'New Applicant',
+                'password' => Hash::make('password'),
+                'role' => 'student',
+                'status' => 'pending',
+                'target_band' => '6.5',
+            ]
+        );
 
         $this->call([
             \Modules\Question\database\seeders\SampleQuestionSeeder::class,
+            \Modules\IeltsSet\database\seeders\IeltsSetDatabaseSeeder::class,
         ]);
     }
 }

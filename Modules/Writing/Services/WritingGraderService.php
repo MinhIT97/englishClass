@@ -3,14 +3,14 @@
 namespace Modules\Writing\Services;
 
 use Modules\Writing\Models\WritingAttempt;
-use App\Services\AI\GeminiService;
+use Modules\Speaking\Services\AiSpeakingService;
 use Illuminate\Support\Facades\Log;
 
 class WritingGraderService
 {
     protected $aiService;
 
-    public function __construct(GeminiService $aiService)
+    public function __construct(AiSpeakingService $aiService)
     {
         $this->aiService = $aiService;
     }

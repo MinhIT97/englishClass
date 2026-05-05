@@ -3,12 +3,12 @@
     {{-- ===== HEADER ===== --}}
     <div class="fc-header">
         <div>
-            <h1 style="font-size:2rem;margin-bottom:.25rem">🗂️ Flashcards</h1>
-            <p style="color:var(--text-muted)">Master IELTS vocabulary with spaced repetition</p>
+            <h1 style="font-size:2rem;margin-bottom:.25rem">{{ __('ui.flashcards_title') }}</h1>
+            <p style="color:var(--text-muted)">{{ __('ui.flashcards_subtitle') }}</p>
         </div>
         <div class="fc-tabs">
-            <button onclick="switchTab('study')" id="tab-study" class="fc-tab active">📚 Study</button>
-            <button onclick="switchTab('notebook')" id="tab-notebook" class="fc-tab">📖 My Words <span id="notebook-count" class="fc-badge">{{ count($myVocab) }}</span></button>
+            <button onclick="switchTab('study')" id="tab-study" class="fc-tab active">{{ __('ui.study_tab') }}</button>
+            <button onclick="switchTab('notebook')" id="tab-notebook" class="fc-tab">{{ __('ui.my_words_tab') }} <span id="notebook-count" class="fc-badge">{{ count($myVocab) }}</span></button>
         </div>
     </div>
 
@@ -17,7 +17,7 @@
 
         {{-- Topic Filter --}}
         <div class="fc-filter-row">
-            @foreach(['all' => '🌐 All', 'Environment' => '🌿 Env', 'Technology' => '💻 Tech', 'Education' => '🎓 Edu', 'Society' => '🏙️ Society'] as $key => $label)
+            @foreach(['all' => '🌐 All', 'Environment' => __('ui.env_chip'), 'Technology' => __('ui.tech_chip'), 'Education' => __('ui.edu_chip'), 'Society' => __('ui.society_chip')] as $key => $label)
                 <button onclick="filterByTopic('{{ $key }}')" class="fc-chip {{ $key === 'all' ? 'active' : '' }}" data-topic="{{ $key }}">{{ $label }}</button>
             @endforeach
         </div>
@@ -25,16 +25,16 @@
         {{-- Progress Bar --}}
         <div style="max-width:560px;margin:0 auto 1.5rem auto">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-                <span style="font-size:.8rem;color:var(--text-muted)">Progress</span>
+                <span style="font-size:.8rem;color:var(--text-muted)">{{ __('ui.progress') }}</span>
                 <span id="progress-label" style="font-size:.8rem;color:var(--text-muted)">0 / 0</span>
             </div>
             <div style="height:6px;background:var(--glass);border-radius:10px;overflow:hidden">
                 <div id="progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:10px;transition:width .4s ease"></div>
             </div>
             <div style="display:flex;gap:1.5rem;margin-top:.75rem;font-size:.8rem">
-                <span style="color:#10b981">✅ <span id="count-know">0</span> Know</span>
-                <span style="color:#ef4444">❌ <span id="count-dontknow">0</span> Don't Know</span>
-                <span style="color:var(--text-muted)">⏭️ <span id="count-skip">0</span> Skipped</span>
+                <span style="color:#10b981">{{ __('ui.know_count') }} <span id="count-know">0</span></span>
+                <span style="color:#ef4444">{{ __('ui.dont_know_count') }} <span id="count-dontknow">0</span></span>
+                <span style="color:var(--text-muted)">{{ __('ui.skipped_count') }} <span id="count-skip">0</span></span>
             </div>
         </div>
 
@@ -54,14 +54,14 @@
                 <div class="fc-face fc-front">
                     <div id="card-topic-label" class="fc-topic-pill">Vocabulary</div>
                     <div id="card-word" class="fc-word">Loading…</div>
-                    <div class="fc-flip-hint">Tap to reveal meaning 🔄</div>
+                    <div class="fc-flip-hint">{{ __('ui.tap_to_flip') }}</div>
                 </div>
                 {{-- Back --}}
                 <div class="fc-face fc-back">
-                    <div class="fc-back-label">DEFINITION</div>
+                    <div class="fc-back-label">{{ __('ui.definition') }}</div>
                     <p id="card-definition" class="fc-definition"></p>
                     <div class="fc-divider"></div>
-                    <div class="fc-back-label" style="color:var(--accent)">EXAMPLE</div>
+                    <div class="fc-back-label" style="color:var(--accent)">{{ __('ui.example_label') }}</div>
                     <p id="card-example" class="fc-example"></p>
                 </div>
             </div>
@@ -69,13 +69,13 @@
             {{-- Action Buttons --}}
             <div class="fc-actions">
                 <button onclick="markCard('dontknow')" class="fc-action-btn fc-wrong" title="Don't Know (←)">
-                    ❌ <span>Don't Know</span>
+                    ❌ <span>{{ __('ui.dont_know_btn') }}</span>
                 </button>
                 <button onclick="skipCard()" class="fc-action-btn fc-skip" title="Skip (↑)">
                     ⏭️
                 </button>
                 <button onclick="markCard('know')" class="fc-action-btn fc-correct" title="Know It (→)">
-                    ✅ <span>Know It</span>
+                    ✅ <span>{{ __('ui.know_it_btn') }}</span>
                 </button>
             </div>
 
@@ -83,18 +83,18 @@
             <div style="text-align:center;margin-top:1.5rem;color:var(--text-muted);font-size:.8rem">
                 <span id="card-indicator">1 / 1</span>
                 &nbsp;·&nbsp;
-                <span style="opacity:.6">← → Arrow keys · Space to flip</span>
+                <span style="opacity:.6">{{ __('ui.arrow_keys_hint') }}</span>
             </div>
         </div>
 
         {{-- Session Complete Message (hidden) --}}
         <div id="session-complete" style="display:none;max-width:560px;margin:2rem auto;text-align:center" class="glass-card">
             <div style="font-size:3rem;margin-bottom:1rem">🎉</div>
-            <h2 style="margin-bottom:.5rem">Session Complete!</h2>
-            <p style="color:var(--text-muted);margin-bottom:1.5rem">You reviewed all cards in this set.</p>
+            <h2 style="margin-bottom:.5rem">{{ __('ui.session_complete') }}</h2>
+            <p style="color:var(--text-muted);margin-bottom:1.5rem">{{ __('ui.session_complete_desc') }}</p>
             <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
-                <button onclick="restartSession()" class="btn btn-primary">🔁 Restart</button>
-                <button onclick="reviewDontKnow()" class="btn btn-outline" id="review-missed-btn">❌ Review Missed</button>
+                <button onclick="restartSession()" class="btn btn-primary">{{ __('ui.restart') }}</button>
+                <button onclick="reviewDontKnow()" class="btn btn-outline" id="review-missed-btn">{{ __('ui.review_missed') }}</button>
             </div>
         </div>
 
@@ -103,8 +103,8 @@
     {{-- ===== NOTEBOOK TAB ===== --}}
     <div id="section-notebook" style="display:none">
         <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center">
-            <input type="text" id="notebook-search" class="form-control" placeholder="🔍 Search your words..." style="max-width:320px" oninput="filterNotebook(this.value)">
-            <span style="color:var(--text-muted);font-size:.875rem" id="notebook-count-label">{{ count($myVocab) }} words saved</span>
+            <input type="text" id="notebook-search" class="form-control" placeholder="{{ __('ui.search_words') }}" style="max-width:320px" oninput="filterNotebook(this.value)">
+            <span style="color:var(--text-muted);font-size:.875rem" id="notebook-count-label">{{ count($myVocab) }} {{ __('ui.words_saved') }}</span>
         </div>
 
         <div id="notebook-grid" class="fc-notebook-grid">
@@ -122,7 +122,7 @@
             @empty
                 <div style="grid-column:1/-1;text-align:center;padding:5rem">
                     <div style="font-size:3rem;margin-bottom:1rem">📖</div>
-                    <p style="color:var(--text-muted)">Bookmark cards while studying to save words here.</p>
+                    <p style="color:var(--text-muted)">{{ __('ui.no_words_saved') }}</p>
                 </div>
             @endforelse
         </div>

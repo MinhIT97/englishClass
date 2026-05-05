@@ -5,11 +5,11 @@ window.Pusher = Pusher;
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
-    wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
-    wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+    key: document.querySelector('meta[name="reverb-key"]')?.content,
+    wsHost: document.querySelector('meta[name="reverb-host"]')?.content || window.location.hostname,
+    wsPort: document.querySelector('meta[name="reverb-port"]')?.content || 8080,
+    wssPort: document.querySelector('meta[name="reverb-port"]')?.content || 8080,
+    forceTLS: (document.querySelector('meta[name="reverb-scheme"]')?.content || 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
     auth: {
         headers: {

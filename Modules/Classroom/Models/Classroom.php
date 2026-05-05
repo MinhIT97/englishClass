@@ -4,6 +4,9 @@ namespace Modules\Classroom\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 // use Modules\Classroom\Database\Factories\ClassroomFactory;
 
 class Classroom extends Model
@@ -21,12 +24,12 @@ class Classroom extends Model
         'banner_image',
     ];
 
-    public function teacher()
+    public function teacher(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'teacher_id');
     }
 
-    public function students()
+    public function students(): BelongsToMany
     {
         return $this->belongsToMany(\App\Models\User::class, 'classroom_user')
                     ->where('users.role', 'student')
@@ -34,7 +37,7 @@ class Classroom extends Model
                     ->withTimestamps();
     }
 
-    public function posts()
+    public function posts(): HasMany
     {
         return $this->hasMany(ClassroomPost::class)->latest();
     }

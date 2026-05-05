@@ -7,4 +7,5 @@ Route::middleware(['auth', 'can:active-user'])->prefix('student/speaking')->grou
     Route::get('/', [SpeakingController::class, 'index'])->name('student.speaking.index');
     Route::post('/start', [SpeakingController::class, 'start'])->name('student.speaking.start');
     Route::post('/chat', [SpeakingController::class, 'chat'])->name('student.speaking.chat');
+    Route::get('/poll', [SpeakingController::class, 'poll'])->name('student.speaking.poll');
 });

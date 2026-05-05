@@ -1,0 +1,98 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+    steps:
+      - name: Pull latest code
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker run --rm -v $(pwd):/app alpine chown -R $(id -u):$(id -g) /app
+          git fetch origin master
+          git reset --hard origin/master
+
+      - name: Build frontend assets
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker run --rm -v $(pwd):/app -w /app node:20-alpine sh -lc "npm ci && npm run build"
+
+      - name: Build and recreate app-facing containers
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose up -d --build --force-recreate --remove-orphans --scale queue=4 app queue reverb nginx
+
+      - name: Clear Laravel cache
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T app php artisan optimize:clear
+
+      - name: Run migrations
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T app php artisan migrate --force
+
+      - name: Restart Laravel Queue
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T app php artisan queue:restart
+
+      - name: Restart Reverb
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose restart reverb
+
+      - name: Reload Nginx upstream
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T nginx nginx -s reload || docker compose restart nginx
+
+      - name: Show startup logs
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose ps
+          docker compose logs --tail=60 app nginx
+
+      - name: Verify containers are up
+        run: |
+          cd /home/minhnv/projects/englishClass
+          if docker compose ps | grep -E "Exit|Error|Restarting"; then
+            echo "Container error detected"
+            docker compose logs
+            exit 1
+          fi
+          echo "All containers are running"
+
+      - name: Verify health and notify Telegram
+        run: |
+          cd /home/minhnv/projects/englishClass
+          HEALTH_RESPONSE=$(curl -s http://localhost:8080/up || echo '{"status":"failed"}')
+
+          if echo "$HEALTH_RESPONSE" | grep -q "OK"; then
+            DEPLOY_STATUS="success"
+            HEALTH_JSON='{"app":"ok","db":"ok","redis":"ok"}'
+          else
+            DEPLOY_STATUS="failed"
+            HEALTH_JSON='{"app":"failed"}'
+          fi
+
+          curl -X POST http://localhost:8080/api/deploy/notify \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"status\": \"$DEPLOY_STATUS\",
+              \"branch\": \"${{ github.ref_name }}\",
+              \"commit\": \"${{ github.sha }}\",
+              \"health\": $HEALTH_JSON
+            }"
+
+      - name: Cleanup old images
+        run: docker image prune -af || true
+
+      - name: Deploy success
+        run: echo "Deploy completed successfully"

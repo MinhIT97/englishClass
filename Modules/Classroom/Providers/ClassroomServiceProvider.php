@@ -2,6 +2,7 @@
 
 namespace Modules\Classroom\Providers;
 
+use Illuminate\Support\Facades\Gate;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
 
@@ -59,6 +60,21 @@ class ClassroomServiceProvider extends ModuleServiceProvider
         $this->app->bind(
             \Modules\Classroom\Services\Contracts\ClassroomServiceInterface::class,
             \Modules\Classroom\Services\ClassroomService::class
+        );
+    }
+
+    public function boot(): void
+    {
+        parent::boot();
+
+        Gate::policy(
+            \Modules\Classroom\Models\Classroom::class,
+            \Modules\Classroom\Policies\ClassroomPolicy::class
+        );
+
+        Gate::policy(
+            \Modules\Classroom\Models\ClassroomPost::class,
+            \Modules\Classroom\Policies\ClassroomPostPolicy::class
         );
     }
 }

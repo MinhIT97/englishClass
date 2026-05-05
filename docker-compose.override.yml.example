@@ -1,0 +1,37 @@
+# This file is for local development overrides
+# Copy to docker-compose.override.yml and customize as needed
+
+version: '3.9'
+
+services:
+  app:
+    volumes:
+      - ./:/app
+      - /app/vendor
+      - /app/node_modules
+    environment:
+      - APP_DEBUG=true
+      - LOG_CHANNEL=stderr
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+
+  db:
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: englishclass
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: password
+      MYSQL_USER: englishclass_user
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: english-class-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - english-network

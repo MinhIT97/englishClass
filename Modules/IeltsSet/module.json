@@ -1,0 +1,11 @@
+{
+    "name": "IeltsSet",
+    "alias": "ieltset",
+    "description": "Structured IELTS sets for focused exam preparation.",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\IeltsSet\\Providers\\IeltsSetServiceProvider"
+    ],
+    "files": []
+}

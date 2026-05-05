@@ -60,6 +60,11 @@
                         </button>
                     @endforeach
                 </div>
+            @elseif($skill === 'writing')
+                <div style="margin-bottom: 1.5rem">
+                    <textarea id="writing-answer" class="form-control" style="font-size: 1.05rem; padding: 1.25rem; min-height: 220px; resize: vertical" placeholder="Write your essay here..." autocomplete="off"></textarea>
+                </div>
+                <button onclick="submitWrittenAnswer()" class="btn btn-primary" style="width: 100%; padding: 1rem">Submit Essay</button>
             @else
                 <div style="margin-bottom: 1.5rem">
                     <input type="text" id="gap-fill-input" class="form-control" style="font-size: 1.25rem; padding: 1.25rem" placeholder="Type your answer here..." autocomplete="off">
@@ -89,6 +94,13 @@
             if(!input.value) return;
             input.disabled = true;
             processSubmission(input.value);
+        }
+
+        function submitWrittenAnswer() {
+            const textarea = document.getElementById('writing-answer');
+            if (!textarea.value.trim()) return;
+            textarea.disabled = true;
+            processSubmission(textarea.value.trim());
         }
 
         async function processSubmission(answer) {

@@ -1,23 +1,37 @@
 <x-app-layout>
+    @if(!empty($returnTo))
+        <div class="glass-card speaking-return-card" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
+            <div>
+                <strong>IELTS Set Flow</strong>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem">
+                    Return to {{ $setLabel ?: 'your IELTS set' }}{{ $sectionLabel ? ' - ' . $sectionLabel : '' }} after finishing your speaking practice and mark the section as completed.
+                </div>
+            </div>
+            <a href="{{ $returnTo }}" class="btn btn-outline" style="padding: 0.75rem 1.25rem">
+                Back to Set Section
+            </a>
+        </div>
+    @endif
+
     <div class="speaking-header-wrap">
         <div>
-            <h1 style="font-size: 2rem; margin-bottom: 0.5rem">AI Speaking Simulator</h1>
-            <p style="color: var(--text-muted)">Practice your speaking with Gemini AI acting as an IELTS examiner.</p>
+            <h1 style="font-size: 2rem; margin-bottom: 0.5rem">{{ __('ui.ai_speaking_sim') }}</h1>
+            <p style="color: var(--text-muted)">{{ __('ui.speaking_desc') }}</p>
         </div>
         <button onclick="startSession()" id="start-btn" class="btn btn-primary" style="gap: 0.5rem; padding: 0.8rem 2rem;">
-            <span id="start-btn-icon">🔴</span> <span id="start-btn-text">Start Interview Session</span>
+            <span id="start-btn-icon">🔴</span> <span id="start-btn-text">{{ __('ui.start_interview') }}</span>
         </button>
     </div>
 
     <div class="instruction-box" id="how-to-use">
-        <h3 style="font-size: 1rem; margin-bottom: 1rem">How to use:</h3>
-        <p style="margin-bottom: 0.5rem">1. Click <strong>"Start Interview Session"</strong> to begin.</p>
-        <p style="margin-bottom: 0.5rem">2. The AI Examiner will introduce themselves and ask the first question via voice.</p>
-        <p style="margin-bottom: 0.5rem">3. Respond by speaking or typing. Use the <strong>Mic</strong> button to talk.</p>
-        <p>4. Receive real-time grammar tips and feedback on the sidebar.</p>
+        <h3 style="font-size: 1rem; margin-bottom: 1rem">{{ __('ui.how_to_use') }}</h3>
+        <p style="margin-bottom: 0.5rem">1. {!! __('ui.step_1') !!}</p>
+        <p style="margin-bottom: 0.5rem">2. {{ __('ui.step_2') }}</p>
+        <p style="margin-bottom: 0.5rem">3. {!! __('ui.step_3') !!}</p>
+        <p>4. {{ __('ui.step_4') }}</p>
     </div>
 
-    <div id="simulator-container" class="speaking-grid" style="display: none; height: 650px;">
+    <div id="simulator-container" class="speaking-grid">
         <!-- Visual & Chat -->
         <div class="glass-card" style="display: flex; flex-direction: column; padding: 0; overflow: hidden">
             <!-- AI Visualizer Area -->
@@ -37,11 +51,11 @@
                     <button onclick="toggleMic()" id="mic-btn" class="btn-mic" title="Speak">
                         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                     </button>
-                    <input type="text" id="student-input" class="form-control" placeholder="Type or speak your response..." autocomplete="off">
-                    <button onclick="sendMessage()" id="send-btn" class="btn btn-primary" style="padding: 0.8rem 1.5rem">Send</button>
+                    <input type="text" id="student-input" class="form-control" placeholder="{{ __('ui.type_placeholder') }}" autocomplete="off">
+                    <button onclick="sendMessage()" id="send-btn" class="btn btn-primary" style="padding: 0.8rem 1.5rem">{{ __('ui.send') }}</button>
                 </div>
                 <div style="display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 1rem">
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0">Tip: Press the Mic to start, and press it again to Stop & Send.</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0">{{ __('ui.mic_tip') }}</p>
                 </div>
             </div>
         </div>
@@ -49,21 +63,21 @@
         <!-- Feedback & Stats Sidebar -->
         <div class="speaking-sidebar">
             <div class="glass-card">
-                <h3 style="margin-bottom: 1.5rem; font-size: 1rem">✨ Real-time Coaching</h3>
+                <h3 style="margin-bottom: 1.5rem; font-size: 1rem">✨ {{ __('ui.realtime_coaching') }}</h3>
                 <div id="live-feedback" style="color: var(--text-muted); font-size: 0.875rem">
-                    The AI is analyzing your speaking patterns. Start talking to see feedback.
+                    {{ __('ui.ai_analyzing') }}
                 </div>
             </div>
 
             <div class="glass-card" style="border-color: var(--primary)">
                 <h3 style="margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem">
-                    🎯 Exam Tips
+                    🎯 {{ __('ui.exam_tips') }}
                 </h3>
                 <ul class="tips-list">
-                    <li><strong>Fluency:</strong> Keep speaking even if you make a mistake.</li>
-                    <li><strong>Coherence:</strong> Use linking words like "However", "In addition".</li>
-                    <li><strong>Vocabulary:</strong> Avoid basic words like "good" or "bad".</li>
-                    <li><strong>Grammar:</strong> Use a mix of simple and complex tenses.</li>
+                    <li><strong>{{ __('ui.fluency') }}:</strong> {{ __('ui.fluency_tip') }}</li>
+                    <li><strong>{{ __('ui.coherence') }}:</strong> {{ __('ui.coherence_tip') }}</li>
+                    <li><strong>{{ __('ui.vocabulary') }}:</strong> {{ __('ui.vocab_tip') }}</li>
+                    <li><strong>{{ __('ui.grammar') }}:</strong> {{ __('ui.grammar_tip') }}</li>
                 </ul>
             </div>
         </div>
@@ -71,272 +85,316 @@
 
     <script>
         let sessionId = null;
-        let isLiveMode = true;
-        let isStreaming = false;
+        let pollingInterval = null;
+        let lastMessageId = null;
 
-        // VAD / Streaming variables
-        let audioContext = null;
-        let micStream = null;
-        let scriptProcessor = null;
-        let analyser = null;
-        
-        // Output audio streaming variables
-        let playbackContext = new (window.AudioContext || window.webkitAudioContext)();
-        let nextPlayTime = 0;
+        // ── Microphone Recording ───────────────────────────────────────────────
+        let mediaRecorder = null;
+        let audioChunks  = [];
 
-        function playAudioChunk(base64Audio) {
-            const binaryString = window.atob(base64Audio);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            
-            // Assume the audio is a complete snippet that can be decoded, or raw PCM.
-            // Gemini typically returns raw 24kHz PCM for audio output, or valid webm chunks.
-            playbackContext.decodeAudioData(bytes.buffer, (buffer) => {
-                const source = playbackContext.createBufferSource();
-                source.buffer = buffer;
-                source.connect(playbackContext.destination);
-
-                if (nextPlayTime < playbackContext.currentTime) {
-                    nextPlayTime = playbackContext.currentTime;
-                }
-                source.start(nextPlayTime);
-                nextPlayTime += buffer.duration;
-            }, (e) => {
-                console.error("Error decoding audio chunk", e);
-            });
-        }
-
-        async function initAudioStream() {
-            if (audioContext) return;
+        async function initAudio() {
+            if (mediaRecorder) return;
             try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
-                
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                micStream = audioContext.createMediaStreamSource(stream);
-                
-                // Use a smaller buffer size for lower latency streaming
-                scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-                
-                micStream.connect(analyser);
-                analyser.connect(scriptProcessor);
-                scriptProcessor.connect(audioContext.destination);
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
 
-                scriptProcessor.onaudioprocess = (e) => {
-                    if (!isStreaming || !sessionId) return;
-                    
-                    const inputData = e.inputBuffer.getChannelData(0);
-                    // Convert Float32Array to Int16
-                    const pcm16 = new Int16Array(inputData.length);
-                    for (let i = 0; i < inputData.length; i++) {
-                        const s = Math.max(-1, Math.min(1, inputData[i]));
-                        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                    }
-                    
-                    // Convert Int16Array to Base64
-                    const bytes = new Uint8Array(pcm16.buffer);
-                    let binary = '';
-                    for (let i = 0; i < bytes.byteLength; i++) {
-                        binary += String.fromCharCode(bytes[i]);
-                    }
-                    const base64Audio = window.btoa(binary);
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-                    // Send strictly using Pusher Reverb format
-                    window.Echo.connector.pusher.send_event('client-audio-stream', {
-                        session_id: sessionId,
-                        audio: base64Audio,
-                        is_final: false
-                    });
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks = [];
+                    await sendAudioMessage(blob);
                 };
-
-                monitorVolume();
             } catch (err) {
-                console.error("Microphone error:", err);
-            }
-        }
-
-        function monitorVolume() {
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            function check() {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) {
-                    sum += dataArray[i];
-                }
-                const average = sum / dataArray.length;
-                const volume = average / 255;
-                
-                const waveform = document.getElementById('waveform');
-                if (isStreaming) {
-                    const scale = 1 + (volume * 2);
-                    waveform.style.transform = `scale(${scale})`;
-                    waveform.style.opacity = 0.3 + (volume * 0.7);
-                }
-                
-                requestAnimationFrame(check);
-            }
-            check();
-        }
-
-        function setMicStatus(active) {
-            const micBtn = document.getElementById('mic-btn');
-            const statusText = document.getElementById('visual-status-text');
-            const waveform = document.getElementById('waveform');
-            
-            if (active) {
-                micBtn.classList.add('recording');
-                statusText.textContent = 'STREAMING...';
-            } else {
-                micBtn.classList.remove('recording');
-                statusText.textContent = 'IELTS EXAMINER ACTIVE';
-                waveform.style.transform = 'scale(1)';
-                waveform.style.opacity = '0.3';
+                alert('Please allow microphone access to use this feature.');
             }
         }
 
         async function toggleMic() {
-            if (!audioContext) await initAudioStream();
-            
-            if (audioContext.state === 'suspended') {
-                await audioContext.resume();
-            }
-            if (playbackContext.state === 'suspended') {
-                await playbackContext.resume();
-            }
+            if (!sessionId) { alert('Please start a session first.'); return; }
+            await initAudio();
 
-            isStreaming = !isStreaming;
-            setMicStatus(isStreaming);
-            
-            if (!isStreaming && sessionId) {
-                // Send an end of stream signal
-                window.Echo.connector.pusher.send_event('client-audio-stream', {
-                    session_id: sessionId,
-                    audio: null,
-                    is_final: true
-                });
+            if (mediaRecorder.state === 'inactive') {
+                audioChunks = [];
+                mediaRecorder.start();
+                setMicStatus(true);
+            } else {
+                mediaRecorder.stop();
+                setMicStatus(false);
+                setStatus('PROCESSING AUDIO...');
             }
         }
 
-
-        function setupEchoListener(sessId) {
-            window.Echo.channel(`speaking-session.${sessId}`)
-                .listen('.VoiceResponseArrived', (e) => {
-                    if (e.textChunk) {
-                        // Append text to chat directly
-                        document.getElementById('visual-status-text').textContent = 'AI THINKING...';
-                        console.log("LLM Stream:", e.textChunk);
-                    }
-                    if (e.audioChunk) {
-                        document.getElementById('waveform').classList.add('ai-speaking');
-                        document.getElementById('visual-status-text').textContent = 'AI SPEAKING...';
-                        playAudioChunk(e.audioChunk);
-                        
-                        // Fake remove speaking effect after buffer mostly clears (lazy implementation for demo)
-                        setTimeout(() => {
-                           document.getElementById('waveform').classList.remove('ai-speaking');
-                           document.getElementById('visual-status-text').textContent = 'IELTS EXAMINER ACTIVE';
-                        }, 500);
-                    }
-                });
+        function setMicStatus(active) {
+            document.getElementById('mic-btn').classList.toggle('recording', active);
+            setStatus(active ? '🔴 RECORDING… Press Mic again to Stop & Send' : 'IELTS EXAMINER ACTIVE');
         }
 
+        function setStatus(text) {
+            document.getElementById('visual-status-text').textContent = text;
+        }
+
+        // ── Session Start ──────────────────────────────────────────────────────
         async function startSession() {
-            const btn = document.getElementById('start-btn');
+            const btn     = document.getElementById('start-btn');
             const btnText = document.getElementById('start-btn-text');
-            const btnIcon = document.getElementById('start-btn-icon');
-            
-            btn.disabled = true;
-            btnText.textContent = 'Connecting...';
-            btnIcon.style.animation = 'pulse 1s infinite';
+            btn.disabled  = true;
+            btnText.textContent = '{{ __('ui.connecting') }}';
 
             try {
-                // Initialize Reverb / Audio early
-                if (playbackContext.state === 'suspended') await playbackContext.resume();
-
-                const response = await fetch('{{ route("student.speaking.start") }}', {
+                const res = await fetch('{{ route("student.speaking.start") }}', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
                 });
-                
-                const data = await response.json();
-                sessionId = data.session_id;
-                setupEchoListener(sessionId);
-                
-                document.getElementById('how-to-use').style.display = 'none';
-                document.getElementById('simulator-container').style.display = 'grid';
-                document.getElementById('chat-history').innerHTML = '';
-                addMessage('AI', "Session connected securely. Press Mic to start streaming.");
-                
-            } catch (error) {
-                alert('Could not start session.');
+
+                if (!res.ok) {
+                    const t = await res.text();
+                    alert(`Error ${res.status}: ${t.substring(0, 200)}`);
+                    return;
+                }
+
+                const data = await res.json();
+                sessionId     = data.session_id;
+                lastMessageId = null;
+
+                document.getElementById('how-to-use').style.display        = 'none';
+                document.getElementById('simulator-container').classList.add('active');
+                document.getElementById('chat-history').innerHTML           = '';
+
+                addMessage('AI', data.ai_message || 'Hello! I am your IELTS Examiner.', null, null, data.voice_url);
+                playAudio(data.voice_url);
+
+            } catch (err) {
+                console.error(err);
+                alert('Could not start session. Check the console.');
             } finally {
-                btn.disabled = false;
-                btnText.textContent = 'Start Interview Session';
+                btn.disabled        = false;
+                btnText.textContent = '{{ __('ui.restart_session') }}';
             }
         }
 
+        // ── Send Text Message ──────────────────────────────────────────────────
         async function sendMessage() {
-            // Unused in full streaming setup, keeping for backward compatibility if needed.
-            // Everything is streamed automatically via toggleMic now.
-            const input = document.getElementById('student-input');
-            const message = input.value;
-            
-            if(!message) return;
-            addMessage('Student', message);
-            input.value = '';
+            const input   = document.getElementById('student-input');
+            const sendBtn = document.getElementById('send-btn');
+            const text    = input.value.trim();
+            if (!text || !sessionId) return;
+
+            addMessage('Student', text);
+            input.value      = '';
+            input.disabled   = true;
+            sendBtn.disabled = true;
+            setStatus('{{ __('ui.ai_thinking') }}');
+            showThinking();
+
+            try {
+                const res = await fetch('{{ route("student.speaking.chat") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ session_id: sessionId, message: text }),
+                });
+
+                if (res.ok) {
+                    startPolling();
+                } else {
+                    const d = await res.json();
+                    addMessage('AI', `Error: ${d.error || 'Unknown error'}`);
+                    hideThinking();
+                }
+            } catch (err) {
+                addMessage('AI', 'Network error. Please try again.');
+                hideThinking();
+            } finally {
+                input.disabled   = false;
+                sendBtn.disabled = false;
+                input.focus();
+            }
         }
 
-        function addMessage(sender, text) {
+        // ── Send Audio Message ─────────────────────────────────────────────────
+        async function sendAudioMessage(blob) {
+            if (!sessionId) return;
+
+            // Show the user's recording in chat with playback
+            const localUrl = URL.createObjectURL(blob);
+            addMessage('Student', '🎤 Voice message', localUrl);
+            showThinking();
+            setStatus('{{ __('ui.ai_thinking') }}');
+
+            // Convert to base64 for the JSON endpoint
+            const base64 = await blobToBase64(blob);
+
+            try {
+                const res = await fetch('{{ route("student.speaking.chat") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        message: '[Audio message]',
+                        audio: base64,
+                    })
+                });
+
+                if (res.ok) {
+                    startPolling();
+                } else {
+                    hideThinking();
+                    addMessage('AI', 'Could not process your voice. Please try again.');
+                }
+            } catch (err) {
+                hideThinking();
+                addMessage('AI', 'Network error sending audio.');
+            } finally {
+                setStatus('IELTS EXAMINER ACTIVE');
+            }
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // ── Polling for AI Response ────────────────────────────────────────────
+        function startPolling() {
+            if (pollingInterval) return; 
+            pollingInterval = setInterval(pollForResponse, 2000);
+        }
+
+        function stopPolling() {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+
+        async function pollForResponse() {
+            if (!sessionId) { stopPolling(); return; }
+            try {
+                const res  = await fetch(`{{ url('student/speaking/poll') }}?session_id=${sessionId}&after=${lastMessageId || 0}`, {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                });
+                if (!res.ok) { stopPolling(); return; }
+                const data = await res.json();
+
+                if (data.message) {
+                    stopPolling();
+                    hideThinking();
+                    lastMessageId = data.message.id;
+
+                    addMessage('AI', data.message.ai_message, null, data.message.ai_feedback, data.message.voice_url);
+                    playAudio(data.message.voice_url);
+
+                    if (data.message.ai_feedback) {
+                        showLiveFeedback(data.message.ai_feedback);
+                    }
+                    setStatus('IELTS EXAMINER ACTIVE');
+                }
+            } catch (err) {
+                console.error('Poll error:', err);
+            }
+        }
+
+        // ── UI Helpers ─────────────────────────────────────────────────────────
+        function showThinking() {
             const history = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.id = 'thinking-indicator';
+            div.style.alignSelf = 'flex-start';
+            div.style.animation = 'fadeInUp 0.3s ease-out';
+            div.innerHTML = `
+                <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:0.25rem;">AI • thinking</div>
+                <div class="glass" style="padding:1rem 1.5rem;border-radius:16px;background:var(--glass);border:none;display:flex;gap:6px;align-items:center">
+                    <span style="width:8px;height:8px;background:var(--primary);border-radius:50%;animation:dotPulse 1.2s 0s infinite"></span>
+                    <span style="width:8px;height:8px;background:var(--primary);border-radius:50%;animation:dotPulse 1.2s 0.2s infinite"></span>
+                    <span style="width:8px;height:8px;background:var(--primary);border-radius:50%;animation:dotPulse 1.2s 0.4s infinite"></span>
+                </div>`;
+            history.appendChild(div);
+            history.scrollTo({ top: history.scrollHeight, behavior: 'smooth' });
+        }
+
+        function hideThinking() {
+            const el = document.getElementById('thinking-indicator');
+            if (el) el.remove();
+        }
+
+        function addMessage(sender, text, audioUrl = null, feedback = null, voiceUrl = null) {
+            const history = document.getElementById('chat-history');
+            const isUser  = sender === 'Student';
+            const time    = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            let audioHtml = '';
+            if (audioUrl) {
+                audioHtml = `<audio controls src="${audioUrl}" style="margin-top:8px;height:32px;width:100%;border-radius:20px;outline:none;"></audio>`;
+            }
+
+            let correctionHtml = '';
+            if (feedback && feedback.corrected && feedback.corrected !== feedback.original) {
+                correctionHtml = `<div style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:6px;font-size:0.8rem;color:#10b981">
+                    ✅ Corrected: ${feedback.corrected}</div>`;
+            }
+
             const msgDiv = document.createElement('div');
-            msgDiv.style.alignSelf = sender === 'AI' ? 'flex-start' : 'flex-end';
-            msgDiv.style.maxWidth = '85%';
+            msgDiv.style.alignSelf = isUser ? 'flex-end' : 'flex-start';
+            msgDiv.style.maxWidth  = '85%';
             msgDiv.style.animation = 'fadeInUp 0.3s ease-out';
-            
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
             msgDiv.innerHTML = `
-                <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.25rem; text-align: ${sender === 'AI' ? 'left' : 'right'}">${sender.toUpperCase()} • ${time}</div>
-                <div class="glass" style="padding: 1.25rem; border-radius: 16px; position: relative; background: ${sender === 'AI' ? 'var(--glass)' : 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)'}; color: ${sender === 'AI' ? 'inherit' : 'white'}; border: none;">
+                <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:0.25rem;text-align:${isUser ? 'right' : 'left'}">${sender.toUpperCase()} • ${time}</div>
+                <div class="glass" style="padding:1.25rem;border-radius:16px;background:${isUser ? 'linear-gradient(135deg,var(--primary) 0%,#4f46e5 100%)' : 'var(--glass)'};color:${isUser ? 'white' : 'inherit'};border:none;">
                     ${text}
-                </div>
-            `;
-            
+                    ${audioHtml}
+                    ${correctionHtml}
+                </div>`;
+
             history.appendChild(msgDiv);
             history.scrollTo({ top: history.scrollHeight, behavior: 'smooth' });
         }
 
+        function playAudio(url) {
+            if (!url) return;
+            const audio = new Audio(url);
+            audio.play().catch(() => {});
+            document.getElementById('waveform').classList.add('ai-speaking');
+            audio.onended = () => document.getElementById('waveform').classList.remove('ai-speaking');
+        }
+
         function showLiveFeedback(feedback) {
-            const fbArea = document.getElementById('live-feedback');
-            fbArea.innerHTML = `
-                ${feedback.grammar_correction ? `
-                    <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2)">
-                        <div style="color: #ef4444; font-weight: 700; font-size: 0.75rem; margin-bottom: 0.25rem">⚠️ GRAMMAR</div>
-                        <div style="color: var(--text-main)">${feedback.grammar_correction}</div>
-                    </div>
-                ` : ''}
-                ${feedback.pronunciation ? `
-                    <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(99, 102, 241, 0.1); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.2)">
-                        <div style="color: var(--primary); font-weight: 700; font-size: 0.75rem; margin-bottom: 0.25rem">🎙️ PRONUNCIATION</div>
-                        <div style="color: var(--text-main)">${feedback.pronunciation}</div>
-                    </div>
-                ` : ''}
-                ${feedback.tip ? `
-                    <div style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2)">
-                        <div style="color: #10b981; font-weight: 700; font-size: 0.75rem; margin-bottom: 0.25rem">💡 IMPROVEMENT TIP</div>
-                        <div style="color: var(--text-main)">${feedback.tip}</div>
-                    </div>
-                ` : ''}
+            const fb = document.getElementById('live-feedback');
+            fb.innerHTML = `
+                ${feedback.original ? `<div style="margin-bottom:1rem;padding:1rem;background:rgba(99,102,241,0.08);border-radius:12px;border:1px solid rgba(99,102,241,0.2)">
+                    <div style="color:var(--primary);font-weight:700;font-size:0.7rem;margin-bottom:0.4rem">📝 WHAT YOU SAID</div>
+                    <div style="color:var(--text-muted);font-size:0.85rem">${feedback.original}</div>
+                </div>` : ''}
+                ${feedback.corrected && feedback.corrected !== feedback.original ? `<div style="margin-bottom:1rem;padding:1rem;background:rgba(16,185,129,0.08);border-radius:12px;border:1px solid rgba(16,185,129,0.2)">
+                    <div style="color:#10b981;font-weight:700;font-size:0.7rem;margin-bottom:0.4rem">✅ CORRECTED VERSION</div>
+                    <div style="color:var(--text-main);font-size:0.85rem">${feedback.corrected}</div>
+                </div>` : ''}
+                ${feedback.explanation ? `<div style="padding:1rem;background:rgba(245,158,11,0.08);border-radius:12px;border:1px solid rgba(245,158,11,0.2)">
+                    <div style="color:#f59e0b;font-weight:700;font-size:0.7rem;margin-bottom:0.4rem">💡 EXPLANATION</div>
+                    <div style="color:var(--text-muted);font-size:0.85rem">${feedback.explanation}</div>
+                </div>` : ''}
             `;
         }
     </script>
 
     <style>
+        @keyframes dotPulse {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
         .instruction-box {
             background: rgba(99, 102, 241, 0.05);
             padding: 2rem;
@@ -344,6 +402,13 @@
             border: 1px dashed var(--glass-border);
             margin-bottom: 2rem;
             color: var(--text-muted);
+        }
+
+        .speaking-return-card {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
         }
 
         .ai-header-visual {
@@ -473,22 +538,35 @@
             gap: 1.5rem;
         }
         .speaking-grid {
-            display: grid;
+            display: none;
             grid-template-columns: 1fr 350px;
             gap: 1.5rem;
+            height: 650px;
         }
         
+        .speaking-grid.active {
+            display: grid;
+        }
+
+        .speaking-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
         @media (max-width: 900px) {
-            #simulator-container {
+            .speaking-return-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .speaking-grid.active {
                 height: auto !important;
                 display: flex !important;
                 flex-direction: column;
             }
             .chat-area {
                 height: 400px;
-            }
-            .speaking-grid {
-                grid-template-columns: 1fr;
             }
             .speaking-header-wrap {
                 flex-direction: column;
