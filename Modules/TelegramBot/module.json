@@ -1,0 +1,11 @@
+{
+    "name": "TelegramBot",
+    "alias": "telegrambot",
+    "description": "Telegram bot for daily English vocabulary, grammar, reviews and quizzes.",
+    "keywords": ["telegram", "bot", "learning"],
+    "priority": 0,
+    "providers": [
+        "Modules\\TelegramBot\\Providers\\TelegramBotServiceProvider"
+    ],
+    "files": []
+}

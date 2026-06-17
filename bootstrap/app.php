@@ -19,10 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'auth.deploy' => \App\Http\Middleware\AuthenticateDeployHook::class,
+            'telegram.secret' => \Modules\TelegramBot\Http\Middleware\VerifyTelegramSecret::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
             'telegram/webhook',
+            'api/telegram/webhook',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

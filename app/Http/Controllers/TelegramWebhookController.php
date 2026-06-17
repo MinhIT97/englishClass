@@ -7,10 +7,14 @@ use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Modules\TelegramBot\Services\TelegramBotCommandService;
 
 class TelegramWebhookController extends Controller
 {
-    public function __construct(private TelegramService $telegram) {}
+    public function __construct(
+        private TelegramService $telegram,
+        private TelegramBotCommandService $bot,
+    ) {}
 
     public function handle(Request $request): Response
     {
@@ -23,33 +27,59 @@ class TelegramWebhookController extends Controller
 
         $payload = $request->all();
 
-        // Chỉ xử lý callback_query (khi admin bấm Inline Button)
-        if (!isset($payload['callback_query'])) {
+        // 1) Admin callback queries: approve_user_{id} / reject_user_{id}
+        if (isset($payload['callback_query'])) {
+            $cb = $payload['callback_query'];
+            $data = (string) ($cb['data'] ?? '');
+
+            if (preg_match('/^(approve|reject)_user_(\d+)$/', $data, $matches)) {
+                $this->dispatchAdminCallback($matches[1], (int) $matches[2], $cb);
+                return response('OK', 200);
+            }
+
+            // 2) Anything else (tgb:*) belongs to the learning bot.
+            $this->bot->handleCallback(
+                (string) ($cb['message']['chat']['id'] ?? ''),
+                (string) ($cb['id'] ?? ''),
+                $data,
+                $cb['message']['message_id'] ?? null,
+                $this->bot->resolveUser((string) ($cb['message']['chat']['id'] ?? '')),
+            );
             return response('OK', 200);
         }
 
-        $callbackQuery = $payload['callback_query'];
-        $callbackId    = $callbackQuery['id'];
-        $callbackData  = $callbackQuery['data'] ?? '';
-        $chatId        = $callbackQuery['message']['chat']['id'] ?? null;
-        $messageId     = $callbackQuery['message']['message_id'] ?? null;
-        $adminName     = $callbackQuery['from']['first_name'] ?? 'Admin';
+        // 3) Plain message: delegate entirely to the bot command service.
+        $message = $payload['message'] ?? $payload['edited_message'] ?? null;
+        if ($message && isset($message['chat']['id'], $message['text'])) {
+            $chatId = (string) $message['chat']['id'];
+            $text = trim((string) $message['text']);
+            $username = $message['from']['username'] ?? null;
+            $user = $this->bot->resolveUser($chatId);
 
-        // Xử lý: approve_user_{id}
-        if (preg_match('/^approve_user_(\d+)$/', $callbackData, $matches)) {
-            $userId = (int) $matches[1];
-            $this->approveUser($userId, $callbackId, $chatId, $messageId, $adminName);
-            return response('OK', 200);
-        }
-
-        // Xử lý: reject_user_{id}
-        if (preg_match('/^reject_user_(\d+)$/', $callbackData, $matches)) {
-            $userId = (int) $matches[1];
-            $this->rejectUser($userId, $callbackId, $chatId, $messageId, $adminName);
-            return response('OK', 200);
+            if (str_starts_with($text, '/')) {
+                $parts = explode(' ', $text);
+                $cmdPart = ltrim($parts[0], '/');
+                $cmd = explode('@', $cmdPart)[0];
+                $args = trim(implode(' ', array_slice($parts, 1)));
+                $this->bot->handleCommand($chatId, $cmd, $args, $username, $user);
+            }
         }
 
         return response('OK', 200);
+    }
+
+    private function dispatchAdminCallback(string $action, int $userId, array $cb): void
+    {
+        $callbackId = (string) ($cb['id'] ?? '');
+        $chatId = isset($cb['message']['chat']['id']) ? (string) $cb['message']['chat']['id'] : null;
+        $messageId = $cb['message']['message_id'] ?? null;
+        $adminName = $cb['from']['first_name'] ?? 'Admin';
+
+        if ($action === 'approve') {
+            $this->approveUser($userId, $callbackId, $chatId, $messageId, $adminName);
+        } else {
+            $this->rejectUser($userId, $callbackId, $chatId, $messageId, $adminName);
+        }
     }
 
     private function approveUser(int $userId, string $callbackId, ?string $chatId, ?int $messageId, string $adminName): void

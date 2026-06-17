@@ -9,5 +9,6 @@
     "Flashcard": true,
     "Gamification": true,
     "MockTest": true,
-    "Classroom": true
+    "Classroom": true,
+    "TelegramBot": true
 }

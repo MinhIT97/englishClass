@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/telegrambot",
+    "description": "Telegram bot for daily English learning.",
+    "authors": [
+        {
+            "name": "englishClass team",
+            "email": "team@example.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\TelegramBot\\": "",
+            "Modules\\TelegramBot\\Database\\Factories\\": "database/factories/",
+            "Modules\\TelegramBot\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\TelegramBot\\Tests\\": "tests/"
+        }
+    }
+}
