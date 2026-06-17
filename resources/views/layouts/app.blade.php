@@ -198,6 +198,9 @@
                 <a href="/settings" class="nav-item {{ request()->is('settings') ? 'active' : '' }}">
                     <span class="nav-icon">⚙️</span> {{ __('ui.settings') }}
                 </a>
+                <a href="{{ route('student.telegram.settings') }}" class="nav-item {{ request()->is('student/settings/telegram*') ? 'active' : '' }}">
+                    <span class="nav-icon">🤖</span> Telegram Bot
+                </a>
 
                 <div style="margin-top: 2rem; padding: 0 1rem;">
                     @if($ai_live)

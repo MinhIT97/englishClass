@@ -4,6 +4,7 @@ namespace Modules\TelegramBot\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Modules\TelegramBot\Console\Commands\SendDailyLessonsCommand;
+use Modules\TelegramBot\Console\Commands\SetWebhookCommand;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class TelegramBotServiceProvider extends ModuleServiceProvider
@@ -19,6 +20,7 @@ class TelegramBotServiceProvider extends ModuleServiceProvider
      */
     protected array $commands = [
         SendDailyLessonsCommand::class,
+        SetWebhookCommand::class,
     ];
 
     /**
