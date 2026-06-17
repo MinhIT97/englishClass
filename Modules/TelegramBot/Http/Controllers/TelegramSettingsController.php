@@ -19,7 +19,7 @@ class TelegramSettingsController extends Controller
         $link = UserTelegramLink::query()->where('user_id', $user->id)->first();
         $profile = LearningProfile::query()->where('user_id', $user->id)->first();
 
-        return view('TelegramBot::student.settings.telegram', [
+        return view('telegramBot::student.settings.telegram', [
             'link' => $link,
             'profile' => $profile,
             'botUsername' => config('telegram.bot_username', 'EnglishClassBot'),

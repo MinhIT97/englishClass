@@ -1,5 +1,5 @@
 <x-app-layout>
-    @include('TelegramBot::partials.dashboard-banner')
+    @include('telegramBot::partials.dashboard-banner')
 
     <div class="dashboard-header-wrap">
         <div>
