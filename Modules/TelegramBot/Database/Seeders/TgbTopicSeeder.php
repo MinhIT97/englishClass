@@ -5,7 +5,6 @@ namespace Modules\TelegramBot\Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Modules\TelegramBot\Models\Topic;
 
 class TgbTopicSeeder extends Seeder
 {
@@ -14,29 +13,20 @@ class TgbTopicSeeder extends Seeder
         $topics = [];
 
         // IELTS topics (migrated from app/Support/IeltsTopicCatalog).
-        $ieltsOrder = 1;
         foreach (\App\Support\IeltsTopicCatalog::all() as $name => $data) {
             $slug = Str::slug('ielts-' . $name, '-');
             $topics[] = [
                 'slug' => $this->limit($slug, 60),
-                'purpose' => Topic::query()->where('slug', 'ielts-education')->exists()
-                    ? null
-                    : null, // placeholder, set below
+                'purpose' => 'ielts',
                 'name_vi' => $this->vietnamese($name),
                 'name_en' => $name,
-                'order_index' => $ieltsOrder++,
+                'order_index' => 0, // filled below
                 'difficulty' => 3,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
         }
-
-        // Normalise purpose for the IELTS batch.
-        foreach ($topics as &$t) {
-            $t['purpose'] = 'ielts';
-        }
-        unset($t);
 
         // Daily conversation topics.
         $daily = [
@@ -57,7 +47,7 @@ class TgbTopicSeeder extends Seeder
                 'purpose' => 'daily',
                 'name_vi' => $vi,
                 'name_en' => $en,
-                'order_index' => 100,
+                'order_index' => 0,
                 'difficulty' => $diff,
                 'is_active' => true,
                 'created_at' => now(),
@@ -84,7 +74,7 @@ class TgbTopicSeeder extends Seeder
                 'purpose' => 'business',
                 'name_vi' => $vi,
                 'name_en' => $en,
-                'order_index' => 200,
+                'order_index' => 0,
                 'difficulty' => $diff,
                 'is_active' => true,
                 'created_at' => now(),
