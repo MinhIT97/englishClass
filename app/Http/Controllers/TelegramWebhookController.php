@@ -62,6 +62,10 @@ class TelegramWebhookController extends Controller
                 $cmd = explode('@', $cmdPart)[0];
                 $args = trim(implode(' ', array_slice($parts, 1)));
                 $this->bot->handleCommand($chatId, $cmd, $args, $username, $user);
+            } else {
+                // Free text - let the command service route it (onboarding wizard fallback,
+                // quiz answer text input, etc.).
+                $this->bot->handleFreeText($chatId, $text, $user);
             }
         }
 

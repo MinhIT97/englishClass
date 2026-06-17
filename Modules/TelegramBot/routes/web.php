@@ -9,4 +9,6 @@ Route::middleware(['auth'])->prefix('student/settings/telegram')->group(function
     Route::get('/', [TelegramSettingsController::class, 'show'])->name('student.telegram.settings');
     Route::post('/linking-code', [LinkingCodeController::class, 'generate'])->name('student.telegram.linking-code');
     Route::post('/unlink', [TelegramSettingsController::class, 'unlink'])->name('student.telegram.unlink');
+    Route::post('/dismiss-banner', [TelegramSettingsController::class, 'dismissBanner'])
+        ->name('student.telegram.dismiss-banner');
 });

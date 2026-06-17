@@ -43,7 +43,16 @@ class TelegramQuizService
         if ($words->isEmpty()) {
             $this->telegram->sendMessage(
                 $chatId,
-                "📭 Bạn chưa có từ vựng nào. Hãy đợi bài học hôm nay hoặc dùng /vocab nhé!"
+                "📭 <b>Bạn chưa có từ vựng nào để làm quiz.</b>\n\n"
+                . "Hãy đợi bài học hôm nay tới giờ đã chọn, hoặc vào web app để học trước.",
+                [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '🌐 Mở web app', 'url' => url('/student/flashcards')],
+                            ['text' => '📚 Xem từ vựng', 'callback_data' => 'tgb:vocab-detail'],
+                        ],
+                    ],
+                ]
             );
             return;
         }

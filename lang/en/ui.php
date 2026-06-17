@@ -238,5 +238,9 @@ return [
     'telegram_paused' => 'Paused',
     'telegram_active' => 'Active',
     'telegram_change_via_bot' => 'To change these, use /settings inside Telegram.',
+    'telegram_dashboard_banner_title' => 'Daily English lessons on Telegram!',
+    'telegram_dashboard_banner_desc' => 'Get vocabulary, grammar and quizzes right in Telegram. Linking takes only 1 minute.',
+    'telegram_dashboard_banner_cta' => 'Link now',
+    'telegram_dashboard_banner_dismiss' => 'Later',
 
 ];

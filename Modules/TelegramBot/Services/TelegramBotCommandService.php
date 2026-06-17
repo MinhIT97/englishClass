@@ -23,6 +23,7 @@ class TelegramBotCommandService
         private readonly TelegramQuizService $quiz,
         private readonly SpacedRepetitionService $sr,
         private readonly TelegramLearningService $learning,
+        private readonly TelegramGameService $game,
     ) {
     }
 
@@ -70,6 +71,16 @@ class TelegramBotCommandService
                 $this->sendSettings($chatId, $user);
                 break;
 
+            case 'game':
+                if (! $user) { $this->requireLink($chatId); return; }
+                $this->game->showMenu($chatId);
+                break;
+
+            case 'menu':
+                if (! $user) { $this->requireLink($chatId); return; }
+                $this->sendMainMenu($chatId, $user);
+                break;
+
             default:
                 $this->telegram->sendMessage(
                     $chatId,
@@ -94,6 +105,41 @@ class TelegramBotCommandService
         return $link->user;
     }
 
+    /**
+     * Route free text from the user. Used for onboarding fallback
+     * (e.g. user types "8" instead of tapping a time button).
+     */
+    public function handleFreeText(string $chatId, string $text, ?User $user = null): void
+    {
+        if (! $user) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "🔗 Bạn cần liên kết tài khoản trước. Gõ /start để bắt đầu."
+            );
+            return;
+        }
+
+        $state = ConversationState::query()->where('telegram_chat_id', $chatId)->first();
+
+        if ($state && $state->current_command === 'onboarding') {
+            $this->onboarding->handleFreeText($chatId, $text);
+            return;
+        }
+
+        if ($state && $state->current_command === 'game') {
+            $this->game->handleAnswer($chatId, $user, $text);
+            return;
+        }
+
+        // No active flow - send a friendly reminder of available commands.
+        $this->telegram->sendMessage(
+            $chatId,
+            "💬 Mình nhận được: <i>\"" . mb_substr($text, 0, 50) . '"</i>\n\n'
+            . "Gõ /help để xem danh sách lệnh.\n"
+            . "Gõ /start để bắt đầu nếu bạn chưa liên kết tài khoản."
+        );
+    }
+
     public function handleCallback(string $chatId, string $callbackId, string $data, ?int $messageId, ?User $user = null): void
     {
         $this->telegram->answerCallbackQuery($callbackId);
@@ -114,12 +160,23 @@ class TelegramBotCommandService
                 if (! $user) { $this->requireLink($chatId); return; }
                 $step = $parts[2] ?? '';
                 $value = $parts[3] ?? '';
-                if ($step === 'purpose') {
+                if ($step === 'back') {
+                    $this->onboarding->handleBack($chatId);
+                } elseif ($step === 'cancel') {
+                    $this->onboarding->handleCancel($chatId);
+                } elseif ($step === 'purpose') {
                     $this->onboarding->handlePurpose($chatId, $value, $user->id);
                 } elseif ($step === 'level') {
                     $this->onboarding->handleLevel($chatId, $value, $user->id);
                 } elseif ($step === 'hour') {
-                    $this->onboarding->handleHour($chatId, (int) $value, $user->id);
+                    if ($value === 'custom') {
+                        $this->telegram->sendMessage(
+                            $chatId,
+                            "✏️ Gửi giờ bạn muốn nhận bài (0-23), ví dụ: <code>8</code> hoặc <code>20</code>"
+                        );
+                    } else {
+                        $this->onboarding->handleHour($chatId, (int) $value, $user->id);
+                    }
                 }
                 break;
 
@@ -163,6 +220,72 @@ class TelegramBotCommandService
                 $this->startReviewSession($chatId, $user);
                 break;
 
+            case 'rskip': // skip current review card
+                if (! $user) return;
+                $this->skipReviewCard($chatId, $user);
+                break;
+
+            case 'q':
+                if (! $user) return;
+                // tgb:q:<lessonId> or tgb:q:start
+                $arg = $parts[2] ?? '';
+                if ($arg === 'start') {
+                    $this->quiz->startQuiz($chatId, $user);
+                } else {
+                    $this->quiz->startQuiz($chatId, $user);
+                }
+                break;
+
+            case 'menu': // main menu (single button from any flow)
+                if (! $user) return;
+                $this->sendMainMenu($chatId, $user);
+                break;
+
+            case 'vocab-detail':
+                if (! $user) return;
+                $this->sendRecentVocab($chatId, $user);
+                break;
+
+            case 'game':
+                if (! $user) return;
+                $gameType = $parts[2] ?? 'random';
+                $this->game->startGame($chatId, $user, $gameType);
+                break;
+
+            case 'gmatch': // match pair answer: tgb:gmatch:<index>:<chosen>
+                if (! $user) return;
+                $idx = (int) ($parts[2] ?? 0);
+                $chosen = (int) ($parts[3] ?? -1);
+                $this->game->handleCallback($chatId, $user, $idx, $chosen);
+                break;
+
+            case 'gskip':
+                if (! $user) return;
+                $this->game->handleAnswer($chatId, $user, '__skip__');
+                break;
+
+            case 'gexit':
+                if (! $user) return;
+                \Modules\TelegramBot\Models\ConversationState::forChat($chatId)->clear();
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "👋 Đã thoát game. Hẹn gặp lại!",
+                    ['inline_keyboard' => [[['text' => '🏠 Menu', 'callback_data' => 'tgb:menu']]]]
+                );
+                break;
+
+            case 'ghint':
+                if (! $user) return;
+                $entryId = (int) ($parts[2] ?? 0);
+                $entry = VocabularyEntry::query()->find($entryId);
+                if ($entry) {
+                    $this->telegram->sendMessage(
+                        $chatId,
+                        "💡 Gợi ý: từ bắt đầu bằng chữ <b>" . strtoupper(mb_substr($entry->word, 0, 1)) . "</b>"
+                    );
+                }
+                break;
+
             default:
                 Log::info('[TelegramBot] Unknown callback action', ['data' => $data]);
         }
@@ -175,16 +298,32 @@ class TelegramBotCommandService
 
     private function sendHelp(string $chatId): void
     {
-        $text = "📚 <b>Danh sách lệnh</b>\n\n"
+        $text = "📚 <b>DANH SÁCH LỆNH</b>\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n\n"
+            . "🔗 <b>Liên kết & cài đặt:</b>\n"
             . "/start [CODE] - Liên kết tài khoản\n"
-            . "/vocab - Xem từ vựng hôm nay\n"
-            . "/grammar - Xem cấu trúc câu hôm nay\n"
-            . "/quiz - Làm bài quiz 5 câu\n"
-            . "/review - Ôn tập từ vựng (Spaced Repetition)\n"
-            . "/roadmap - Xem lộ trình học tập\n"
-            . "/settings - Cài đặt mục đích & giờ nhận bài\n"
-            . "/help - Xem hướng dẫn này";
-        $this->telegram->sendMessage($chatId, $text);
+            . "/settings - Đổi mục đích, trình độ, giờ nhận\n"
+            . "/menu - Menu chính (dễ dùng)\n\n"
+            . "📖 <b>Học tập:</b>\n"
+            . "/vocab - Từ vựng hôm nay\n"
+            . "/grammar - Cấu trúc câu hôm nay\n"
+            . "/quiz - Quiz 5 câu trắc nghiệm\n"
+            . "/review - Ôn tập thẻ đến hạn\n"
+            . "/roadmap - Xem lộ trình học\n\n"
+            . "🎮 <b>Giải trí:</b>\n"
+            . "/game - Mini-game (Word Scramble, Match Pairs...)\n\n"
+            . "💡 <b>Mẹo:</b> Gõ /menu để mở menu trực quan với các nút bấm.";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '🏠 Menu chính', 'callback_data' => 'tgb:menu'],
+                    ['text' => '🚀 Bắt đầu nhanh', 'callback_data' => 'tgb:q:start'],
+                ],
+            ],
+        ];
+
+        $this->telegram->sendMessage($chatId, $text, $keyboard);
     }
 
     private function sendRecentVocab(string $chatId, User $user): void
@@ -253,29 +392,96 @@ class TelegramBotCommandService
             ->get();
 
         if ($paths->isEmpty()) {
-            $this->telegram->sendMessage($chatId, "📭 Bạn chưa có lộ trình. Hoàn tất onboarding bằng /start.");
+            $this->telegram->sendMessage(
+                $chatId,
+                "📭 <b>Bạn chưa có lộ trình.</b>\n\n"
+                . "Gõ /start để hoàn tất thiết lập ban đầu nhé!"
+            );
             return;
         }
 
-        $lines = ["📍 <b>Lộ trình học tập</b>"];
-        $completed = 0;
-        foreach ($paths->take(10) as $p) {
+        $profile = \Modules\TelegramBot\Models\LearningProfile::query()
+            ->where('user_id', $user->id)
+            ->first();
+
+        $purposeLabel = $profile
+            ? \Modules\TelegramBot\Models\LearningProfile::purposes()[$profile->purpose] ?? $profile->purpose
+            : 'IELTS';
+        $levelLabel = $profile
+            ? \Modules\TelegramBot\Models\LearningProfile::levels()[$profile->level] ?? $profile->level
+            : '';
+
+        $total = $paths->count();
+        $completed = $paths->where('status', UserPath::STATUS_COMPLETED)->count();
+        $skipped = $paths->where('status', UserPath::STATUS_SKIPPED)->count();
+        $pct = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+        $bar = $this->progressBar($pct, 100);
+
+        // Build per-topic progress for current topic.
+        $currentPath = $paths->firstWhere('status', UserPath::STATUS_CURRENT);
+        $currentDetail = '';
+        if ($currentPath) {
+            $totalWords = \Modules\TelegramBot\Models\VocabularyEntry::query()
+                ->where('user_id', $user->id)
+                ->where('topic_id', $currentPath->topic_id)
+                ->count();
+            $matureWords = \Modules\TelegramBot\Models\ReviewSchedule::query()
+                ->where('user_id', $user->id)
+                ->whereHas('vocabularyEntry', function ($q) use ($user, $currentPath) {
+                    $q->where('user_id', $user->id)->where('topic_id', $currentPath->topic_id);
+                })
+                ->where('repetitions', '>=', 2)
+                ->count();
+            $currentDetail = "📍 <b>Đang học:</b> {$currentPath->topic->name_vi}\n"
+                . "   Từ vựng: <b>{$matureWords}/{$totalWords}</b> đã thuộc\n\n";
+        }
+
+        $lines = [];
+        $lines[] = "📍 <b>LỘ TRÌNH HỌC TẬP</b>";
+        $lines[] = "━━━━━━━━━━━━━━━━━━━━";
+        $lines[] = "";
+        $lines[] = "🎯 Mục đích: <b>{$purposeLabel}</b>" . ($levelLabel ? " | 📊 {$levelLabel}" : '');
+        $lines[] = "";
+        $lines[] = "🏆 Tiến độ tổng: <b>{$pct}%</b> ({$completed}/{$total} chủ đề)";
+        $lines[] = $bar;
+        $lines[] = "";
+        if ($currentDetail) {
+            $lines[] = $currentDetail;
+        }
+        $lines[] = "<b>Danh sách chủ đề:</b>";
+
+        $shown = $paths->take(10);
+        foreach ($shown as $i => $p) {
             $icon = match ($p->status) {
                 UserPath::STATUS_COMPLETED => '✅',
                 UserPath::STATUS_CURRENT => '🔵',
                 UserPath::STATUS_SKIPPED => '⏭️',
                 default => '🔒',
             };
-            $lines[] = "{$icon} {$p->topic->name_vi} <i>({$p->topic->name_en})</i>";
-            if ($p->status === UserPath::STATUS_COMPLETED) {
-                $completed++;
-            }
+            $marker = $p->status === UserPath::STATUS_CURRENT ? ' ← đang học' : '';
+            $lines[] = "{$icon} <b>" . ($i + 1) . ".</b> {$p->topic->name_vi}{$marker}";
+        }
+
+        if ($paths->count() > 10) {
+            $lines[] = "<i>... và " . ($paths->count() - 10) . " chủ đề khác</i>";
         }
 
         $lines[] = "";
-        $lines[] = "📊 Hoàn thành: {$completed}/" . $paths->count();
+        $lines[] = "💡 Hoàn thành tất cả từ vựng + quiz trong chủ đề hiện tại để mở khóa chủ đề tiếp theo.";
 
-        $this->telegram->sendMessage($chatId, implode("\n", $lines));
+        $keyboard = null;
+        if ($currentPath) {
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '📚 Học tiếp', 'callback_data' => 'tgb:q:start'],
+                        ['text' => '⏭ Bỏ qua', 'callback_data' => 'tgb:skip-topic'],
+                    ],
+                ],
+            ];
+        }
+
+        $this->telegram->sendMessage($chatId, implode("\n", $lines), $keyboard);
     }
 
     private function sendSettings(string $chatId, User $user): void
@@ -322,7 +528,12 @@ class TelegramBotCommandService
             ->get();
 
         if ($due->isEmpty()) {
-            $this->telegram->sendMessage($chatId, "🎉 Không có thẻ nào cần ôn. Tốt lắm!");
+            $this->telegram->sendMessage(
+                $chatId,
+                "🎉 <b>Không có thẻ nào cần ôn.</b>\n\n"
+                . "Bạn đang theo kịp lộ trình. Hãy quay lại khi có thẻ mới nhé!\n\n"
+                . "💡 Gõ /vocab để học từ mới."
+            );
             return;
         }
 
@@ -336,28 +547,71 @@ class TelegramBotCommandService
         ];
         $state->save();
 
+        // Send intro message with motivational header.
+        $this->telegram->sendMessage(
+            $chatId,
+            "🔁 <b>ÔN TẬP HÔM NAY</b>\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n\n"
+            . "📚 Bạn có <b>" . $due->count() . " thẻ</b> cần ôn.\n"
+            . "⏱ Trung bình <b>~30 giây/thẻ</b>.\n\n"
+            . "💡 <b>Mẹo:</b> Thử nhớ nghĩa TRƯỚC khi bấm nút, rồi chọn mức độ tự tin:\n"
+            . "  • 🔁 Lại - quên hoàn toàn\n"
+            . "  • 😣 Khó - nhớ mơ hồ\n"
+            . "  • 👍 Tốt - nhớ rõ\n"
+            . "  • 🎉 Dễ - nhớ rất tốt\n\n"
+            . "👇 Bắt đầu thẻ đầu tiên:"
+        );
+
         $this->sendReviewCard($chatId, $due->first(), 0, $due->count());
     }
 
     public function sendReviewCard(string $chatId, ReviewSchedule $schedule, int $index, int $total): void
     {
         $entry = $schedule->vocabularyEntry;
-        $text = "🃏 <b>Thẻ ôn tập " . ($index + 1) . "/{$total}</b>\n\n"
-            . "🇬🇧 <b>{$entry->word}</b>\n"
-            . ($entry->ipa ? "<code>{$entry->ipa}</code>\n" : '')
-            . ($entry->pos ? "<i>({$entry->pos})</i>\n" : '')
-            . "\nBạn nhớ nghĩa của từ này không?";
+        $progress = $this->progressBar($index + 1, $total);
 
-        $this->telegram->sendMessage(
-            $chatId,
-            $text,
-            ['inline_keyboard' => [
-                [
-                    ['text' => '👁 Xem nghĩa', 'callback_data' => "tgb:rshow:{$schedule->id}"],
-                ],
+        // Build the card content. Show meaning directly to avoid the extra tap.
+        $lines = [];
+        $lines[] = $progress . " <b>" . ($index + 1) . "/{$total}</b>";
+        $lines[] = "";
+        $lines[] = "🇬🇧 <b>{$entry->word}</b>";
+        if ($entry->ipa) {
+            $lines[] = "🔊 <code>{$entry->ipa}</code>";
+        }
+        if ($entry->pos) {
+            $lines[] = "📐 <i>{$entry->pos}</i>";
+        }
+        $lines[] = "";
+        $lines[] = "🇻🇳 <b>{$entry->meaning_vi}</b>";
+        if ($entry->example_en) {
+            $lines[] = "";
+            $lines[] = "💬 <i>\"{$entry->example_en}\"</i>";
+        }
+        $lines[] = "";
+        $lines[] = "<i>Mức độ bạn nhớ từ này thế nào?</i>";
+
+        $keyboard = [
+            'inline_keyboard' => [
                 $this->sr->gradeKeyboard($schedule->id)[0],
-            ]]
-        );
+                [
+                    ['text' => '⏭ Bỏ qua thẻ này', 'callback_data' => "tgb:rskip:{$schedule->id}"],
+                ],
+            ],
+        ];
+
+        $this->telegram->sendMessage($chatId, implode("\n", $lines), $keyboard);
+    }
+
+    /**
+     * Build a 10-block progress bar.
+     */
+    private function progressBar(int $current, int $total): string
+    {
+        $pct = $current / $total;
+        $blocks = 10;
+        $filled = (int) round($pct * $blocks);
+        $empty = max(0, $blocks - $filled);
+        return str_repeat('🟩', $filled) . str_repeat('⬜', $empty);
     }
 
     private function applyReviewGrade(string $chatId, ?int $messageId, User $user, int $scheduleId, int $grade): void
@@ -384,12 +638,44 @@ class TelegramBotCommandService
             $user->xp = ($user->xp ?? 0) + $xp;
             $user->save();
 
+            $total = count($ids);
+            $accuracy = $total > 0 ? (int) round(($correct / $total) * 100) : 0;
+            $stars = $accuracy >= 90 ? '⭐⭐⭐' : ($accuracy >= 70 ? '⭐⭐' : '⭐');
+            $encouragement = match (true) {
+                $accuracy === 100 => "🏆 <b>Hoàn hảo!</b> Bạn nhớ tất cả!",
+                $accuracy >= 80 => "🌟 Xuất sắc! Tiếp tục duy trì nhé!",
+                $accuracy >= 60 => "👍 Tốt lắm! Hãy ôn thêm các thẻ yếu.",
+                default => "💪 Cố gắng thêm! Ôn lại sẽ giúp nhớ lâu hơn.",
+            };
+
             $this->telegram->sendMessage(
                 $chatId,
                 "🎉 <b>Hoàn thành ôn tập!</b>\n"
-                . "✅ Đúng: {$correct}/" . count($ids) . "\n"
-                . "⚡ +{$xp} XP"
+                . "━━━━━━━━━━━━━━━━━━━━\n\n"
+                . "📊 <b>Kết quả:</b>\n"
+                . "  ✅ Đúng: <b>{$correct}/{$total}</b> ({$accuracy}%)\n"
+                . "  {$stars}\n\n"
+                . "{$encouragement}\n\n"
+                . "⚡ <b>+{$xp} XP</b>"
             );
+
+            // Offer next-step CTAs.
+            $this->telegram->sendMessage(
+                $chatId,
+                "Bạn muốn làm gì tiếp theo?",
+                [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '📝 Làm quiz', 'callback_data' => 'tgb:q:start'],
+                            ['text' => '📚 Từ vựng mới', 'callback_data' => 'tgb:vocab-detail'],
+                        ],
+                        [
+                            ['text' => '🏠 Menu chính', 'callback_data' => 'tgb:menu'],
+                        ],
+                    ],
+                ]
+            );
+
             $state->clear();
             return;
         }
@@ -435,5 +721,101 @@ class TelegramBotCommandService
         $lines[] = "Gõ /quiz để luyện tập các từ này!";
 
         $this->telegram->sendMessage($chatId, implode("\n", $lines));
+    }
+
+    /**
+     * Skip a review card and move to the next one (no XP awarded).
+     */
+    private function skipReviewCard(string $chatId, User $user): void
+    {
+        $state = ConversationState::forChat($chatId);
+        $data = (array) $state->state_data;
+        $ids = $data['schedule_ids'] ?? [];
+        $nextIndex = ($data['index'] ?? 0) + 1;
+
+        if ($nextIndex >= count($ids)) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "👋 <b>Đã thoát ôn tập.</b>\n"
+                . "Tiến độ của bạn đã được lưu. Gõ /review bất cứ lúc nào để tiếp tục."
+            );
+            $state->clear();
+            return;
+        }
+
+        $data['index'] = $nextIndex;
+        $state->state_data = $data;
+        $state->save();
+
+        $nextSchedule = ReviewSchedule::query()->find($ids[$nextIndex]);
+        if ($nextSchedule) {
+            $this->sendReviewCard($chatId, $nextSchedule, $nextIndex, count($ids));
+        }
+    }
+
+    /**
+     * Display the main menu — a single screen with all top-level actions.
+     */
+    public function sendMainMenu(string $chatId, User $user): void
+    {
+        $profile = \Modules\TelegramBot\Models\LearningProfile::query()
+            ->where('user_id', $user->id)
+            ->first();
+
+        $streak = $user->streak ?? 0;
+        $xp = $user->xp ?? 0;
+
+        $streakBlock = $streak > 0
+            ? "🔥 Streak: <b>{$streak} ngày</b>\n"
+            : "💡 Hoàn thành bài học hôm nay để bắt đầu streak!\n";
+
+        $text = "🏠 <b>MENU CHÍNH</b>\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n\n"
+            . "👋 Xin chào, <b>{$user->name}</b>!\n"
+            . "⚡ Tổng XP: <b>{$xp}</b>\n"
+            . $streakBlock
+            . "\n"
+            . "🎯 <b>Chọn hoạt động:</b>";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '📚 Từ vựng hôm nay', 'callback_data' => 'tgb:vocab-detail'],
+                    ['text' => '🧠 Cấu trúc câu', 'callback_data' => 'tgb:vocab-detail'],
+                ],
+                [
+                    ['text' => '🔁 Ôn tập SR', 'callback_data' => 'tgb:rv'],
+                    ['text' => '📝 Quiz', 'callback_data' => 'tgb:q:start'],
+                ],
+                [
+                    ['text' => '📍 Lộ trình', 'callback_data' => 'tgb:roadmap'],
+                    ['text' => '⚙️ Cài đặt', 'callback_data' => 'tgb:settings'],
+                ],
+                [
+                    ['text' => '🎮 Mini-game', 'callback_data' => 'tgb:game'],
+                ],
+            ],
+        ];
+
+        $this->telegram->sendMessage($chatId, $text, $keyboard);
+    }
+
+    /**
+     * Send an error message with a "open web" fallback button. Used when
+     * the bot hits a problem (AI unavailable, missing data, etc.) so the
+     * user can switch to the web UI.
+     */
+    public function sendErrorWithFallback(string $chatId, string $message, ?string $webUrl = null): void
+    {
+        $webUrl ??= url('/student/dashboard');
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '🌐 Mở web app', 'url' => $webUrl],
+                    ['text' => '🏠 Menu', 'callback_data' => 'tgb:menu'],
+                ],
+            ],
+        ];
+        $this->telegram->sendMessage($chatId, $message, $keyboard);
     }
 }

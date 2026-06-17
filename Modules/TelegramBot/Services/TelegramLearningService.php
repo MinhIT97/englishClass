@@ -162,7 +162,19 @@ class TelegramLearningService
 
             $this->telegram->sendMessage(
                 $link->telegram_chat_id,
-                "⚠️ Bài hôm nay chưa sẵn sàng. Bạn có thể thử lại sau với /vocab nhé!"
+                "⚠️ <b>Bài học hôm nay chưa sẵn sàng.</b>\n\n"
+                . "Hệ thống AI đang gặp vấn đề. Bạn có thể:\n"
+                . "• Thử lại sau với /vocab\n"
+                . "• Mở web app để xem từ vựng có sẵn\n"
+                . "• Liên hệ admin nếu lỗi kéo dài",
+                [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '🌐 Mở web app', 'url' => url('/student/dashboard')],
+                            ['text' => '🔁 Thử lại /vocab', 'callback_data' => 'tgb:vocab-detail'],
+                        ],
+                    ],
+                ]
             );
             return false;
         }
@@ -215,31 +227,21 @@ class TelegramLearningService
             );
         });
 
-        $text = $this->formatLessonMessage($user, $topic, $payload);
-        $replyMarkup = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '📖 Xem chi tiết', 'callback_data' => "tgb:v:{$lesson->id}"],
-                    ['text' => '📝 Làm bài quiz', 'callback_data' => "tgb:q:{$lesson->id}"],
-                ],
-                [
-                    ['text' => '📚 Lộ trình', 'callback_data' => 'tgb:roadmap'],
-                    ['text' => '⚙️ Cài đặt', 'callback_data' => 'tgb:settings'],
-                ],
-            ],
-        ];
-
-        $response = $this->telegram->sendMessage($link->telegram_chat_id, $text, $replyMarkup);
-
-        if ($response === null) {
+        // Send 3 separate messages: intro, vocabulary, grammar.
+        $lastResponse = $this->sendIntroMessage($link->telegram_chat_id, $user, $topic, $payload);
+        if ($lastResponse === null) {
             $lesson->status = DailyLesson::STATUS_FAILED;
-            $lesson->error_message = 'Telegram send failed';
+            $lesson->error_message = 'Telegram send failed (intro)';
             $lesson->save();
             return false;
         }
 
+        $this->sendVocabularyMessage($link->telegram_chat_id, $topic, $payload);
+
+        $this->sendGrammarMessage($link->telegram_chat_id, $topic, $payload, $lesson->id);
+
         $lesson->status = DailyLesson::STATUS_SENT;
-        $lesson->telegram_message_id = $response['result']['message_id'] ?? null;
+        $lesson->telegram_message_id = $lastResponse['result']['message_id'] ?? null;
         $lesson->sent_at = Carbon::now();
         $lesson->save();
 
@@ -270,44 +272,134 @@ class TelegramLearningService
     }
 
     /**
+     * Send message 1 of 3: greeting + topic intro.
+     *
      * @param array{vocabulary: list<array<string, string>>, grammar: array<string, string>, topic_intro_vi: string} $payload
      */
-    private function formatLessonMessage(User $user, Topic $topic, array $payload): string
+    private function sendIntroMessage(string $chatId, User $user, Topic $topic, array $payload): ?array
     {
+        $hour = (int) Carbon::now()->format('G');
+        $greeting = match (true) {
+            $hour < 5 => '🌙 Chào buổi đêm',
+            $hour < 11 => '☀️ Chào buổi sáng',
+            $hour < 14 => '🌤️ Chào buổi trưa',
+            $hour < 18 => '🌅 Chào buổi chiều',
+            default => '🌙 Chào buổi tối',
+        };
+
+        $text = "━━━━━━━━━━━━━━━━━━━━\n"
+            . "{$greeting}, <b>{$user->name}</b>! 👋\n"
+            . "📅 " . Carbon::now()->format('l, d/m/Y') . "\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n\n"
+            . "📌 <b>Chủ đề hôm nay:</b>\n"
+            . "<b>{$topic->name_vi}</b> <i>({$topic->name_en})</i>\n\n"
+            . (! empty($payload['topic_intro_vi'])
+                ? "💭 <i>{$payload['topic_intro_vi']}</i>\n\n"
+                : '')
+            . "📦 <b>Bài học gồm 3 phần:</b>\n"
+            . "1️⃣ Từ vựng mới\n"
+            . "2️⃣ Cấu trúc câu hay\n"
+            . "3️⃣ Quiz luyện tập\n\n"
+            . "⬇️ <i>Xem bên dưới...</i>";
+
+        return $this->telegram->sendMessage($chatId, $text);
+    }
+
+    /**
+     * Send message 2 of 3: vocabulary card.
+     *
+     * @param array{vocabulary: list<array<string, string>>, grammar: array<string, string>, topic_intro_vi: string} $payload
+     */
+    private function sendVocabularyMessage(string $chatId, Topic $topic, array $payload): void
+    {
+        $words = array_slice($payload['vocabulary'], 0, 5);
+        $count = count($words);
+
         $lines = [];
-        $lines[] = "🌅 <b>Chào buổi sáng, {$user->name}!</b>";
-        $lines[] = "📅 " . Carbon::now()->format('d/m/Y');
-        $lines[] = '';
-        $lines[] = "📌 <b>Chủ đề hôm nay:</b> {$topic->name_vi} <i>({$topic->name_en})</i>";
+        $lines[] = "━━━━━━━━━━━━━━━━━━━━";
+        $lines[] = "📚 <b>TỪ VỰNG MỚI</b> <i>({$count} từ)</i>";
+        $lines[] = "━━━━━━━━━━━━━━━━━━━━";
+        $lines[] = "";
 
-        if (! empty($payload['topic_intro_vi'])) {
-            $lines[] = "<i>{$payload['topic_intro_vi']}</i>";
-        }
-        $lines[] = '';
-
-        $lines[] = "📚 <b>Từ vựng mới (" . count($payload['vocabulary']) . " từ):</b>";
-        foreach (array_slice($payload['vocabulary'], 0, 5) as $i => $w) {
+        foreach ($words as $i => $w) {
             $num = $i + 1;
             $ipa = ! empty($w['ipa']) ? " <code>{$w['ipa']}</code>" : '';
-            $lines[] = "{$num}. <b>{$w['word']}</b>{$ipa} — <i>{$w['meaning_vi']}</i>";
+            $pos = ! empty($w['pos']) ? " <i>[{$w['pos']}]</i>" : '';
+            $lines[] = "<b>{$num}. {$w['word']}</b>{$pos}{$ipa}";
+            $lines[] = "   🇻🇳 {$w['meaning_vi']}";
+            if (! empty($w['example_en'])) {
+                $lines[] = "   💬 <i>\"{$w['example_en']}\"</i>";
+            }
+            if ($i < count($words) - 1) {
+                $lines[] = "";
+            }
         }
 
-        $lines[] = '';
+        $lines[] = "";
+        $lines[] = "💡 <i>Bấm nút bên dưới để xem chi tiết hoặc làm quiz.</i>";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '📖 Xem chi tiết từng từ', 'callback_data' => 'tgb:vocab-detail'],
+                ],
+                [
+                    ['text' => '📝 Làm quiz ngay', 'callback_data' => 'tgb:q:start'],
+                ],
+            ],
+        ];
+
+        $this->telegram->sendMessage($chatId, implode("\n", $lines), $keyboard);
+    }
+
+    /**
+     * Send message 3 of 3: grammar structure with example.
+     *
+     * @param array{vocabulary: list<array<string, string>>, grammar: array<string, string>, topic_intro_vi: string} $payload
+     */
+    private function sendGrammarMessage(string $chatId, Topic $topic, array $payload, int $lessonId): void
+    {
         $grammar = $payload['grammar'];
-        $lines[] = "🧠 <b>Cấu trúc câu:</b>";
-        $lines[] = "<code>{$grammar['structure']}</code>";
-        if (! empty($grammar['explanation_vi'])) {
-            $lines[] = "💡 {$grammar['explanation_vi']}";
-        }
-        if (! empty($grammar['example_en'])) {
-            $lines[] = "✏️ <i>{$grammar['example_en']}</i>";
-        }
-        if (! empty($grammar['example_vi'])) {
-            $lines[] = "🇻🇳 {$grammar['example_vi']}";
-        }
-        $lines[] = '';
-        $lines[] = "⚡ +10 XP | Gõ /review để ôn tập nhé!";
 
-        return implode("\n", $lines);
+        $lines = [];
+        $lines[] = "━━━━━━━━━━━━━━━━━━━━";
+        $lines[] = "🧠 <b>CẤU TRÚC CÂU HAY</b>";
+        $lines[] = "━━━━━━━━━━━━━━━━━━━━";
+        $lines[] = "";
+
+        $lines[] = "<code>{$grammar['structure']}</code>";
+        $lines[] = "";
+
+        if (! empty($grammar['explanation_vi'])) {
+            $lines[] = "💡 <b>Giải thích:</b>";
+            $lines[] = $grammar['explanation_vi'];
+            $lines[] = "";
+        }
+
+        if (! empty($grammar['example_en'])) {
+            $lines[] = "✏️ <b>Ví dụ:</b>";
+            $lines[] = "<i>\"{$grammar['example_en']}\"</i>";
+            $lines[] = "";
+        }
+
+        if (! empty($grammar['example_vi'])) {
+            $lines[] = "🇻🇳 <b>Dịch:</b>";
+            $lines[] = $grammar['example_vi'];
+        }
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '📝 Quiz với từ vựng này', 'callback_data' => "tgb:q:{$lessonId}"],
+                    ['text' => '🔁 Ôn tập SR ngay', 'callback_data' => 'tgb:rv'],
+                ],
+                [
+                    ['text' => '📚 Lộ trình', 'callback_data' => 'tgb:roadmap'],
+                    ['text' => '🏠 Menu', 'callback_data' => 'tgb:menu'],
+                ],
+            ],
+        ];
+
+        $this->telegram->sendMessage($chatId, implode("\n", $lines), $keyboard);
     }
 }

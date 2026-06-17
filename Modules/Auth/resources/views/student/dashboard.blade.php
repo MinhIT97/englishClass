@@ -1,4 +1,6 @@
 <x-app-layout>
+    @include('TelegramBot::partials.dashboard-banner')
+
     <div class="dashboard-header-wrap">
         <div>
             <h1 style="font-size: 2rem; margin-bottom: 0.5rem">{{ __('ui.hello') }}, {{ auth()->user()->name }}! 👋</h1>

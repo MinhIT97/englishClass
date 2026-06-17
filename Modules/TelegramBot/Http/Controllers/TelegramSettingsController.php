@@ -35,4 +35,14 @@ class TelegramSettingsController extends Controller
         UserTelegramLink::query()->where('user_id', $user->id)->delete();
         return back()->with('status', 'Đã hủy liên kết Telegram.');
     }
+
+    /**
+     * POST /student/settings/telegram/dismiss-banner
+     * Persist a "don't show again" flag for the current session.
+     */
+    public function dismissBanner(Request $request)
+    {
+        $request->session()->put('tgb_banner_dismissed', true);
+        return response()->json(['ok' => true]);
+    }
 }

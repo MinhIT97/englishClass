@@ -235,5 +235,9 @@ return [
     'telegram_paused' => 'Đang tạm dừng',
     'telegram_active' => 'Đang hoạt động',
     'telegram_change_via_bot' => 'Để thay đổi, hãy dùng lệnh /settings trong Telegram.',
+    'telegram_dashboard_banner_title' => 'Học tiếng Anh mỗi ngày qua Telegram!',
+    'telegram_dashboard_banner_desc' => 'Nhận từ vựng, cấu trúc câu và quiz ngay trong Telegram. Liên kết chỉ mất 1 phút.',
+    'telegram_dashboard_banner_cta' => 'Liên kết ngay',
+    'telegram_dashboard_banner_dismiss' => 'Để sau',
 ];
 
