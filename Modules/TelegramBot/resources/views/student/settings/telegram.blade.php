@@ -57,7 +57,7 @@
                         <div>
                             <strong>{{ __('ui.telegram_linked_as') }}:</strong>
                             @if($link->telegram_username)
-                                @{{ $link->telegram_username }}
+                                {{ $link->telegram_username }}
                             @else
                                 #{{ $link->telegram_chat_id }}
                             @endif
@@ -83,7 +83,7 @@
 
             <a href="https://t.me/{{ $botUsername }}" target="_blank" rel="noopener"
                class="btn tgb-btn-telegram">
-                ✈️ {{ __('ui.telegram_open_bot') }} @{{ $botUsername }}
+                ✈️ {{ __('ui.telegram_open_bot') }} {{ $botUsername }}
             </a>
 
             <form action="{{ route('student.telegram.linking-code') }}" method="POST" style="margin-top: 1.5rem;">
@@ -98,7 +98,7 @@
                     <div class="tgb-step-num">1</div>
                     <div class="tgb-step-content">
                         <div class="tgb-step-title">Mở bot trên Telegram</div>
-                        <div class="tgb-step-desc">Nhấn nút "Mở" màu xanh phía trên để mở <strong>@{{ $botUsername }}</strong></div>
+                        <div class="tgb-step-desc">Nhấn nút "Mở" màu xanh phía trên để mở <strong>{{ $botUsername }}</strong></div>
                     </div>
                 </div>
                 <div class="tgb-step">
