@@ -46,8 +46,13 @@ class TelegramBotServiceProvider extends ModuleServiceProvider
      */
     protected function schedule(Schedule $schedule): void
     {
+        // 15-min cadence so a user who picks e.g. 19:00 actually receives
+        // their lesson in the 19:00-19:14 window instead of anywhere
+        // within the 19:00-20:00 hour. SendDailyLessonsCommand still
+        // filters by LearningProfile::isDailySendTime() so we don't
+        // double-send.
         $schedule->command('tgb:send-daily')
-            ->hourly()
+            ->everyFifteenMinutes()
             ->withoutOverlapping()
             ->onOneServer();
     }

@@ -103,6 +103,30 @@ class TelegramService
     }
 
     /**
+     * Send a chat action (typing indicator, upload_photo, etc.) so the
+     * user sees "..." while the bot is processing. Telegram expires this
+     * automatically after ~5s — caller should resend for longer ops.
+     *
+     * Common actions: typing, upload_photo, record_voice, find_location.
+     */
+    public function sendChatAction(string $chatId, string $action = 'typing'): void
+    {
+        if (empty($this->token)) {
+            return;
+        }
+
+        try {
+            Http::timeout(5)->post("{$this->baseUrl}{$this->token}/sendChatAction", [
+                'chat_id' => $chatId,
+                'action' => $action,
+            ]);
+        } catch (\Throwable $e) {
+            // Chat action failures are non-critical — log and continue.
+            Log::debug('[Telegram] sendChatAction exception', ['message' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * Send a student registration approval request to admin.
      */
     public function sendStudentApprovalRequest(User $user): void

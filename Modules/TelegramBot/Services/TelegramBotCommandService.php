@@ -5,6 +5,7 @@ namespace Modules\TelegramBot\Services;
 use App\Models\User;
 use App\Services\TelegramService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\TelegramBot\Models\ConversationState;
 use Modules\TelegramBot\Models\ReviewSchedule;
@@ -25,6 +26,8 @@ class TelegramBotCommandService
         private readonly TelegramLearningService $learning,
         private readonly TelegramGameService $game,
         private readonly TelegramSettingsService $settings,
+        private readonly AchievementService $achievements,
+        private readonly LevelService $levels,
     ) {
     }
 
@@ -82,6 +85,11 @@ class TelegramBotCommandService
                 $this->handleExtraLesson($chatId, $user);
                 break;
 
+            case 'achievements':
+                if (! $user) { $this->requireLink($chatId); return; }
+                $this->sendAchievementsList($chatId, $user);
+                break;
+
             case 'menu':
                 if (! $user) { $this->requireLink($chatId); return; }
                 $this->sendMainMenu($chatId, $user);
@@ -125,6 +133,18 @@ class TelegramBotCommandService
             return;
         }
 
+        // Touch last_interaction_at first so the welcome-back check below
+        // sees fresh data (otherwise we'd re-greet on every message).
+        UserTelegramLink::query()
+            ->where('user_id', $user->id)
+            ->update(['last_interaction_at' => Carbon::now()]);
+
+        // Welcome-back nudge: if the user's last interaction was > 36h
+        // ago, send an empathetic recap + invite them back BEFORE we
+        // route the current text to whatever handler below.
+        $link = UserTelegramLink::query()->where('user_id', $user->id)->first();
+        $this->maybeSendWelcomeBack($chatId, $user, $link);
+
         $state = ConversationState::query()->where('telegram_chat_id', $chatId)->first();
 
         if ($state && $state->current_command === 'onboarding') {
@@ -149,6 +169,64 @@ class TelegramBotCommandService
             . "Gõ /help để xem danh sách lệnh.\n"
             . "Gõ /start để bắt đầu nếu bạn chưa liên kết tài khoản."
         );
+    }
+
+    /**
+     * If the user has been idle for > 36h, send a single empathetic
+     * welcome-back message. Skipped when:
+     *   - the user is mid-flow (ConversationState set),
+     *   - the user just sent a /command (commands are handled by
+     *     handleCommand, which calls resolveUser but NOT this path),
+     *   - we've already sent a welcome-back within the last 12h
+     *     (cached in `tgb:welcome_back:{user_id}`).
+     */
+    private function maybeSendWelcomeBack(string $chatId, User $user, ?UserTelegramLink $link): void
+    {
+        if (! $link || ! $link->last_interaction_at) {
+            return;
+        }
+
+        $state = ConversationState::query()->where('telegram_chat_id', $chatId)->first();
+        if ($state && $state->current_command !== null) {
+            return; // don't interrupt an in-progress flow
+        }
+
+        $idleSince = $link->last_interaction_at;
+        $hoursIdle = (int) $idleSince->diffInHours(Carbon::now());
+        if ($hoursIdle < 36) {
+            return;
+        }
+
+        // Throttle: only fire once per 12h even if the user keeps messaging.
+        $throttleKey = "tgb:welcome_back:{$user->id}";
+        if (cache()->has($throttleKey)) {
+            return;
+        }
+
+        $days = max(1, (int) Carbon::now()->diffInDays($idleSince));
+        $streakWarning = $user->streak > 0
+            ? "\n⚠️ Streak của bạn đã đứt từ <b>{$user->streak} ngày</b> rồi — nhưng không sao, hãy bắt đầu lại nhé!"
+            : "";
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "👋 <b>Chào mừng quay lại!</b>\n\n"
+            . "Đã <b>{$days} ngày</b> kể từ lần cuối bạn ghé bot.{$streakWarning}\n\n"
+            . "🌱 Mỗi ngày nhỏ đều đếm — bắt đầu lại từ hôm nay thôi!",
+            [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '📚 Học tiếp ngay', 'callback_data' => 'tgb:q:start'],
+                    ],
+                    [
+                        ['text' => '📍 Xem lộ trình', 'callback_data' => 'tgb:roadmap'],
+                        ['text' => '🏠 Menu chính', 'callback_data' => 'tgb:menu'],
+                    ],
+                ],
+            ]
+        );
+
+        cache()->put($throttleKey, 1, now()->addHours(12));
     }
 
     public function handleCallback(string $chatId, string $callbackId, string $data, ?int $messageId, ?User $user = null): void
@@ -254,6 +332,11 @@ class TelegramBotCommandService
                 $this->handleExtraLesson($chatId, $user);
                 break;
 
+            case 'achievements':
+                if (! $user) return;
+                $this->sendAchievementsList($chatId, $user);
+                break;
+
             case 'r': // review grade: tgb:r:<schedule_id>:<grade>
                 if (! $user) return;
                 $scheduleId = (int) ($parts[2] ?? 0);
@@ -352,7 +435,8 @@ class TelegramBotCommandService
             . "/quiz - Quiz 5 câu trắc nghiệm\n"
             . "/review - Ôn tập thẻ đến hạn\n"
             . "/roadmap - Xem lộ trình học\n"
-            . "/extra - Học thêm bài (yêu cầu quyền)\n\n"
+            . "/extra - Học thêm bài (yêu cầu quyền)\n"
+            . "/achievements - Xem huy hiệu & thành tựu\n\n"
             . "🎮 <b>Giải trí:</b>\n"
             . "/game - Mini-game (Word Scramble, Match Pairs...)\n\n"
             . "💡 <b>Mẹo:</b> Gõ /menu để mở menu trực quan với các nút bấm.";
@@ -856,6 +940,56 @@ class TelegramBotCommandService
     }
 
     /**
+     * Display the user's full achievements list, with locked entries
+     * showing the unlock hint and unlocked entries showing the date.
+     */
+    private function sendAchievementsList(string $chatId, User $user): void
+    {
+        $unlocked = \Modules\TelegramBot\Models\UserAchievement::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('unlocked_at')
+            ->get()
+            ->keyBy('achievement_key');
+
+        $total = count(AchievementService::CATALOG);
+        $have = $unlocked->count();
+
+        $lines = [];
+        $lines[] = "🏆 <b>HUY HIỆU CỦA BẠN</b>";
+        $lines[] = "━━━━━━━━━━━━━━━━━━━━";
+        $lines[] = "";
+        $lines[] = "✨ Tiến độ: <b>{$have}/{$total}</b>";
+
+        if ($total > 0 && $have === $total) {
+            $lines[] = "🎉 <i>Bạn đã sưu tập đủ tất cả huy hiệu!</i>";
+        }
+        $lines[] = "";
+
+        foreach (AchievementService::CATALOG as $key => $info) {
+            $has = $unlocked->has($key);
+            $status = $has ? '✅' : '🔒';
+            $name = $has ? "<b>{$info['name']}</b>" : "<i>{$info['name']}</i>";
+            $desc = $has ? '' : "  <i>— {$info['description']}</i>";
+            $lines[] = "{$status} {$info['emoji']} {$name}  <i>(+{$info['xp']} XP)</i>{$desc}";
+            if ($has) {
+                $date = $unlocked[$key]->unlocked_at->format('d/m/Y');
+                $lines[] = "      <i>Mở khóa ngày {$date}</i>";
+            }
+        }
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '🏠 Menu chính', 'callback_data' => 'tgb:menu'],
+                    ['text' => '📚 Học tiếp', 'callback_data' => 'tgb:q:start'],
+                ],
+            ],
+        ];
+
+        $this->telegram->sendMessage($chatId, implode("\n", $lines), $keyboard);
+    }
+
+    /**
      * Display the main menu — a single screen with all top-level actions.
      */
     public function sendMainMenu(string $chatId, User $user): void
@@ -866,6 +1000,10 @@ class TelegramBotCommandService
 
         $streak = $user->streak ?? 0;
         $xp = $user->xp ?? 0;
+        $achievementCount = $this->achievements->unlockedCount($user);
+        $achievementTotal = count(AchievementService::CATALOG);
+        $levelInfo = $this->levels->currentLevelInfo($user);
+        $levelProgress = $this->levels->progressPercent($user);
 
         $streakBlock = $streak > 0
             ? "🔥 Streak: <b>{$streak} ngày</b>\n"
@@ -874,8 +1012,10 @@ class TelegramBotCommandService
         $text = "🏠 <b>MENU CHÍNH</b>\n"
             . "━━━━━━━━━━━━━━━━━━━━\n\n"
             . "👋 Xin chào, <b>{$user->name}</b>!\n"
-            . "⚡ Tổng XP: <b>{$xp}</b>\n"
+            . "{$levelInfo['emoji']} Level: <b>{$levelInfo['level']} — {$levelInfo['name_vi']}</b>\n"
+            . "⚡ Tổng XP: <b>{$xp}</b> (tiến độ level: {$levelProgress}%)\n"
             . $streakBlock
+            . "🏆 Huy hiệu: <b>{$achievementCount}/{$achievementTotal}</b>\n"
             . "\n"
             . "🎯 <b>Chọn hoạt động:</b>";
 
@@ -891,6 +1031,9 @@ class TelegramBotCommandService
             [
                 ['text' => '📍 Lộ trình', 'callback_data' => 'tgb:roadmap'],
                 ['text' => '⚙️ Cài đặt', 'callback_data' => 'tgb:settings'],
+            ],
+            [
+                ['text' => '🏆 Huy hiệu của tôi', 'callback_data' => 'tgb:achievements'],
             ],
         ];
 

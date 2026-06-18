@@ -5,6 +5,7 @@ namespace Modules\TelegramBot\Services;
 use App\Models\User;
 use App\Services\TelegramService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Modules\TelegramBot\Models\ConversationState;
 use Modules\TelegramBot\Models\QuizAttempt;
 use Modules\TelegramBot\Models\ReviewSchedule;
@@ -17,6 +18,8 @@ class TelegramQuizService
 {
     public function __construct(
         private readonly TelegramService $telegram,
+        private readonly AchievementService $achievements,
+        private readonly LevelService $levels,
     ) {
     }
 
@@ -154,14 +157,14 @@ class TelegramQuizService
     {
         $score = ($data['score'] ?? 0);
         $total = count($data['questions'] ?? []);
-        $perfect = $score === $total;
+        $perfect = $score === $total && $total > 0;
 
-        if ($perfect && $total > 0) {
-            $user = User::find($data['user_id']);
-            if ($user) {
-                $user->xp = ($user->xp ?? 0) + 20;
-                $user->save();
-            }
+        $user = User::find($data['user_id']);
+        $xpBefore = $user ? ($user->xp ?? 0) : 0;
+
+        if ($perfect && $user) {
+            $user->xp = ($user->xp ?? 0) + 20;
+            $user->save();
             $score += 20;
         }
 
@@ -173,6 +176,39 @@ class TelegramQuizService
             . "✅ Đúng: {$score}/{$total}\n"
             . "⚡ Tổng XP: +" . ($perfect ? 25 : $score * 5)
         );
+
+        // Trigger achievement check for quiz results (best-effort).
+        if ($user) {
+            try {
+                $unlocked = $this->achievements->checkAndUnlock(
+                    $user,
+                    'quiz_finished',
+                    ['perfect' => $perfect]
+                );
+                if (! empty($unlocked)) {
+                    $this->achievements->celebrate($chatId, $user, $unlocked);
+                }
+            } catch (\Throwable $e) {
+                // Don't break quiz completion if achievement check fails.
+                Log::warning('[TelegramBot] quiz achievement check failed', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // Level-up check (after all XP grants are done).
+            try {
+                $levelUp = $this->levels->checkLevelUp($user, $xpBefore);
+                if (! empty($levelUp['celebrated'])) {
+                    $this->levels->celebrate($chatId, $user, $levelUp);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[TelegramBot] quiz level check failed', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     private function buildMultipleChoice(VocabularyEntry $word, array $pool): array
