@@ -19,6 +19,13 @@ class AuthService
 
     /**
      * Register a new user.
+     *
+     * SECURITY: role and status are hardcoded below. Even if a
+     * malicious client POSTs `role=admin` or `is_unlimited=1`, those
+     * keys are silently overwritten. The input array comes from
+     * $request->validated() which only contains fields declared in
+     * RegisterRequest::rules(). Do NOT change this to merge() or
+     * ->all() without re-auditing the mass-assignment surface.
      */
     public function register(array $data)
     {

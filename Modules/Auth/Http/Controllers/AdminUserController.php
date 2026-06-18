@@ -3,6 +3,8 @@
 namespace Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\AuditLogger;
 use Modules\Auth\Services\UserService;
 use Modules\Auth\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
@@ -12,8 +14,10 @@ class AdminUserController extends Controller
 {
     protected $userService;
 
-    public function __construct(UserService $userService)
-    {
+    public function __construct(
+        UserService $userService,
+        protected AuditLogger $audit,
+    ) {
         $this->userService = $userService;
     }
 
@@ -25,7 +29,8 @@ class AdminUserController extends Controller
     public function webIndex(Request $request)
     {
         $status = $request->get('status', 'pending');
-        $users = $this->userService->listByStatus($status, $request->get('limit', 15));
+        $limit = min((int) $request->get('limit', 15), 100);
+        $users = $this->userService->listByStatus($status, $limit);
 
         return view('auth::admin.users', compact('users', 'status'));
     }
@@ -33,9 +38,19 @@ class AdminUserController extends Controller
     /**
      * Approve a user via Web.
      */
-    public function webApprove(int $id)
+    public function webApprove(Request $request, int $id)
     {
-        $this->userService->approveUser($id);
+        $target = User::find($id);
+        $user = $this->userService->approveUser($id);
+
+        $this->audit->log(
+            action: 'user.approved',
+            target: $user,
+            metadata: [
+                'previous_status' => $target?->getOriginal('status'),
+                'via' => 'web',
+            ],
+        );
 
         return back()->with('success', 'User approved successfully.');
     }
@@ -48,7 +63,8 @@ class AdminUserController extends Controller
     public function index(Request $request): JsonResponse
     {
         $status = $request->get('status', 'pending');
-        $users = $this->userService->listByStatus($status, $request->get('limit', 15));
+        $limit = min((int) $request->get('limit', 15), 100);
+        $users = $this->userService->listByStatus($status, $limit);
 
         return UserResource::collection($users)->response();
     }
@@ -56,9 +72,19 @@ class AdminUserController extends Controller
     /**
      * Approve a user.
      */
-    public function approve(int $id): JsonResponse
+    public function approve(Request $request, int $id): JsonResponse
     {
+        $target = User::find($id);
         $user = $this->userService->approveUser($id);
+
+        $this->audit->log(
+            action: 'user.approved',
+            target: $user,
+            metadata: [
+                'previous_status' => $target?->getOriginal('status'),
+                'via' => 'api',
+            ],
+        );
 
         return response()->json([
             'message' => 'User approved successfully.',

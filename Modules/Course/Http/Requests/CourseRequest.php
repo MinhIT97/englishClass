@@ -2,6 +2,7 @@
 
 namespace Modules\Course\Http\Requests;
 
+use App\Enums\UserRole;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CourseRequest extends FormRequest
@@ -20,10 +21,22 @@ class CourseRequest extends FormRequest
     }
 
     /**
-     * Determine if the user is authorized to make this request.
+     * Only teachers and admins may create or modify courses. Students
+     * are rejected at the FormRequest layer so the policy is enforced
+     * even if a controller forgets to call $this->authorize().
+     *
+     * Defense-in-depth: CourseController also checks role before the
+     * quota service, so the user gets a 403 here AND a clear error.
      */
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return in_array($user->role, [UserRole::Admin->value, UserRole::Teacher->value], true)
+            && $user->status === 'active';
     }
 }

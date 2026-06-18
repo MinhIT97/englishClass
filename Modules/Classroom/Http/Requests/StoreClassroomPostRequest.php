@@ -22,7 +22,19 @@ class StoreClassroomPostRequest extends FormRequest
         return [
             'content' => ['required', 'string'],
             'type' => ['required', Rule::enum(ClassroomPostType::class)],
-            'attachment' => ['nullable', 'file', 'max:51200'],
+
+            // SECURITY: Restrict uploaded files to safe MIME types.
+            // Without this, a teacher could upload a .php or .phtml
+            // file that — depending on the storage disk — could be
+            // executed by the web server if the storage path is
+            // ever served as static assets. 50 MB hard cap to avoid
+            // disk-fill DoS.
+            'attachment' => [
+                'nullable',
+                'file',
+                'max:51200',
+                'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,csv,zip,mp3,mp4',
+            ],
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ReviewLessonRequestRequest;
 use App\Http\Requests\StoreLessonRequestRequest;
 use App\Models\LessonRequest;
+use App\Services\AuditLogger;
 use App\Services\LessonQuotaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,8 @@ use Illuminate\Http\Request;
 class LessonRequestController extends Controller
 {
     public function __construct(
-        protected LessonQuotaService $quota
+        protected LessonQuotaService $quota,
+        protected AuditLogger $audit,
     ) {
     }
 
@@ -34,13 +36,22 @@ class LessonRequestController extends Controller
             return back()->with('error', 'Bạn đã có yêu cầu đang chờ duyệt cho loại bài học này.');
         }
 
-        LessonRequest::create([
+        $lessonRequest = LessonRequest::create([
             'user_id' => $user->id,
             'lesson_type' => $request->validated('lesson_type'),
             'requested_extra' => $request->validated('requested_extra'),
             'reason' => $request->validated('reason'),
             'status' => LessonRequest::STATUS_PENDING,
         ]);
+
+        $this->audit->log(
+            action: 'lesson_request.submitted',
+            target: $lessonRequest,
+            metadata: [
+                'requested_extra' => $lessonRequest->requested_extra,
+                'lesson_type' => $lessonRequest->lesson_type,
+            ],
+        );
 
         return back()->with('success', 'Yêu cầu xin thêm bài học đã được gửi đến admin.');
     }
@@ -85,6 +96,12 @@ class LessonRequestController extends Controller
                 'reviewed_at' => now(),
             ]);
 
+            $this->audit->log(
+                action: 'lesson_request.rejected',
+                target: $lessonRequest,
+                metadata: ['admin_note' => $lessonRequest->admin_note],
+            );
+
             return back()->with('success', 'Đã từ chối yêu cầu.');
         }
 
@@ -101,6 +118,16 @@ class LessonRequestController extends Controller
         ]);
 
         $this->quota->applyApproval($lessonRequest->user, $lessonRequest);
+
+        $this->audit->log(
+            action: 'lesson_request.approved',
+            target: $lessonRequest,
+            metadata: [
+                'grant_unlimited' => $grantUnlimited,
+                'approved_extra' => $grantUnlimited ? null : $approvedExtra,
+                'target_user_id' => $lessonRequest->user_id,
+            ],
+        );
 
         return back()->with('success', $grantUnlimited
             ? 'Đã duyệt và cấp quyền tạo bài không giới hạn cho user.'

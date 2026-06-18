@@ -19,12 +19,13 @@ class TelegramWebhookController extends Controller
     public function handle(Request $request): Response
     {
         try {
-            // Xác thực secret token để tránh request giả mạo
-            $secret = config('telegram.webhook_secret');
-            if ($secret && $request->header('X-Telegram-Bot-Api-Secret-Token') !== $secret) {
-                Log::warning('[Telegram Webhook] Unauthorized request');
-                return response('Unauthorized', 401);
-            }
+            // SECURITY: Secret verification is handled by the
+            // `telegram.secret` middleware on the route (see
+            // bootstrap/app.php). It uses hash_equals() and
+            // returns 503 in production when the secret is
+            // unconfigured. Do NOT add a duplicate check here —
+            // a plain !== comparison would be vulnerable to
+            // timing attacks.
 
             $payload = $request->all();
 
@@ -72,9 +73,17 @@ class TelegramWebhookController extends Controller
 
             return response('OK', 200);
         } catch (\Throwable $e) {
+            // SECURITY: log the exception class + sanitised message,
+            // not the full Throwable — Throwable::getTrace() can leak
+            // JWT tokens, passwords, or API keys depending on where
+            // the error originated. For admin diagnostics, send the
+            // exception to the admin alert pipeline where access is
+            // gated.
             Log::error('[Telegram Webhook] Unhandled exception', [
                 'update_id' => $request->input('update_id'),
-                'exception' => $e,
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => basename($e->getFile()) . ':' . $e->getLine(),
             ]);
             $this->telegram->sendAdminAlert('Telegram webhook exception', [
                 'feature' => 'telegram_webhook',

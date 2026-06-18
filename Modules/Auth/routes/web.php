@@ -7,8 +7,13 @@ use Modules\Auth\Http\Controllers\NotificationController;
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
     Route::get('register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('login', [AuthController::class, 'webLogin']);
-    Route::post('register', [AuthController::class, 'webRegister']);
+
+    // SECURITY: rate-limit credential endpoints. throttling by IP
+    // (default Laravel behaviour when no key is given) prevents
+    // brute-force password attacks and mass account creation.
+    // 5/min for login, 3/hour for register.
+    Route::post('login', [AuthController::class, 'webLogin'])->middleware('throttle:5,1');
+    Route::post('register', [AuthController::class, 'webRegister'])->middleware('throttle:3,60');
 });
 
 Route::middleware('auth')->group(function () {
@@ -34,7 +39,7 @@ Route::middleware('auth')->group(function () {
             : redirect('/student/dashboard');
     });
 
-    Route::group(['prefix' => 'admin', 'middleware' => 'can:admin-access'], function () {
+    Route::group(['prefix' => 'admin', 'middleware' => ['can:admin-access', 'audit.admin']], function () {
         Route::get('dashboard', [AuthController::class, 'adminDashboard'])->name('admin.dashboard');
         Route::get('users', [\Modules\Auth\Http\Controllers\AdminUserController::class, 'webIndex'])->name('admin.users');
         Route::post('users/{id}/approve', [\Modules\Auth\Http\Controllers\AdminUserController::class, 'webApprove'])->name('admin.users.approve');

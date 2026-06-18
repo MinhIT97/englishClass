@@ -23,13 +23,17 @@ Route::post('telegram/webhook', [\App\Http\Controllers\TelegramWebhookController
     ->name('telegram.webhook');
 
 Route::middleware(['auth'])->group(function () {
-    Route::post('/ai/chat', [\App\Http\Controllers\Api\AIChatController::class, 'chat'])->name('ai.chat');
+    Route::post('/ai/chat', [\App\Http\Controllers\Api\AIChatController::class, 'chat'])
+        ->middleware('throttle:ai')
+        ->name('ai.chat');
 
     // User-submitted lesson quota requests
-    Route::post('lesson-requests', [LessonRequestController::class, 'store'])->name('lesson-requests.store');
+    Route::post('lesson-requests', [LessonRequestController::class, 'store'])
+        ->middleware('throttle:lesson-requests')
+        ->name('lesson-requests.store');
 });
 
-Route::middleware(['auth', 'can:admin-access'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'can:admin-access', 'audit.admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('lesson-requests', [LessonRequestController::class, 'index'])->name('lesson-requests.index');
     Route::post('lesson-requests/{lessonRequest}/review', [LessonRequestController::class, 'review'])->name('lesson-requests.review');
 });

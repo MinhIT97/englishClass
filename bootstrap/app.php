@@ -15,11 +15,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
+            \App\Http\Middleware\SecurityHeaders::class,
+        ]);
+
+        $middleware->api(append: [
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
         $middleware->alias([
             'auth.deploy' => \App\Http\Middleware\AuthenticateDeployHook::class,
             'telegram.secret' => \Modules\TelegramBot\Http\Middleware\VerifyTelegramSecret::class,
+            'audit.admin' => \App\Http\Middleware\AuditAdminActions::class,
+            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'security.headers' => \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

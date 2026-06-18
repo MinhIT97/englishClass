@@ -134,12 +134,16 @@ class ClassroomService implements ClassroomServiceInterface
     }
 
     /**
-     * Generate a unique 6-character invite code.
+     * Generate a unique 10-character invite code.
+     *
+     * SECURITY: 6 chars gave only ~31^6 = 887M possibilities which is
+     * brute-forceable from a single IP in days. Bumped to 10 chars
+     * (alphanumeric, uppercased) → 36^10 = ~3.6 * 10^15.
      */
     private function generateUniqueInviteCode(): string
     {
         do {
-            $code = strtoupper(Str::random(6));
+            $code = strtoupper(Str::random(10));
         } while ($this->repository->findByInviteCode($code) !== null);
 
         return $code;

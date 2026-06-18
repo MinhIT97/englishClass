@@ -7,6 +7,12 @@ use Modules\Course\Repositories\CourseRepository;
 
 class CourseService
 {
+    /**
+     * Hard cap on page size to prevent DoS via ?limit=99999999.
+     * Applied regardless of what the caller passes.
+     */
+    public const MAX_PER_PAGE = 100;
+
     protected $repository;
 
     public function __construct(CourseRepository $repository)
@@ -19,6 +25,8 @@ class CourseService
      */
     public function paginate(array $filters = [], int $perPage = 15)
     {
+        $perPage = max(1, min($perPage, self::MAX_PER_PAGE));
+
         return $this->repository->model()::query()
             ->filter($filters)
             ->paginate($perPage);
