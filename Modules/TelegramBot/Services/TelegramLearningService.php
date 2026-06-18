@@ -431,11 +431,32 @@ class TelegramLearningService
         // can't both pass the limit check.
         $this->incrementExtrasToday($user);
 
-        $sent = $this->sendDailyLesson($user, Carbon::now(), force: true);
+        try {
+            $sent = $this->sendDailyLesson($user, Carbon::now(), force: true);
+        } catch (\Throwable $e) {
+            $this->decrementExtrasToday($user);
+            Log::error('[TelegramBot] Extra lesson exception', [
+                'user_id' => $user->id,
+                'exception' => $e,
+            ]);
+            $this->telegram->sendAdminAlert('Extra lesson creation crashed', [
+                'feature' => 'telegram_extra_lesson',
+                'user_id' => $user->id,
+                'email' => $user->email,
+            ], $e);
+
+            return ['ok' => false, 'reason' => 'send_failed'];
+        }
 
         if (! $sent) {
             // Roll back the counter so a failed attempt doesn't burn quota.
             $this->decrementExtrasToday($user);
+            $this->telegram->sendAdminAlert('Extra lesson could not be created', [
+                'feature' => 'telegram_extra_lesson',
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'hint' => 'Check the preceding Gemini or Telegram alert and laravel.log.',
+            ]);
             return ['ok' => false, 'reason' => 'send_failed'];
         }
 

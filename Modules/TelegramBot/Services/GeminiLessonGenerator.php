@@ -2,6 +2,7 @@
 
 namespace Modules\TelegramBot\Services;
 
+use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -63,15 +64,25 @@ class GeminiLessonGenerator
         self::TYPE_REVIEW => 'Ôn tập tuần',
     ];
 
-    private string $apiKey;
+    /** @var list<string> */
+    private array $apiKeys;
+
     private string $model;
-    private string $endpoint;
+
+    /** @var list<string> */
+    private array $fallbackModels;
 
     public function __construct()
     {
-        $this->apiKey = (string) config('services.gemini.key', '');
+        $this->apiKeys = $this->parseCsv((string) config(
+            'services.gemini.keys',
+            config('services.gemini.key', '')
+        ));
         $this->model = (string) config('services.gemini.model', 'gemini-2.5-flash-lite');
-        $this->endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent";
+        $this->fallbackModels = $this->parseCsv((string) config(
+            'services.gemini.fallback_models',
+            config('services.gemini.fallback_model', 'gemini-2.5-flash')
+        ));
     }
 
     /**
@@ -106,8 +117,9 @@ class GeminiLessonGenerator
             return $this->buildReviewSkeleton($profile);
         }
 
-        if ($this->apiKey === '') {
+        if ($this->apiKeys === []) {
             Log::warning('[TelegramBot] GEMINI_API_KEY chưa được cấu hình.');
+            $this->alertFailure('Gemini API key is missing', $profile, $topic, $lessonType);
             return null;
         }
 
@@ -122,41 +134,127 @@ class GeminiLessonGenerator
         $prompt = $this->buildPromptForType($profile, $topic, $lessonType, $wordCount, $exclude);
 
         try {
-            $response = Http::timeout(30)->post($this->endpoint . '?key=' . $this->apiKey, [
-                'contents' => [
-                    ['role' => 'user', 'parts' => [['text' => $prompt]]],
-                ],
-                'generationConfig' => [
-                    'temperature' => 0.7,
-                    'topP' => 0.95,
-                    'topK' => 64,
-                    'maxOutputTokens' => 2048,
-                ],
+            $models = array_values(array_unique(array_filter([
+                $this->model,
+                ...$this->fallbackModels,
+            ])));
+            $failures = [];
+
+            foreach ($models as $model) {
+                foreach ($this->apiKeys as $keyIndex => $apiKey) {
+                    $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+                    $response = Http::timeout(30)->post($endpoint . '?key=' . $apiKey, [
+                        'contents' => [
+                            ['role' => 'user', 'parts' => [['text' => $prompt]]],
+                        ],
+                        'generationConfig' => [
+                            'temperature' => 0.7,
+                            'topP' => 0.95,
+                            'topK' => 64,
+                            'maxOutputTokens' => 2048,
+                        ],
+                    ]);
+
+                    if (! $response->successful()) {
+                        $failures[] = [
+                            'model' => $model,
+                            'key_number' => $keyIndex + 1,
+                            'status' => $response->status(),
+                            'error' => $response->json('error.message') ?? $response->body(),
+                        ];
+                        Log::warning('[TelegramBot] Gemini model/key failed', end($failures));
+                        continue;
+                    }
+
+                    $text = $response->json('candidates.0.content.parts.0.text');
+                    if (! is_string($text) || trim($text) === '') {
+                        $failures[] = [
+                            'model' => $model,
+                            'key_number' => $keyIndex + 1,
+                            'status' => $response->status(),
+                            'error' => 'Empty/non-text payload; finish reason: '
+                                . ($response->json('candidates.0.finishReason') ?? 'unknown'),
+                        ];
+                        Log::warning('[TelegramBot] Gemini returned invalid content', end($failures));
+                        continue;
+                    }
+
+                    $parsed = $this->parseResponseForType($text, $lessonType, $exclude, $wordCount);
+                    if ($parsed === null) {
+                        $failures[] = [
+                            'model' => $model,
+                            'key_number' => $keyIndex + 1,
+                            'status' => $response->status(),
+                            'error' => 'Cannot parse lesson JSON: ' . mb_substr($text, 0, 500),
+                        ];
+                        continue;
+                    }
+
+                    if ($model !== $this->model || $keyIndex > 0) {
+                        Log::notice('[TelegramBot] Gemini failover succeeded', [
+                            'primary_model' => $this->model,
+                            'selected_model' => $model,
+                            'key_number' => $keyIndex + 1,
+                        ]);
+                    }
+
+                    $parsed['lesson_type'] = $lessonType;
+                    Cache::put($cacheKey, $parsed, now()->addHours(36));
+
+                    return $parsed;
+                }
+            }
+
+            Log::error('[TelegramBot] All Gemini models failed', ['failures' => $failures]);
+            $this->alertFailure('All Gemini lesson models failed', $profile, $topic, $lessonType, [
+                'attempted_models' => $models,
+                'api_key_count' => count($this->apiKeys),
+                'failures' => $failures,
             ]);
 
-            if (! $response->successful()) {
-                Log::error('[TelegramBot] Gemini error', ['body' => $response->body()]);
-                return null;
-            }
-
-            $text = $response->json('candidates.0.content.parts.0.text');
-            if (! is_string($text)) {
-                Log::error('[TelegramBot] Gemini returned non-text payload');
-                return null;
-            }
-
-            $parsed = $this->parseResponseForType($text, $lessonType, $exclude, $wordCount);
-            if ($parsed === null) {
-                return null;
-            }
-
-            $parsed['lesson_type'] = $lessonType;
-            Cache::put($cacheKey, $parsed, now()->addHours(36));
-
-            return $parsed;
-        } catch (\Throwable $e) {
-            Log::error('[TelegramBot] Gemini exception: ' . $e->getMessage());
             return null;
+        } catch (\Throwable $e) {
+            Log::error('[TelegramBot] Gemini exception: ' . $e->getMessage(), [
+                'model' => $this->model,
+                'exception' => $e,
+            ]);
+            $this->alertFailure('Gemini lesson generation exception', $profile, $topic, $lessonType, [], $e);
+            return null;
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseCsv(string $value): array
+    {
+        return array_values(array_unique(array_filter(
+            array_map('trim', explode(',', $value)),
+            static fn (string $item): bool => $item !== ''
+        )));
+    }
+
+    private function alertFailure(
+        string $title,
+        LearningProfile $profile,
+        Topic $topic,
+        string $lessonType,
+        array $context = [],
+        ?\Throwable $exception = null
+    ): void {
+        try {
+            app(TelegramService::class)->sendAdminAlert($title, array_merge([
+                'feature' => 'telegram_lesson',
+                'model' => $this->model,
+                'user_id' => $profile->user_id,
+                'topic_id' => $topic->id,
+                'topic' => $topic->name_vi ?? $topic->name_en ?? 'unknown',
+                'lesson_type' => $lessonType,
+            ], $context), $exception);
+        } catch (\Throwable $alertException) {
+            Log::warning('[TelegramBot] Could not send Gemini admin alert', [
+                'error' => $alertException->getMessage(),
+            ]);
         }
     }
 

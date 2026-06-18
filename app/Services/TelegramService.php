@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class TelegramService
 {
@@ -56,9 +58,71 @@ class TelegramService
     }
 
     /**
+     * Send an operational error to the configured admin chat.
+     * Duplicate alerts are throttled to avoid flooding the admin.
+     */
+    public function sendAdminAlert(string $title, array $context = [], ?Throwable $exception = null): bool
+    {
+        if (empty($this->adminChatId) || empty($this->token)) {
+            Log::warning('[Telegram] Admin alert skipped because credentials are missing.', [
+                'title' => $title,
+            ]);
+
+            return false;
+        }
+
+        if ($exception) {
+            $context['exception'] = $exception::class;
+            $context['error'] = $exception->getMessage();
+            $context['location'] = $exception->getFile() . ':' . $exception->getLine();
+        }
+
+        $fingerprintContext = $context;
+        unset($fingerprintContext['time'], $fingerprintContext['request_id']);
+        $fingerprint = sha1($title . json_encode($fingerprintContext));
+        $throttleKey = "telegram:admin-alert:{$fingerprint}";
+
+        if (! Cache::add($throttleKey, true, now()->addMinutes(5))) {
+            return false;
+        }
+
+        $lines = [
+            '🚨 <b>' . $this->escapeHtml($title) . '</b>',
+            '',
+            '🖥 <b>Server:</b> <code>' . $this->escapeHtml((string) gethostname()) . '</code>',
+            '🌍 <b>Environment:</b> <code>' . $this->escapeHtml((string) app()->environment()) . '</code>',
+            '🕒 <b>Time:</b> <code>' . $this->escapeHtml(now()->toDateTimeString()) . '</code>',
+        ];
+
+        foreach ($context as $key => $value) {
+            if (is_bool($value)) {
+                $value = $value ? 'true' : 'false';
+            } elseif (is_array($value) || is_object($value)) {
+                $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            } elseif ($value === null) {
+                $value = 'null';
+            }
+
+            $lines[] = '• <b>' . $this->escapeHtml((string) $key) . ':</b> <code>'
+                . $this->escapeHtml($this->truncate((string) $value, 700)) . '</code>';
+        }
+
+        $response = $this->sendMessage(
+            $this->adminChatId,
+            $this->truncate(implode("\n", $lines), 3900)
+        );
+
+        if ($response === null) {
+            Cache::forget($throttleKey);
+        }
+
+        return $response !== null;
+    }
+
+    /**
      * Edit an existing message text.
      */
-    public function editMessageText(string $chatId, int $messageId, string $text, array $replyMarkup = null): void
+    public function editMessageText(string $chatId, int $messageId, string $text, ?array $replyMarkup = null): void
     {
         if (empty($this->token)) {
             return;
@@ -165,5 +229,19 @@ class TelegramService
         ];
 
         $this->sendMessage($this->adminChatId, $text, $replyMarkup);
+    }
+
+    private function escapeHtml(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    private function truncate(string $value, int $length): string
+    {
+        if (mb_strlen($value) <= $length) {
+            return $value;
+        }
+
+        return mb_substr($value, 0, $length - 1) . '…';
     }
 }

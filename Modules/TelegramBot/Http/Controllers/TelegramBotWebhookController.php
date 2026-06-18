@@ -3,6 +3,7 @@
 namespace Modules\TelegramBot\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Modules\TelegramBot\Services\TelegramBotCommandService;
@@ -11,6 +12,7 @@ class TelegramBotWebhookController extends Controller
 {
     public function __construct(
         private readonly TelegramBotCommandService $commandService,
+        private readonly TelegramService $telegram,
     ) {
     }
 
@@ -39,6 +41,14 @@ class TelegramBotWebhookController extends Controller
             Log::error('[TelegramBot] Webhook exception: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
+            $this->telegram->sendAdminAlert('Telegram webhook exception', [
+                'feature' => 'telegram_webhook',
+                'update_id' => $request->input('update_id'),
+                'chat_id' => $request->input('message.chat.id')
+                    ?? $request->input('callback_query.message.chat.id'),
+                'command' => $request->input('message.text')
+                    ?? $request->input('callback_query.data'),
+            ], $e);
             return response('ok', 200);
         }
     }

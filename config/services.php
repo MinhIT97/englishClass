@@ -37,7 +37,11 @@ return [
 
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
-        'model' => 'gemini-2.5-flash-lite',
+        'keys' => env('GEMINI_API_KEYS') ?: env('GEMINI_API_KEY', ''),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash-lite'),
+        'fallback_model' => env('GEMINI_FALLBACK_MODEL', 'gemini-2.5-flash'),
+        'fallback_models' => env('GEMINI_FALLBACK_MODELS')
+            ?: env('GEMINI_FALLBACK_MODEL', 'gemini-2.5-flash'),
     ],
 
     'openai' => [

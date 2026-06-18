@@ -155,6 +155,21 @@ Expected response:
 
 > **Note:** The app uses Cloudflare Tunnel to expose the server over HTTPS — Telegram requires HTTPS for webhooks. No extra configuration needed.
 
+### Gemini API rotation
+
+Telegram lesson generation supports the same key/model rotation pattern used by
+GymMap. Keys and fallback models are tried in order:
+
+```env
+GEMINI_API_KEY=key_one,key_two,key_three
+GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_FALLBACK_MODELS=gemini-2.5-flash
+```
+
+`GEMINI_API_KEYS` can be used instead of `GEMINI_API_KEY` when an explicit
+multi-key variable is preferred. After changing production environment values,
+recreate the app containers or run `php artisan optimize:clear`.
+
 ### Step 4 — Verify
 
 Register a new student account on the platform. You should immediately receive a Telegram message like:
