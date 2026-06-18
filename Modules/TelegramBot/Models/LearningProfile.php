@@ -3,6 +3,9 @@
 namespace Modules\TelegramBot\Models;
 
 use App\Models\User;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -11,12 +14,18 @@ class LearningProfile extends Model
 {
     protected $table = 'tgb_learning_profiles';
 
+    public const DEFAULT_TIMEZONE = 'Asia/Ho_Chi_Minh';
+
     public const PURPOSE_IELTS = 'ielts';
+
     public const PURPOSE_DAILY = 'daily';
+
     public const PURPOSE_BUSINESS = 'business';
 
     public const LEVEL_BEGINNER = 'beginner';
+
     public const LEVEL_INTERMEDIATE = 'intermediate';
+
     public const LEVEL_ADVANCED = 'advanced';
 
     protected $fillable = [
@@ -45,6 +54,22 @@ class LearningProfile extends Model
     public function telegramLink(): HasOne
     {
         return $this->hasOne(UserTelegramLink::class, 'user_id', 'user_id');
+    }
+
+    public function localDateTime(CarbonInterface $dateTime): Carbon
+    {
+        try {
+            return Carbon::instance($dateTime)
+                ->setTimezone($this->timezone ?: self::DEFAULT_TIMEZONE);
+        } catch (Exception) {
+            return Carbon::instance($dateTime)
+                ->setTimezone(self::DEFAULT_TIMEZONE);
+        }
+    }
+
+    public function isDailySendTime(CarbonInterface $dateTime): bool
+    {
+        return $this->localDateTime($dateTime)->hour === $this->daily_send_hour;
     }
 
     public static function purposes(): array

@@ -109,7 +109,7 @@ class TelegramLearningService
      *
      * @return bool true on successful send
      */
-    public function sendDailyLesson(User $user, ?Carbon $when = null): bool
+    public function sendDailyLesson(User $user, ?Carbon $when = null, bool $force = false): bool
     {
         $when ??= Carbon::now();
 
@@ -133,7 +133,7 @@ class TelegramLearningService
             ->where('status', DailyLesson::STATUS_SENT)
             ->exists();
 
-        if ($alreadySent) {
+        if ($alreadySent && ! $force) {
             return false;
         }
 
@@ -228,7 +228,7 @@ class TelegramLearningService
         });
 
         // Send 3 separate messages: intro, vocabulary, grammar.
-        $lastResponse = $this->sendIntroMessage($link->telegram_chat_id, $user, $topic, $payload);
+        $lastResponse = $this->sendIntroMessage($link->telegram_chat_id, $user, $topic, $payload, $when);
         if ($lastResponse === null) {
             $lesson->status = DailyLesson::STATUS_FAILED;
             $lesson->error_message = 'Telegram send failed (intro)';
@@ -245,14 +245,15 @@ class TelegramLearningService
         $lesson->sent_at = Carbon::now();
         $lesson->save();
 
-        $this->bumpStreak($user);
+        $this->bumpStreak($user, $when);
 
         return true;
     }
 
-    public function bumpStreak(User $user): void
+    public function bumpStreak(User $user, ?Carbon $when = null): void
     {
-        $today = Carbon::now()->toDateString();
+        $when ??= Carbon::now();
+        $today = $when->toDateString();
         $lastKey = "tgb:last_lesson:{$user->id}";
         $lastDate = cache()->get($lastKey);
 
@@ -260,7 +261,7 @@ class TelegramLearningService
             return; // already counted today
         }
 
-        if ($lastDate === Carbon::now()->subDay()->toDateString()) {
+        if ($lastDate === $when->copy()->subDay()->toDateString()) {
             $user->streak = ($user->streak ?? 0) + 1;
         } else {
             $user->streak = 1;
@@ -276,9 +277,15 @@ class TelegramLearningService
      *
      * @param array{vocabulary: list<array<string, string>>, grammar: array<string, string>, topic_intro_vi: string} $payload
      */
-    private function sendIntroMessage(string $chatId, User $user, Topic $topic, array $payload): ?array
+    private function sendIntroMessage(
+        string $chatId,
+        User $user,
+        Topic $topic,
+        array $payload,
+        Carbon $when
+    ): ?array
     {
-        $hour = (int) Carbon::now()->format('G');
+        $hour = (int) $when->format('G');
         $greeting = match (true) {
             $hour < 5 => '🌙 Chào buổi đêm',
             $hour < 11 => '☀️ Chào buổi sáng',
@@ -289,7 +296,7 @@ class TelegramLearningService
 
         $text = "━━━━━━━━━━━━━━━━━━━━\n"
             . "{$greeting}, <b>{$user->name}</b>! 👋\n"
-            . "📅 " . Carbon::now()->format('l, d/m/Y') . "\n"
+            . "📅 " . $when->format('l, d/m/Y') . "\n"
             . "━━━━━━━━━━━━━━━━━━━━\n\n"
             . "📌 <b>Chủ đề hôm nay:</b>\n"
             . "<b>{$topic->name_vi}</b> <i>({$topic->name_en})</i>\n\n"

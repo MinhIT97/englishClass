@@ -20,22 +20,26 @@ class SendDailyLessonsCommand extends Command
 
     public function handle(TelegramLearningService $service): int
     {
-        $now = Carbon::now();
-        $currentHour = (int) $now->format('G');
+        $now = Carbon::now('UTC');
 
-        $this->info("Running tgb:send-daily at {$now->toDateTimeString()} (hour={$currentHour})");
+        $this->info("Running tgb:send-daily at {$now->toDateTimeString()} UTC");
 
         $query = LearningProfile::query()
             ->where('is_paused', false)
-            ->where('onboarded_at', '!=', null);
+            ->whereNotNull('onboarded_at');
 
         if ($userId = $this->option('user')) {
             $query->where('user_id', (int) $userId);
-        } else {
-            $query->where('daily_send_hour', $currentHour);
         }
 
         $profiles = $query->get();
+
+        if (! $userId) {
+            $profiles = $profiles
+                ->filter(fn (LearningProfile $profile) => $profile->isDailySendTime($now))
+                ->values();
+        }
+
         $this->info("Found {$profiles->count()} eligible profile(s).");
 
         $sent = 0;
@@ -43,26 +47,37 @@ class SendDailyLessonsCommand extends Command
         $failed = 0;
 
         foreach ($profiles as $profile) {
+            $localNow = $profile->localDateTime($now);
             $user = User::find($profile->user_id);
             if (! $user) {
                 $skipped++;
+
                 continue;
             }
 
             $link = UserTelegramLink::query()->where('user_id', $user->id)->first();
             if (! $link) {
                 $skipped++;
+
                 continue;
             }
 
             if ($this->option('dry-run')) {
-                $this->line("  [dry-run] Would send to user #{$user->id} ({$user->email})");
+                $this->line(
+                    "  [dry-run] Would send to user #{$user->id} ({$user->email})"
+                    ." at {$localNow->toDateTimeString()} {$localNow->timezoneName}"
+                );
                 $sent++;
+
                 continue;
             }
 
             try {
-                $ok = $service->sendDailyLesson($user, $now);
+                $ok = $service->sendDailyLesson(
+                    $user,
+                    $localNow,
+                    (bool) $this->option('force')
+                );
                 if ($ok) {
                     $sent++;
                     $this->line("  ✓ Sent to user #{$user->id}");
@@ -72,7 +87,7 @@ class SendDailyLessonsCommand extends Command
                 }
             } catch (\Throwable $e) {
                 $failed++;
-                $this->error("  ✗ Failed for user #{$user->id}: " . $e->getMessage());
+                $this->error("  ✗ Failed for user #{$user->id}: ".$e->getMessage());
                 \Log::error('[tgb:send-daily] exception', [
                     'user_id' => $user->id,
                     'msg' => $e->getMessage(),
@@ -81,6 +96,7 @@ class SendDailyLessonsCommand extends Command
         }
 
         $this->info("Done. sent={$sent} skipped={$skipped} failed={$failed}");
+
         return self::SUCCESS;
     }
 }
