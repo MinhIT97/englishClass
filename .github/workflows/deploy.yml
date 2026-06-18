@@ -14,7 +14,10 @@ jobs:
       - name: Pull latest code
         run: |
           cd /home/minhnv/projects/englishClass
-          docker run --rm -v $(pwd):/app alpine chown -R $(id -u):$(id -g) /app
+          docker run --rm \
+            -v "$(pwd):/app" \
+            alpine sh -c 'find /app -xdev ! -type l ! -name .env -exec chown "$1:$2" {} +' \
+            sh "$(id -u)" "$(id -g)"
           git fetch origin master
           git reset --hard origin/master
 
