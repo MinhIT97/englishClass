@@ -40,7 +40,7 @@ jobs:
         run: |
           cd /home/minhnv/projects/englishClass
           docker compose exec -T app php artisan migrate --force
-          docker compose exec -T app php artisan db:seed --force --class="Modules\\TelegramBot\\Database\\Seeders\\TgbTopicSeeder"
+          docker compose exec -T app php artisan db:seed --force --class="Modules\\TelegramBot\\database\\seeders\\TgbTopicSeeder"
 
       - name: Verify Telegram lesson runtime configuration
         run: |
