@@ -1,0 +1,33 @@
+{
+  "app.name": "IELTS Mastery",
+  "nav.dashboard": "Bảng điều khiển",
+  "nav.flashcards": "Flashcards",
+  "nav.study_plan": "Lịch học",
+  "nav.community": "Cộng đồng",
+  "nav.analytics": "Tiến bộ",
+  "nav.teacher": "Giáo viên",
+  "nav.settings": "Cài đặt",
+  "nav.admin": "Quản trị",
+
+  "common.save": "Lưu",
+  "common.cancel": "Huỷ",
+  "common.delete": "Xoá",
+  "common.edit": "Sửa",
+  "common.create": "Tạo mới",
+  "common.search": "Tìm kiếm",
+  "common.loading": "Đang tải...",
+  "common.empty": "Chưa có dữ liệu",
+  "common.error": "Có lỗi xảy ra",
+  "common.success": "Thành công",
+
+  "lesson.title": "Bài học",
+  "lesson.start": "Bắt đầu",
+  "lesson.complete": "Hoàn thành",
+  "lesson.flashcard": "Thẻ từ vựng",
+  "lesson.practice": "Luyện tập",
+  "lesson.test": "Kiểm tra",
+
+  "streak.days": ":count ngày",
+  "streak.continue": "Tiếp tục duy trì streak!",
+  "streak.lost": "Streak đã mất. Hãy học lại hôm nay!"
+}

@@ -6,6 +6,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use App\View\Directives\LazyImageDirective;
 
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Blade;
@@ -58,6 +59,9 @@ class AppServiceProvider extends ServiceProvider
         // Register components for ease of use
         Blade::component('layouts.app', 'app-layout');
         Blade::component('layouts.guest', 'guest-layout');
+
+        // Register UI building blocks (lazy-image, empty-state, toast-host).
+        LazyImageDirective::register();
     }
 
     /**

@@ -1,0 +1,33 @@
+{
+  "app.name": "IELTS Mastery",
+  "nav.dashboard": "Dashboard",
+  "nav.flashcards": "Flashcards",
+  "nav.study_plan": "Study plan",
+  "nav.community": "Community",
+  "nav.analytics": "Progress",
+  "nav.teacher": "Teacher",
+  "nav.settings": "Settings",
+  "nav.admin": "Admin",
+
+  "common.save": "Save",
+  "common.cancel": "Cancel",
+  "common.delete": "Delete",
+  "common.edit": "Edit",
+  "common.create": "Create",
+  "common.search": "Search",
+  "common.loading": "Loading...",
+  "common.empty": "No data yet",
+  "common.error": "Something went wrong",
+  "common.success": "Success",
+
+  "lesson.title": "Lesson",
+  "lesson.start": "Start",
+  "lesson.complete": "Complete",
+  "lesson.flashcard": "Flashcard",
+  "lesson.practice": "Practice",
+  "lesson.test": "Test",
+
+  "streak.days": ":count days",
+  "streak.continue": "Keep your streak going!",
+  "streak.lost": "Streak lost. Study again today!"
+}

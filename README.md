@@ -208,3 +208,175 @@ The application follows a modular structure located in the `Modules/` directory:
 ## 📄 License
 
 This project is licensed under the MIT License.
+
+---
+
+## 🆕 What's New — June 2026 Update
+
+This release adds 26 features across four pillars. See
+[SECURITY_UPGRADE_PLAN.md](SECURITY_UPGRADE_PLAN.md) for the
+implementation roadmap and [SECURITY.md](SECURITY.md) for the
+security policy.
+
+### 🔒 Security Hardening (8 fixes)
+
+- **Role-based authorization** — CourseRequest, CourseController, and
+  Classroom upload now enforce admin/teacher role at both the
+  FormRequest and controller layers. Students get a clean 403.
+- **Rate limiting** — `throttle:5,1` on /login and `throttle:3,60` on
+  /register (web + API). 20/min on AI endpoints. Hourly cap on lesson
+  quota requests.
+- **Audit logging** — Append-only `audit_logs` table + `AuditLogger`
+  service. Every admin mutation (user approval, quota override,
+  bulk operation) writes a row with actor, IP, user-agent, and
+  metadata.
+- **Telegram webhook hardening** — Empty secret now returns 503 in
+  production instead of silently disabling verification. Removed
+  duplicate timing-unsafe `!==` check from the controller.
+- **Security headers** — X-Frame-Options DENY, X-Content-Type-Options
+  nosniff, Referrer-Policy, Permissions-Policy, and a baseline CSP
+  applied globally via `SecurityHeaders` middleware.
+- **MIME validation** — Classroom uploads restricted to safe types
+  (jpg, png, pdf, doc, zip, mp4...) with a 50 MB cap.
+- **Pagination cap** — `CourseService::MAX_PER_PAGE = 100` prevents
+  DoS via `?limit=99999999`.
+- **Hygiene** — `.env.example` defaults `APP_DEBUG=false` and warns
+  about APP_KEY rotation. Classroom invite codes bumped from 6 to
+  10 chars. Telegram webhook logging no longer dumps full stack
+  traces.
+
+### 🎨 UX & Performance Polish (6 improvements)
+
+- **Loading skeletons** — `<x-ui.skeleton>` component + animated
+  shimmer CSS. Drops into any view where data is loading.
+- **PWA + offline** — `manifest.json`, service worker with
+  cache-first for static assets, network-first for HTML, and an
+  `/offline` fallback page.
+- **Dark mode** — Token-based theme system (`:root[data-theme]`).
+  Toggle button cycles system → light → dark. Preference saved to
+  `localStorage` and applied before first paint to avoid FOUC.
+- **Accessibility** — Skip-to-content link, visible focus rings,
+  ARIA live regions for screen reader announcements, focus trap for
+  modals, Cmd/Ctrl+K to focus search, Cmd/Ctrl+J to open AI tutor.
+- **Animations** — `window.celebrate()` for confetti on lesson
+  completion. Respects `prefers-reduced-motion`.
+- **Core Web Vitals** — Lazy-loaded images with explicit
+  width/height to prevent CLS, prefetch hints for likely next
+  routes.
+
+### ✨ Student Features (9 new)
+
+- **🤖 AI Tutor** — Floating chat widget (Cmd/Ctrl+J). Remembers the
+  last 5 conversation turns. Three entry points: free-form ask,
+  explain-a-wrong-answer, suggest-next-lesson. All rate-limited via
+  the `ai` limiter.
+- **📚 SRS Flashcard UI** — Web version of the Telegram bot's
+  spaced-repetition system. Anki-style flow with keyboard shortcuts
+  (Space = flip, 1-4 = grade). Confetti on deck completion.
+- **⏱ Mock Test Timer** — Realistic IELTS countdown with
+  `is-warning` and `is-critical` states. Auto-submits the form on
+  timeout via a `mock-test:timeout` CustomEvent.
+- **✍️ Writing Checker** — Live inline feedback as the student types.
+  Flags repeated words, long sentences (>30 words), contractions
+  (penalised in IELTS), and gives band-specific tips.
+- **🎙 Pronunciation Shadowing** — Record + waveform visualisation
+  + native-speaker comparison. Uses MediaRecorder API; degrades
+  gracefully if unavailable.
+- **📅 Study Planner** — Monthly calendar view with event creation,
+  Pomodoro timer (25/5 min cycles), per-event types.
+- **🎯 Daily Quests** — Gamification engine that awards XP when
+  metrics (flashcards reviewed, lessons completed, etc.) hit
+  configurable targets.
+- **👥 Community** — Public study notes, polymorphic comments,
+  buddy-matching at the same target band.
+- **📊 Progress Analytics** — Per-skill radar chart, estimated
+  band score, 30-day activity heatmap, top-5 weakest topics.
+
+### 👨‍🏫 Teacher & Admin Features (7 new)
+
+- **Teacher Dashboard** — Class list with at-risk students (>7 days
+  inactive), recent submissions, high-level stats.
+- **Assignment workflow** — Per-classroom assignments with rubric,
+  submissions, and manual grading.
+- **Bulk operations** — Bulk approve / role change / delete users,
+  CSV import with row-level error reporting.
+- **Question Bank AI tagging** — (Foundations in place; per-question
+  tagging UI hooks exist via `QuestionController`.)
+- **Class Analytics** — Cohort comparison, common mistakes across
+  classes, per-topic time spent.
+- **Content Authoring Tools** — Rich-text lesson editor scaffold
+  with publish workflow (draft → review → published).
+- **Student Support** — One-click messaging, canned responses,
+  ticket-style notes attached to user records.
+
+### 🌐 Cross-cutting (4 new)
+
+- **🔍 Global Search (Cmd/Ctrl+K)** — Single search bar that hits
+  courses, classrooms, public notes, and (admin-only) users.
+- **🔔 Notification Center 2.0** — Per-category preferences,
+  digest mode (realtime / daily / weekly / off), snooze support.
+- **⚙️ Settings & Privacy** — Notification prefs, learning prefs,
+  privacy toggles, locale switcher, GDPR/PDPA data export.
+- **🌍 Multi-language** — `vi` / `en` UI dictionaries with the
+  `ApplyUserLocale` middleware auto-switching on every request
+  based on the user's saved preference.
+
+### 🆕 Database changes
+
+Run `php artisan migrate` to apply:
+
+```
+2026_06_18_100000_add_lesson_quota_to_users_table
+2026_06_18_100100_create_lesson_requests_table
+2026_06_19_100000_create_audit_logs_table
+2026_06_19_120000_create_study_plans_table
+2026_06_19_130000_create_quests_and_achievements
+2026_06_19_140000_create_community_tables
+2026_06_19_150000_create_user_preferences_table
+```
+
+### 🆕 New routes
+
+```
+POST   /ai/tutor              AI tutor free-form
+POST   /ai/tutor/explain      Explain wrong answer
+POST   /ai/tutor/suggest      Next-lesson recommendation
+
+GET    /flashcards            SRS review UI
+POST   /flashcards/{id}/grade Submit grade
+
+GET    /study-plan            Calendar
+POST   /study-plan            Create entry
+
+GET    /quests                Daily quest list
+
+GET    /community/notes       Public study notes
+POST   /community/notes       Create note
+POST   /community/comments    Add comment
+GET    /community/find-buddy  Match a study buddy
+
+GET    /analytics             Student progress dashboard
+GET    /teacher/dashboard     Teacher overview
+
+GET    /search                 Global search (Cmd+K)
+GET    /settings/preferences  User settings
+PUT    /settings/preferences  Save settings
+GET    /settings/export       GDPR data export
+```
+
+### 🆕 Test coverage
+
+Six new feature tests under `tests/Feature/Security/`:
+
+- `AuthorizationTest` — Role-based access enforcement
+- `RateLimitTest` — Throttle middleware returns 429 after limits
+- `MassAssignmentTest` — Register cannot set `role` or `is_unlimited`
+- `TelegramWebhookSecurityTest` — Secret check + 503 on prod
+- `AuditLogTest` — Audit rows written for sensitive actions
+- `FileUploadValidationTest` — MIME types enforced
+
+Run with:
+
+```bash
+php artisan test --testsuite=Feature --filter=Security
+```

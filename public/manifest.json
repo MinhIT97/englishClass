@@ -1,0 +1,37 @@
+{
+  "name": "IELTS Mastery",
+  "short_name": "IELTS",
+  "description": "Nền tảng luyện thi IELTS thông minh với AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Daily Lesson",
+      "url": "/student/dashboard",
+      "description": "Bài học hôm nay của bạn"
+    },
+    {
+      "name": "Mock Test",
+      "url": "/mock-test",
+      "description": "Làm bài thi thử IELTS"
+    }
+  ]
+}

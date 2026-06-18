@@ -87,6 +87,12 @@
     <!-- Styles & Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+    <!-- Theme tokens — applied before Vite-built CSS so tokens win -->
+    <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
+
+    {{-- Per-page <head> stack (theme pre-paint script, etc.) --}}
+    @stack('head')
+
     <!-- Inline Fix for Server-side CSS Cache/Build Issues -->
     <style>
         .feedback-select, .feedback-input, .feedback-textarea {
@@ -594,5 +600,14 @@
                 color: white !important;
             }
         </style>
+
+        {{-- Toast renderer — reads window.__toasts and renders them --}}
+        <script src="{{ asset('js/toast.js') }}" defer></script>
+
+        {{-- Per-page scripts stack --}}
+        @stack('scripts')
+
+        {{-- Global toast host — must be present on every page --}}
+        <x-toast-host />
     </body>
 </html>
