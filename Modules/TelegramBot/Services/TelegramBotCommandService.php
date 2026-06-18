@@ -24,6 +24,7 @@ class TelegramBotCommandService
         private readonly SpacedRepetitionService $sr,
         private readonly TelegramLearningService $learning,
         private readonly TelegramGameService $game,
+        private readonly TelegramSettingsService $settings,
     ) {
     }
 
@@ -76,6 +77,11 @@ class TelegramBotCommandService
                 $this->game->showMenu($chatId);
                 break;
 
+            case 'extra':
+                if (! $user) { $this->requireLink($chatId); return; }
+                $this->handleExtraLesson($chatId, $user);
+                break;
+
             case 'menu':
                 if (! $user) { $this->requireLink($chatId); return; }
                 $this->sendMainMenu($chatId, $user);
@@ -123,6 +129,11 @@ class TelegramBotCommandService
 
         if ($state && $state->current_command === 'onboarding') {
             $this->onboarding->handleFreeText($chatId, $text);
+            return;
+        }
+
+        if ($state && $state->current_command === 'settings_change') {
+            $this->settings->handleFreeText($chatId, $text);
             return;
         }
 
@@ -198,7 +209,49 @@ class TelegramBotCommandService
 
             case 'settings':
                 if (! $user) return;
-                $this->sendSettings($chatId, $user);
+                $sub = $parts[2] ?? '';
+                $value = $parts[3] ?? '';
+
+                if ($sub === '') {
+                    // tgb:settings → show main settings screen
+                    $this->settings->sendSettings($chatId, $user);
+                } elseif ($sub === 'purpose' && $value !== '') {
+                    // tgb:settings:purpose:<value> — user picked a new purpose
+                    $this->settings->handlePurposeChoice($chatId, $value, $user->id);
+                } elseif ($sub === 'level' && $value !== '') {
+                    // tgb:settings:level:<value> — pick a new level
+                    $this->settings->handleLevelChoice($chatId, $value, $user->id);
+                } elseif ($sub === 'hour' && $value === 'custom') {
+                    // tgb:settings:hour:custom — ask for free-text hour
+                    $this->settings->handleHourCustom($chatId);
+                } elseif ($sub === 'hour' && $value !== '') {
+                    // tgb:settings:hour:<h> — preset hour
+                    $this->settings->handleHourChoice($chatId, (int) $value, $user->id);
+                } elseif ($sub === 'cancel') {
+                    // tgb:settings:cancel — exit settings-change wizard
+                    $this->settings->handleCancel($chatId);
+                } else {
+                    // tgb:settings:purpose | :level | :hour | :toggle
+                    // — open the corresponding change prompt
+                    $this->settings->startChangeFlow($chatId, $user, $sub);
+                }
+                break;
+
+            case 'lesson':
+                if (! $user) return;
+                // tgb:lesson:first — request an on-demand first lesson
+                // (triggered from the onboarding summary screen).
+                $this->handleExtraLesson($chatId, $user);
+                break;
+
+            case 'skip-topic':
+                if (! $user) return;
+                $this->skipCurrentTopic($chatId, $user);
+                break;
+
+            case 'extra':
+                if (! $user) return;
+                $this->handleExtraLesson($chatId, $user);
                 break;
 
             case 'r': // review grade: tgb:r:<schedule_id>:<grade>
@@ -223,17 +276,6 @@ class TelegramBotCommandService
             case 'rskip': // skip current review card
                 if (! $user) return;
                 $this->skipReviewCard($chatId, $user);
-                break;
-
-            case 'q':
-                if (! $user) return;
-                // tgb:q:<lessonId> or tgb:q:start
-                $arg = $parts[2] ?? '';
-                if ($arg === 'start') {
-                    $this->quiz->startQuiz($chatId, $user);
-                } else {
-                    $this->quiz->startQuiz($chatId, $user);
-                }
                 break;
 
             case 'menu': // main menu (single button from any flow)
@@ -302,14 +344,15 @@ class TelegramBotCommandService
             . "━━━━━━━━━━━━━━━━━━━━\n\n"
             . "🔗 <b>Liên kết & cài đặt:</b>\n"
             . "/start [CODE] - Liên kết tài khoản\n"
-            . "/settings - Đổi mục đích, trình độ, giờ nhận\n"
+            . "/settings - Đổi mục đích, trình độ, giờ nhận, tạm dừng\n"
             . "/menu - Menu chính (dễ dùng)\n\n"
             . "📖 <b>Học tập:</b>\n"
             . "/vocab - Từ vựng hôm nay\n"
             . "/grammar - Cấu trúc câu hôm nay\n"
             . "/quiz - Quiz 5 câu trắc nghiệm\n"
             . "/review - Ôn tập thẻ đến hạn\n"
-            . "/roadmap - Xem lộ trình học\n\n"
+            . "/roadmap - Xem lộ trình học\n"
+            . "/extra - Học thêm bài (yêu cầu quyền)\n\n"
             . "🎮 <b>Giải trí:</b>\n"
             . "/game - Mini-game (Word Scramble, Match Pairs...)\n\n"
             . "💡 <b>Mẹo:</b> Gõ /menu để mở menu trực quan với các nút bấm.";
@@ -754,6 +797,65 @@ class TelegramBotCommandService
     }
 
     /**
+     * Skip the user's current topic and promote the next locked topic in
+     * the same purpose to STATUS_CURRENT. Mirrors the "⏭ Bỏ qua" button
+     * on the roadmap screen.
+     */
+    private function skipCurrentTopic(string $chatId, User $user): void
+    {
+        $profile = \Modules\TelegramBot\Models\LearningProfile::query()
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $profile) {
+            return;
+        }
+
+        $promoted = DB::transaction(function () use ($user, $profile) {
+            $current = UserPath::query()
+                ->where('user_id', $user->id)
+                ->where('status', UserPath::STATUS_CURRENT)
+                ->first();
+
+            if (! $current) {
+                return null;
+            }
+
+            $current->status = UserPath::STATUS_SKIPPED;
+            $current->completed_at = Carbon::now();
+            $current->save();
+
+            $next = UserPath::query()
+                ->where('user_id', $user->id)
+                ->where('status', UserPath::STATUS_LOCKED)
+                ->join('tgb_topics', 'tgb_topics.id', '=', 'tgb_user_paths.topic_id')
+                ->where('tgb_topics.purpose', $profile->purpose)
+                ->orderBy('tgb_topics.order_index')
+                ->select('tgb_user_paths.*')
+                ->first();
+
+            if ($next) {
+                $next->status = UserPath::STATUS_CURRENT;
+                $next->started_at = Carbon::now();
+                $next->save();
+            }
+
+            return $next;
+        });
+
+        $text = $promoted
+            ? "⏭️ <b>Đã bỏ qua chủ đề hiện tại.</b>\n\nBạn đã chuyển sang chủ đề tiếp theo."
+            : "⏭️ <b>Đã bỏ qua chủ đề hiện tại.</b>\n\n"
+                . "Bạn đã hoàn thành tất cả chủ đề trong mục đích này. 🎉";
+
+        $this->telegram->sendMessage(
+            $chatId,
+            $text,
+            ['inline_keyboard' => [[['text' => '📍 Xem lộ trình', 'callback_data' => 'tgb:roadmap']]]]
+        );
+    }
+
+    /**
      * Display the main menu — a single screen with all top-level actions.
      */
     public function sendMainMenu(string $chatId, User $user): void
@@ -777,25 +879,34 @@ class TelegramBotCommandService
             . "\n"
             . "🎯 <b>Chọn hoạt động:</b>";
 
-        $keyboard = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '📚 Từ vựng hôm nay', 'callback_data' => 'tgb:vocab-detail'],
-                    ['text' => '🧠 Cấu trúc câu', 'callback_data' => 'tgb:vocab-detail'],
-                ],
-                [
-                    ['text' => '🔁 Ôn tập SR', 'callback_data' => 'tgb:rv'],
-                    ['text' => '📝 Quiz', 'callback_data' => 'tgb:q:start'],
-                ],
-                [
-                    ['text' => '📍 Lộ trình', 'callback_data' => 'tgb:roadmap'],
-                    ['text' => '⚙️ Cài đặt', 'callback_data' => 'tgb:settings'],
-                ],
-                [
-                    ['text' => '🎮 Mini-game', 'callback_data' => 'tgb:game'],
-                ],
+        $rows = [
+            [
+                ['text' => '📚 Từ vựng hôm nay', 'callback_data' => 'tgb:vocab-detail'],
+                ['text' => '🧠 Cấu trúc câu', 'callback_data' => 'tgb:vocab-detail'],
+            ],
+            [
+                ['text' => '🔁 Ôn tập SR', 'callback_data' => 'tgb:rv'],
+                ['text' => '📝 Quiz', 'callback_data' => 'tgb:q:start'],
+            ],
+            [
+                ['text' => '📍 Lộ trình', 'callback_data' => 'tgb:roadmap'],
+                ['text' => '⚙️ Cài đặt', 'callback_data' => 'tgb:settings'],
             ],
         ];
+
+        // Premium / extra-lesson opt-in: show the on-demand lesson button
+        // only for users who have been granted permission.
+        if ($user->can_request_extra_lesson) {
+            $rows[] = [
+                ['text' => '📖 Học thêm bài', 'callback_data' => 'tgb:extra'],
+            ];
+        }
+
+        $rows[] = [
+            ['text' => '🎮 Mini-game', 'callback_data' => 'tgb:game'],
+        ];
+
+        $keyboard = ['inline_keyboard' => $rows];
 
         $this->telegram->sendMessage($chatId, $text, $keyboard);
     }
@@ -817,5 +928,53 @@ class TelegramBotCommandService
             ],
         ];
         $this->telegram->sendMessage($chatId, $message, $keyboard);
+    }
+
+    /**
+     * Handle `/extra` command and the `tgb:extra` menu/lesson callback.
+     * Generates an on-demand lesson for the user's current topic, with
+     * permission and rate-limit checks enforced by TelegramLearningService.
+     */
+    public function handleExtraLesson(string $chatId, User $user): void
+    {
+        $this->telegram->sendMessage(
+            $chatId,
+            "📖 <b>Đang tạo bài học mới...</b>\n\n⏳ Vui lòng đợi trong giây lát."
+        );
+
+        $result = $this->learning->sendExtraLesson($user);
+
+        if ($result['ok']) {
+            // sendDailyLesson() already sent the 3 intro/vocab/grammar
+            // messages. Nothing else to do here.
+            return;
+        }
+
+        $message = match ($result['reason']) {
+            'no_permission' => "🔒 <b>Tính năng học thêm chưa được kích hoạt.</b>\n\n"
+                . "Vui lòng liên hệ admin để được cấp quyền sử dụng.",
+            'not_onboarded' => "⚠️ <b>Bạn cần hoàn tất thiết lập trước.</b>\n\n"
+                . "Gõ /start để bắt đầu.",
+            'paused' => "⏸ <b>Bạn đang ở trạng thái tạm dừng.</b>\n\n"
+                . "Vào /settings để bật lại việc nhận bài.",
+            'daily_limit' => "⏳ <b>Bạn đã học thêm " . TelegramLearningService::EXTRA_DAILY_LIMIT
+                . " bài hôm nay.</b>\n\n"
+                . "Hãy quay lại vào ngày mai nhé!",
+            'no_link' => "🔗 Bạn cần liên kết tài khoản trước. Gõ /start.",
+            default => "⚠️ Không thể tạo bài học mới. Vui lòng thử lại sau.",
+        };
+
+        $this->telegram->sendMessage(
+            $chatId,
+            $message,
+            [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '🏠 Menu chính', 'callback_data' => 'tgb:menu'],
+                        ['text' => '⚙️ Cài đặt', 'callback_data' => 'tgb:settings'],
+                    ],
+                ],
+            ]
+        );
     }
 }

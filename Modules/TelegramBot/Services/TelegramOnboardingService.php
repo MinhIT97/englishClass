@@ -197,7 +197,8 @@ class TelegramOnboardingService
             . "/quiz - Làm bài quiz\n"
             . "/review - Ôn tập từ cũ\n"
             . "/roadmap - Xem lộ trình\n"
-            . "/settings - Đổi cài đặt\n\n"
+            . "/settings - Đổi cài đặt\n"
+            . "/extra - Học thêm bài (nếu được cấp quyền)\n\n"
             . "Gõ /help để xem tất cả lệnh.";
 
         $keyboard = [

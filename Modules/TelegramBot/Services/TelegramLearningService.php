@@ -21,6 +21,12 @@ use Modules\TelegramBot\Models\VocabularyEntry;
  */
 class TelegramLearningService
 {
+    /**
+     * Max number of `/extra` (on-demand) lessons a single user can
+     * request in one calendar day. Enforced in sendExtraLesson().
+     */
+    public const EXTRA_DAILY_LIMIT = 3;
+
     public function __construct(
         private readonly GeminiLessonGenerator $generator,
         private readonly TelegramService $telegram,
@@ -248,6 +254,94 @@ class TelegramLearningService
         $this->bumpStreak($user, $when);
 
         return true;
+    }
+
+    /**
+     * Send an on-demand extra lesson to a user (triggered by `/extra`
+     * command or the "📖 Học thêm bài" menu button).
+     *
+     * Reuses sendDailyLesson() with $force=true to bypass the per-day
+     * duplicate guard. Enforces two pre-conditions:
+     *   1. The user has the `can_request_extra_lesson` flag set on their
+     *      user record (admin-controlled).
+     *   2. The user has not exceeded EXTRA_DAILY_LIMIT (3) requests today.
+     *
+     * XP and streak are NOT awarded (bumpStreak is idempotent per day,
+     * so re-running it has no effect anyway — but we never call it here).
+     *
+     * @return array{ok: bool, reason: string}
+     */
+    public function sendExtraLesson(User $user): array
+    {
+        if (! $user->can_request_extra_lesson) {
+            return ['ok' => false, 'reason' => 'no_permission'];
+        }
+
+        $profile = LearningProfile::query()->where('user_id', $user->id)->first();
+        if (! $profile) {
+            return ['ok' => false, 'reason' => 'not_onboarded'];
+        }
+
+        if ($profile->is_paused) {
+            return ['ok' => false, 'reason' => 'paused'];
+        }
+
+        if ($this->extrasUsedToday($user) >= self::EXTRA_DAILY_LIMIT) {
+            return ['ok' => false, 'reason' => 'daily_limit'];
+        }
+
+        $link = UserTelegramLink::query()->where('user_id', $user->id)->first();
+        if (! $link) {
+            return ['ok' => false, 'reason' => 'no_link'];
+        }
+
+        // Increment counter BEFORE generation so two parallel requests
+        // can't both pass the limit check.
+        $this->incrementExtrasToday($user);
+
+        $sent = $this->sendDailyLesson($user, Carbon::now(), force: true);
+
+        if (! $sent) {
+            // Roll back the counter so a failed attempt doesn't burn quota.
+            $this->decrementExtrasToday($user);
+            return ['ok' => false, 'reason' => 'send_failed'];
+        }
+
+        return ['ok' => true, 'reason' => 'ok'];
+    }
+
+    /**
+     * Number of `/extra` lessons the user has already used today.
+     */
+    private function extrasUsedToday(User $user): int
+    {
+        $key = $this->extraCountKey($user);
+        return (int) cache()->get($key, 0);
+    }
+
+    private function incrementExtrasToday(User $user): void
+    {
+        $key = $this->extraCountKey($user);
+        // Initialize with TTL if absent so cache()->increment works on
+        // drivers that don't auto-create keys (Redis behaves; array cache
+        // is fine). 36h covers any timezone drift safely.
+        if (cache()->get($key) === null) {
+            cache()->put($key, 0, now()->addHours(36));
+        }
+        cache()->increment($key);
+    }
+
+    private function decrementExtrasToday(User $user): void
+    {
+        $key = $this->extraCountKey($user);
+        if (cache()->get($key) !== null) {
+            cache()->decrement($key);
+        }
+    }
+
+    private function extraCountKey(User $user): string
+    {
+        return "tgb:extra_count:{$user->id}:" . Carbon::now()->toDateString();
     }
 
     public function bumpStreak(User $user, ?Carbon $when = null): void
