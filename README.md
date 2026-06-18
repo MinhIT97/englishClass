@@ -170,6 +170,14 @@ GEMINI_FALLBACK_MODELS=gemini-2.5-flash
 multi-key variable is preferred. After changing production environment values,
 recreate the app containers or run `php artisan optimize:clear`.
 
+Production must also seed Telegram learning topics after migrations:
+
+```bash
+php artisan db:seed --force --class='Modules\TelegramBot\Database\Seeders\TgbTopicSeeder'
+```
+
+The lesson service repairs missing user paths automatically once topics exist.
+
 ### Step 4 — Verify
 
 Register a new student account on the platform. You should immediately receive a Telegram message like:

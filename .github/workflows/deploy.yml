@@ -37,6 +37,19 @@ jobs:
         run: |
           cd /home/minhnv/projects/englishClass
           docker compose exec -T app php artisan migrate --force
+          docker compose exec -T app php artisan db:seed --force --class="Modules\\TelegramBot\\Database\\Seeders\\TgbTopicSeeder"
+
+      - name: Verify Telegram lesson runtime configuration
+        run: |
+          cd /home/minhnv/projects/englishClass
+          docker compose exec -T app php artisan tinker --execute="dump([
+            'environment' => app()->environment(),
+            'gemini_key_count' => count(array_filter(array_map('trim', explode(',', (string) config('services.gemini.keys'))))),
+            'gemini_model' => config('services.gemini.model'),
+            'gemini_fallback_models' => config('services.gemini.fallback_models'),
+            'telegram_admin_configured' => filled(config('telegram.admin_chat_id')),
+            'telegram_topic_count' => Modules\\TelegramBot\\Models\\Topic::query()->count(),
+          ]);"
 
       - name: Restart Laravel Queue
         run: |

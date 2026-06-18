@@ -32,6 +32,8 @@ class TelegramLearningService
      */
     public const EXTRA_DAILY_LIMIT = 3;
 
+    private ?string $lastFailureReason = null;
+
     public function __construct(
         private readonly GeminiLessonGenerator $generator,
         private readonly TelegramService $telegram,
@@ -53,6 +55,37 @@ class TelegramLearningService
 
         if ($current) {
             return $current->topic;
+        }
+
+        // Repair legacy/onboarded users whose path was created while the
+        // topic seed data was missing on the server.
+        if (! UserPath::query()->where('user_id', $user->id)->exists()) {
+            $topics = Topic::query()
+                ->where('purpose', $profile->purpose)
+                ->where('is_active', true)
+                ->orderBy('order_index')
+                ->get();
+
+            if ($topics->isNotEmpty()) {
+                DB::transaction(function () use ($user, $topics) {
+                    foreach ($topics as $index => $topic) {
+                        UserPath::query()->updateOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'topic_id' => $topic->id,
+                            ],
+                            [
+                                'status' => $index === 0
+                                    ? UserPath::STATUS_CURRENT
+                                    : UserPath::STATUS_LOCKED,
+                                'started_at' => $index === 0 ? Carbon::now() : null,
+                            ]
+                        );
+                    }
+                });
+
+                return $topics->first();
+            }
         }
 
         $next = UserPath::query()
@@ -125,6 +158,7 @@ class TelegramLearningService
      */
     public function sendDailyLesson(User $user, ?Carbon $when = null, bool $force = false): bool
     {
+        $this->lastFailureReason = null;
         $when ??= Carbon::now();
 
         $profile = LearningProfile::query()
@@ -132,11 +166,13 @@ class TelegramLearningService
             ->first();
 
         if (! $profile || $profile->is_paused) {
+            $this->lastFailureReason = ! $profile ? 'profile_missing' : 'profile_paused';
             return false;
         }
 
         $link = UserTelegramLink::query()->where('user_id', $user->id)->first();
         if (! $link) {
+            $this->lastFailureReason = 'telegram_link_missing';
             return false;
         }
 
@@ -148,11 +184,20 @@ class TelegramLearningService
             ->exists();
 
         if ($alreadySent && ! $force) {
+            $this->lastFailureReason = 'lesson_already_sent';
             return false;
         }
 
         $topic = $this->getOrAssignCurrentTopic($user, $profile);
         if (! $topic) {
+            $hasTopics = Topic::query()
+                ->where('purpose', $profile->purpose)
+                ->where('is_active', true)
+                ->exists();
+            $hasPaths = UserPath::query()->where('user_id', $user->id)->exists();
+            $this->lastFailureReason = ! $hasTopics
+                ? 'no_topics_configured'
+                : ($hasPaths ? 'learning_path_completed' : 'learning_path_missing');
             Log::warning('[TelegramBot] No topic available for user', ['user_id' => $user->id]);
             return false;
         }
@@ -175,6 +220,7 @@ class TelegramLearningService
         $payload = $this->generator->generateDailyLesson($profile, $topic, $pathWordCount = 5);
         $this->telegram->sendChatAction($link->telegram_chat_id, 'typing');
         if (! $payload) {
+            $this->lastFailureReason = 'gemini_generation_failed';
             $lesson->status = DailyLesson::STATUS_FAILED;
             $lesson->error_message = 'Gemini generation failed';
             $lesson->save();
@@ -252,6 +298,7 @@ class TelegramLearningService
 
         $lastResponse = $this->sendIntroMessage($link->telegram_chat_id, $user, $topic, $payload, $when, $lessonType);
         if ($lastResponse === null) {
+            $this->lastFailureReason = 'telegram_intro_send_failed';
             $lesson->status = DailyLesson::STATUS_FAILED;
             $lesson->error_message = 'Telegram send failed (intro)';
             $lesson->save();
@@ -324,6 +371,11 @@ class TelegramLearningService
         }
 
         return true;
+    }
+
+    public function lastFailureReason(): ?string
+    {
+        return $this->lastFailureReason;
     }
 
     /**
@@ -455,6 +507,7 @@ class TelegramLearningService
                 'feature' => 'telegram_extra_lesson',
                 'user_id' => $user->id,
                 'email' => $user->email,
+                'failure_reason' => $this->lastFailureReason() ?? 'unknown',
                 'hint' => 'Check the preceding Gemini or Telegram alert and laravel.log.',
             ]);
             return ['ok' => false, 'reason' => 'send_failed'];
