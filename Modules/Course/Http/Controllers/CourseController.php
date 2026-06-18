@@ -3,16 +3,18 @@
 namespace Modules\Course\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\LessonRequest;
+use App\Services\LessonQuotaService;
+use Illuminate\Http\Request;
 use Modules\Course\Http\Requests\CourseRequest;
 use Modules\Course\Http\Resources\CourseResource;
 use Modules\Course\Services\CourseService;
-use Illuminate\Http\Request;
 
 class CourseController extends Controller
 {
     protected $service;
 
-    public function __construct(CourseService $service)
+    public function __construct(CourseService $service, protected LessonQuotaService $quota)
     {
         $this->service = $service;
     }
@@ -25,7 +27,7 @@ class CourseController extends Controller
         $filters = $request->only(['title', 'status']);
         $courses = $this->service->paginate($filters, $request->integer('limit', 12));
         $enrolledCourseIds = $this->service->enrolledCourseIds($request->user());
-        
+
         if ($request->expectsJson() || $request->ajax()) {
             return CourseResource::collection($courses);
         }
@@ -35,9 +37,32 @@ class CourseController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     *
+     * Admins and unlimited users bypass the quota. Other users are
+     * capped at `lesson_limit` courses per calendar day. When the cap
+     * is hit we either return 403 (API/AJAX) or redirect with an error
+     * that prompts the user to request more lessons.
      */
     public function store(CourseRequest $request)
     {
+        $user = $request->user();
+        $check = $this->quota->check($user, LessonRequest::TYPE_COURSE);
+
+        if (! $check['allowed']) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Bạn đã đạt giới hạn tạo khóa học trong ngày.',
+                    'reason' => $check['reason'],
+                    'used' => $check['used'],
+                    'limit' => $check['limit'],
+                    'request_url' => route('lesson-requests.store'),
+                ], 403);
+            }
+
+            return back()->with('error', "Bạn đã tạo {$check['used']}/{$check['limit']} khóa học hôm nay. Vui lòng gửi yêu cầu xin thêm cho admin.")
+                         ->withInput();
+        }
+
         $course = $this->service->create($request->validated());
         return new CourseResource($course);
     }

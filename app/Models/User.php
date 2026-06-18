@@ -11,12 +11,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status', 'target_band', 'xp', 'streak', 'can_request_extra_lesson'])]
+#[Fillable(['name', 'email', 'password', 'role', 'status', 'target_band', 'xp', 'streak', 'can_request_extra_lesson', 'lesson_limit', 'is_unlimited'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /** Default daily lesson cap for non-admin users. */
+    public const DEFAULT_LESSON_LIMIT = 3;
 
     public function scopeStudents($query)
     {
@@ -36,6 +39,21 @@ class User extends Authenticatable implements JWTSubject
     public function isTeacher(): bool
     {
         return $this->role === \App\Enums\UserRole::Teacher->value;
+    }
+
+    /**
+     * Admins and unlimited-flagged users bypass the daily quota. This
+     * is the single gate every controller/service should consult before
+     * creating a lesson on behalf of a user.
+     */
+    public function hasUnlimitedLessons(): bool
+    {
+        return $this->isAdmin() || (bool) $this->is_unlimited;
+    }
+
+    public function lessonRequests()
+    {
+        return $this->hasMany(LessonRequest::class);
     }
 
     public function classrooms()
@@ -63,6 +81,8 @@ class User extends Authenticatable implements JWTSubject
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'can_request_extra_lesson' => 'boolean',
+            'is_unlimited' => 'boolean',
+            'lesson_limit' => 'integer',
         ];
     }
 

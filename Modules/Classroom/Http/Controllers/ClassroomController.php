@@ -3,6 +3,8 @@
 namespace Modules\Classroom\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\LessonRequest;
+use App\Services\LessonQuotaService;
 use Illuminate\Http\Request;
 use Modules\Classroom\Http\Requests\JoinClassroomRequest;
 use Modules\Classroom\Http\Requests\StoreClassroomCommentRequest;
@@ -18,7 +20,8 @@ use Modules\Classroom\Services\Contracts\ClassroomServiceInterface;
 class ClassroomController extends Controller
 {
     public function __construct(
-        protected ClassroomServiceInterface $classroomService
+        protected ClassroomServiceInterface $classroomService,
+        protected LessonQuotaService $quota
     ) {
     }
 
@@ -34,12 +37,24 @@ class ClassroomController extends Controller
 
     /**
      * Store a newly created classroom.
+     *
+     * Only admins/teachers pass the ClassroomPolicy::create check.
+     * Within that group, admins are still unlimited; teachers fall
+     * under the same per-user lesson quota as students.
      */
     public function store(StoreClassroomRequest $request)
     {
         $this->authorize('create', Classroom::class);
 
-        $this->classroomService->createClassroom($request->validated(), $request->user());
+        $user = $request->user();
+        $check = $this->quota->check($user, LessonRequest::TYPE_CLASSROOM);
+
+        if (! $check['allowed']) {
+            return back()->with('error', "Bạn đã tạo {$check['used']}/{$check['limit']} lớp học hôm nay. Gửi yêu cầu xin thêm cho admin để được nâng giới hạn.")
+                         ->withInput();
+        }
+
+        $this->classroomService->createClassroom($request->validated(), $user);
 
         return back()->with('success', 'Classroom created successfully!');
     }

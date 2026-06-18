@@ -3,6 +3,8 @@
 namespace Modules\Classroom\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\LessonRequest;
+use App\Services\LessonQuotaService;
 use Modules\Classroom\Services\Contracts\ClassroomServiceInterface;
 use Modules\Classroom\Http\Requests\StoreClassroomRequest;
 use Modules\Classroom\Http\Resources\ClassroomResource;
@@ -13,8 +15,10 @@ class ClassroomController extends Controller
 {
     protected $classroomService;
 
-    public function __construct(ClassroomServiceInterface $classroomService)
-    {
+    public function __construct(
+        ClassroomServiceInterface $classroomService,
+        protected LessonQuotaService $quota
+    ) {
         $this->classroomService = $classroomService;
     }
 
@@ -24,7 +28,7 @@ class ClassroomController extends Controller
     public function index(Request $request): JsonResponse
     {
         $classrooms = $this->classroomService->getUserClassrooms($request->user());
-        
+
         return response()->json([
             'data' => ClassroomResource::collection($classrooms)
         ]);
@@ -35,9 +39,21 @@ class ClassroomController extends Controller
      */
     public function store(StoreClassroomRequest $request): JsonResponse
     {
+        $user = $request->user();
+        $check = $this->quota->check($user, LessonRequest::TYPE_CLASSROOM);
+
+        if (! $check['allowed']) {
+            return response()->json([
+                'message' => 'Bạn đã đạt giới hạn tạo lớp học trong ngày.',
+                'reason' => $check['reason'],
+                'used' => $check['used'],
+                'limit' => $check['limit'],
+            ], 403);
+        }
+
         $classroom = $this->classroomService->createClassroom(
-            $request->validated(), 
-            $request->user()
+            $request->validated(),
+            $user
         );
 
         return response()->json([

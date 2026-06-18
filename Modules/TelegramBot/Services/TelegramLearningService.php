@@ -2,7 +2,9 @@
 
 namespace Modules\TelegramBot\Services;
 
+use App\Models\LessonRequest;
 use App\Models\User;
+use App\Services\LessonQuotaService;
 use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -23,8 +25,10 @@ use Modules\TelegramBot\Models\VocabularyEntry;
 class TelegramLearningService
 {
     /**
-     * Max number of `/extra` (on-demand) lessons a single user can
-     * request in one calendar day. Enforced in sendExtraLesson().
+     * Default daily cap for `/extra` lessons. Now enforced centrally via
+     * LessonQuotaService so admin overrides / per-user `lesson_limit`
+     * take effect. Kept as a constant for backward compatibility with
+     * callers that reference it.
      */
     public const EXTRA_DAILY_LIMIT = 3;
 
@@ -382,10 +386,12 @@ class TelegramLearningService
      * command or the "📖 Học thêm bài" menu button).
      *
      * Reuses sendDailyLesson() with $force=true to bypass the per-day
-     * duplicate guard. Enforces two pre-conditions:
+     * duplicate guard. Enforces pre-conditions in order:
      *   1. The user has the `can_request_extra_lesson` flag set on their
      *      user record (admin-controlled).
-     *   2. The user has not exceeded EXTRA_DAILY_LIMIT (3) requests today.
+     *   2. Learning profile exists and isn't paused.
+     *   3. Quota check via LessonQuotaService — admins and unlimited
+     *      users bypass; everyone else is capped at user.lesson_limit.
      *
      * XP and streak are NOT awarded (bumpStreak is idempotent per day,
      * so re-running it has no effect anyway — but we never call it here).
@@ -407,7 +413,12 @@ class TelegramLearningService
             return ['ok' => false, 'reason' => 'paused'];
         }
 
-        if ($this->extrasUsedToday($user) >= self::EXTRA_DAILY_LIMIT) {
+        // Centralized quota check — respects admin role, is_unlimited
+        // flag, and per-user lesson_limit (with admin-approved bumps).
+        $quotaCheck = app(LessonQuotaService::class)
+            ->check($user, LessonRequest::TYPE_DAILY_LESSON);
+
+        if (! $quotaCheck['allowed']) {
             return ['ok' => false, 'reason' => 'daily_limit'];
         }
 

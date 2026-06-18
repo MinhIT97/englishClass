@@ -30,6 +30,9 @@
             <a href="/admin/questions" class="btn btn-outline" style="gap: 0.5rem">
                 <span>📝</span> Manage Question Bank
             </a>
+            <a href="{{ route('admin.lesson-requests.index') }}" class="btn btn-outline" style="gap: 0.5rem">
+                <span>📚</span> Lesson Quota Requests
+            </a>
         </div>
     </div>
 </x-app-layout>
