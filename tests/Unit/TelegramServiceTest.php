@@ -56,4 +56,27 @@ class TelegramServiceTest extends TestCase
         $this->assertFalse($service->sendAdminAlert('Repeated failure', ['status' => 500]));
         Http::assertSentCount(1);
     }
+
+    public function test_it_uploads_audio_for_inline_telegram_playback(): void
+    {
+        config()->set('telegram.bot_token', 'test-token');
+        config()->set('telegram.base_url', 'https://api.telegram.org/bot');
+
+        Http::fake([
+            'https://api.telegram.org/bottest-token/sendAudio' => Http::response([
+                'ok' => true,
+                'result' => ['message_id' => 10],
+            ]),
+        ]);
+
+        $result = app(TelegramService::class)->sendAudio(
+            '123456',
+            'fake-mp3-bytes',
+            'Listen to this example'
+        );
+
+        $this->assertSame(10, $result['result']['message_id']);
+        Http::assertSent(fn ($request) => $request->url()
+            === 'https://api.telegram.org/bottest-token/sendAudio');
+    }
 }

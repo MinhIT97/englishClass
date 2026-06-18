@@ -2,6 +2,8 @@
 
 namespace Modules\TelegramBot\Services;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -31,6 +33,88 @@ class TextToSpeechService
 {
     /** Default voice for Vietnamese English learners (US English, natural). */
     private const DEFAULT_VOICE = 'en-US';
+    private const CALLBACK_PREFIX = 'tgb:listen:';
+    private const MAX_CHUNK_LENGTH = 180;
+    private const MAX_TEXT_LENGTH = 1200;
+
+    public function callbackData(string $text, string $voice = self::DEFAULT_VOICE): ?string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return null;
+        }
+
+        $token = substr(hash('sha256', $voice . "\0" . $text), 0, 24);
+        Cache::put($this->cacheKey($token), [
+            'text' => mb_substr($text, 0, self::MAX_TEXT_LENGTH),
+            'voice' => $voice,
+        ], now()->addHours(48));
+
+        return self::CALLBACK_PREFIX . $token;
+    }
+
+    /**
+     * @return array{audio: string, text: string}|null
+     */
+    public function audioForCallback(string $token): ?array
+    {
+        $payload = Cache::get($this->cacheKey($token));
+        if (! is_array($payload) || empty($payload['text'])) {
+            return null;
+        }
+
+        $audio = $this->audio(
+            (string) $payload['text'],
+            (string) ($payload['voice'] ?? self::DEFAULT_VOICE)
+        );
+
+        return $audio === null ? null : [
+            'audio' => $audio,
+            'text' => (string) $payload['text'],
+        ];
+    }
+
+    public function audio(string $text, string $voice = self::DEFAULT_VOICE): ?string
+    {
+        $text = trim(mb_substr($text, 0, self::MAX_TEXT_LENGTH));
+        if ($text === '') {
+            return null;
+        }
+
+        $audio = '';
+
+        try {
+            foreach ($this->chunks($text) as $chunk) {
+                $url = $this->url($chunk, $voice);
+                if ($url === null) {
+                    return null;
+                }
+
+                $response = Http::timeout(15)
+                    ->withHeaders([
+                        'User-Agent' => 'Mozilla/5.0',
+                        'Accept' => 'audio/mpeg,audio/*;q=0.9,*/*;q=0.1',
+                    ])
+                    ->get($url);
+
+                if (! $response->successful() || $response->body() === '') {
+                    Log::warning('[TelegramBot] Free TTS download failed', [
+                        'status' => $response->status(),
+                    ]);
+                    return null;
+                }
+
+                $audio .= $response->body();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[TelegramBot] Free TTS exception', [
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+
+        return $audio !== '' ? $audio : null;
+    }
 
     /**
      * Build a play URL for the given text. Returns null on invalid input
@@ -84,5 +168,39 @@ class TextToSpeechService
             'en-IN' => 'en-IN',
             default => 'en-US',
         };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function chunks(string $text): array
+    {
+        $words = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $chunks = [];
+        $current = '';
+
+        foreach ($words as $word) {
+            $candidate = $current === '' ? $word : $current . ' ' . $word;
+            if (mb_strlen($candidate) <= self::MAX_CHUNK_LENGTH) {
+                $current = $candidate;
+                continue;
+            }
+
+            if ($current !== '') {
+                $chunks[] = $current;
+            }
+            $current = mb_substr($word, 0, self::MAX_CHUNK_LENGTH);
+        }
+
+        if ($current !== '') {
+            $chunks[] = $current;
+        }
+
+        return $chunks;
+    }
+
+    private function cacheKey(string $token): string
+    {
+        return "tgb:tts:{$token}";
     }
 }

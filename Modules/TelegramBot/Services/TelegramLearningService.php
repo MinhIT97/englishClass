@@ -696,11 +696,11 @@ class TelegramLearningService
             }
 
             // Build a TTS button for this word.
-            $audioUrl = $this->tts->url((string) ($w['word'] ?? ''));
-            if ($audioUrl !== null) {
+            $audioCallback = $this->tts->callbackData((string) ($w['word'] ?? ''));
+            if ($audioCallback !== null) {
                 $audioButtons[] = [
                     'text' => "🔊 #{$num}",
-                    'url' => $audioUrl,
+                    'callback_data' => $audioCallback,
                 ];
             }
         }
@@ -773,10 +773,10 @@ class TelegramLearningService
         // hear the grammar pattern spoken.
         $keyboardRows = [];
         if (! empty($grammar['example_en'])) {
-            $audioUrl = $this->tts->url((string) $grammar['example_en']);
-            if ($audioUrl !== null) {
+            $audioCallback = $this->tts->callbackData((string) $grammar['example_en']);
+            if ($audioCallback !== null) {
                 $keyboardRows[] = [
-                    ['text' => '🔊 Nghe ví dụ', 'url' => $audioUrl],
+                    ['text' => '🔊 Nghe ví dụ', 'callback_data' => $audioCallback],
                 ];
             }
         }
@@ -883,9 +883,12 @@ class TelegramLearningService
         // opening sentence of the dialog (helps with pronunciation).
         $audioButtons = [];
         if (! empty($lines[0]['en'] ?? null)) {
-            $url = $this->tts->url((string) $lines[0]['en']);
-            if ($url !== null) {
-                $audioButtons[] = ['text' => '🔊 Nghe câu đầu', 'url' => $url];
+            $audioCallback = $this->tts->callbackData((string) $lines[0]['en']);
+            if ($audioCallback !== null) {
+                $audioButtons[] = [
+                    'text' => '🔊 Nghe câu đầu',
+                    'callback_data' => $audioCallback,
+                ];
             }
         }
 
@@ -944,11 +947,11 @@ class TelegramLearningService
         }
 
         // Audio button at the top: open the transcript in TTS.
-        $audioUrl = $this->tts->url((string) $transcript);
+        $audioCallback = $this->tts->callbackData((string) $transcript);
         $keyboardRows = [];
-        if ($audioUrl !== null) {
+        if ($audioCallback !== null) {
             $keyboardRows[] = [
-                ['text' => '🎧 Nghe transcript', 'url' => $audioUrl],
+                ['text' => '🎧 Nghe transcript', 'callback_data' => $audioCallback],
             ];
         }
         $keyboardRows[] = [

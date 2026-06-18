@@ -28,6 +28,7 @@ class TelegramBotCommandService
         private readonly TelegramSettingsService $settings,
         private readonly AchievementService $achievements,
         private readonly LevelService $levels,
+        private readonly TextToSpeechService $tts,
     ) {
     }
 
@@ -241,6 +242,31 @@ class TelegramBotCommandService
         $action = $parts[1] ?? '';
 
         switch ($action) {
+            case 'listen':
+                $token = $parts[2] ?? '';
+                $audio = $token !== '' ? $this->tts->audioForCallback($token) : null;
+
+                if ($audio === null) {
+                    $this->telegram->sendMessage(
+                        $chatId,
+                        "⚠️ Audio đã hết hạn hoặc tạm thời chưa tạo được. Vui lòng mở bài học mới và thử lại."
+                    );
+                    break;
+                }
+
+                $this->telegram->sendChatAction($chatId, 'upload_voice');
+                if ($this->telegram->sendAudio(
+                    $chatId,
+                    $audio['audio'],
+                    '🎧 ' . $audio['text']
+                ) === null) {
+                    $this->telegram->sendMessage(
+                        $chatId,
+                        "⚠️ Chưa gửi được audio vào Telegram. Vui lòng thử lại sau."
+                    );
+                }
+                break;
+
             case 'help':
                 $this->sendHelp($chatId);
                 break;

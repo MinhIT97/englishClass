@@ -57,6 +57,44 @@ class TelegramService
         }
     }
 
+    public function sendAudio(string $chatId, string $audio, string $caption = ''): array|null
+    {
+        if (empty($this->token) || $audio === '') {
+            return null;
+        }
+
+        try {
+            $payload = [
+                'chat_id' => $chatId,
+                'title' => 'English listening',
+                'performer' => config('app.name', 'EnglishClass'),
+            ];
+
+            if ($caption !== '') {
+                $payload['caption'] = $this->truncate($caption, 900);
+            }
+
+            $response = Http::timeout(30)
+                ->attach('audio', $audio, 'english-listening.mp3')
+                ->post("{$this->baseUrl}{$this->token}/sendAudio", $payload);
+
+            if (! $response->successful()) {
+                Log::error('[Telegram] sendAudio failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                return null;
+            }
+
+            return $response->json();
+        } catch (\Throwable $e) {
+            Log::error('[Telegram] sendAudio exception', [
+                'message' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
     /**
      * Send an operational error to the configured admin chat.
      * Duplicate alerts are throttled to avoid flooding the admin.
