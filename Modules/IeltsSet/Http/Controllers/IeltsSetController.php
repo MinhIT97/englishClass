@@ -48,6 +48,7 @@ class IeltsSetController extends Controller
 
     public function section(Request $request, IeltsSet $set, IeltsSetSection $section)
     {
+        abort_unless($set->is_published, 404);
         abort_unless($section->ielts_set_id === $set->id, 404);
 
         $attempt = $this->getOrCreateCurrentAttempt($set, $request->user()->id);
@@ -83,6 +84,7 @@ class IeltsSetController extends Controller
 
     public function updateSectionTime(Request $request, IeltsSet $set, IeltsSetSection $section)
     {
+        abort_unless($set->is_published, 404);
         abort_unless($section->ielts_set_id === $set->id, 404);
 
         $validated = $request->validate([
@@ -117,6 +119,7 @@ class IeltsSetController extends Controller
         IeltsSetSection $section,
         PracticeSessionService $practiceSessionService
     ) {
+        abort_unless($set->is_published, 404);
         abort_unless($section->ielts_set_id === $set->id, 404);
 
         if ($section->skill === 'speaking') {
@@ -149,7 +152,8 @@ class IeltsSetController extends Controller
                 $result = $practiceSessionService->submitAnswer(
                     $request->user(),
                     $question->id,
-                    $answer
+                    $answer,
+                    false,
                 );
             }
 
@@ -206,6 +210,7 @@ class IeltsSetController extends Controller
 
     public function completeSpeakingSection(Request $request, IeltsSet $set, IeltsSetSection $section)
     {
+        abort_unless($set->is_published, 404);
         abort_unless($section->ielts_set_id === $set->id, 404);
         abort_unless($section->skill === 'speaking', 404);
 

@@ -45,6 +45,12 @@ class TelegramOnboardingService
     {
         $existing = UserTelegramLink::query()->where('telegram_chat_id', $chatId)->first();
         if ($existing) {
+            $profile = LearningProfile::query()->where('user_id', $existing->user_id)->first();
+            if (! $profile || ! $profile->onboarded_at) {
+                $this->askPurpose($chatId, $existing->user);
+                return;
+            }
+
             $this->telegram->sendMessage(
                 $chatId,
                 "👋 Chào {$existing->user->name}! Bạn đã liên kết rồi. Gõ /help để xem các lệnh."

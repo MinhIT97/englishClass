@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Classroom;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Modules\Classroom\Models\Classroom;
 
 /**
  * Teacher dashboard — at-a-glance view of all the classrooms the

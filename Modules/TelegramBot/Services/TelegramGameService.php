@@ -259,8 +259,9 @@ class TelegramGameService
 
         $data['index'] = $next;
         $data['score'] = $newScore;
-        ConversationState::forChat($chatId)->state_data = $data;
-        ConversationState::forChat($chatId)->save();
+        $state = ConversationState::forChat($chatId);
+        $state->state_data = $data;
+        $state->save();
 
         $this->sendRound($chatId, $user, $next);
     }
@@ -348,16 +349,10 @@ class TelegramGameService
             $pattern = '/' . preg_quote($entry->word, '/') . '/iu';
             $masked = preg_replace($pattern, '________', $example, 1);
             if ($masked === $example) {
-                // Word not found in example text; mask the longest word instead.
-                $words = explode(' ', $example);
-                if (count($words) > 1) {
-                    $longest = collect($words)->sortByDesc(fn($w) => mb_strlen($w))->first();
-                    $pattern2 = '/' . preg_quote($longest, '/') . '/iu';
-                    $replaced = preg_replace($pattern2, '________', $example, 1);
-                    if ($replaced !== $example) {
-                        $masked = $replaced;
-                    }
-                }
+                // The stored example does not demonstrate this vocabulary
+                // entry. Never hide an unrelated word while grading against
+                // the entry word; use an explicit definition fallback.
+                $masked = '________ — "' . $entry->meaning_vi . '"';
             }
         } else {
             // Fallback: no example sentence — build one from the word + meaning.

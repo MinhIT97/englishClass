@@ -76,7 +76,10 @@ class CourseController extends Controller
                          ->withInput();
         }
 
-        $course = $this->service->create($request->validated());
+        $course = $this->service->create([
+            ...$request->validated(),
+            'teacher_id' => $user->id,
+        ]);
         return new CourseResource($course);
     }
 
@@ -124,11 +127,7 @@ class CourseController extends Controller
         // a course. This prevents one teacher from modifying
         // another's course via IDOR.
         $course = $this->service->find($id);
-        if (! $user->isAdmin()) {
-            // Course model does not currently have an owner_id; we
-            // rely on the global role check. If/when teacher_id is
-            // added, change this to compare $course->teacher_id ===
-            // $user->id.
+        if (! $user->isAdmin() && $course->teacher_id !== $user->id) {
             abort(403, 'Only admins can modify this course.');
         }
 
@@ -139,14 +138,17 @@ class CourseController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         // SECURITY: only admins can delete courses. Teachers delete
         // their own via the policy layer (future) — for now we
         // require admin to prevent accidental/malicious deletions
         // through the resource controller.
-        if (! auth()->user() || ! auth()->user()->isAdmin()) {
-            abort(403, 'Only admins can delete courses.');
+        $course = $this->service->find($id);
+        $user = $request->user();
+
+        if (! $user->isAdmin() && $course->teacher_id !== $user->id) {
+            abort(403, 'Only admins or the owning teacher can delete this course.');
         }
 
         $this->service->delete($id);

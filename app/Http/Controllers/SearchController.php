@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Classroom;
-use App\Models\Course;
 use App\Models\StudyNote;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Classroom\Models\Classroom;
+use Modules\Course\Models\Course;
 
 /**
  * Global search — looks across courses, classrooms, study notes,
@@ -40,7 +40,10 @@ class SearchController extends Controller
         // Classrooms the user can see.
         $groups['classrooms'] = Classroom::query()
             ->where('name', 'like', "%{$q}%")
-            ->when(! $isAdmin, fn ($qb) => $qb->where('teacher_id', $user->id))
+            ->when(! $isAdmin, fn ($qb) => $qb->where(function ($accessible) use ($user) {
+                $accessible->where('teacher_id', $user->id)
+                    ->orWhereHas('students', fn ($students) => $students->whereKey($user->id));
+            }))
             ->limit(5)->get(['id', 'name'])->toArray();
 
         // Public study notes

@@ -40,6 +40,12 @@ class TelegramBotCommandService
      */
     public function handleCommand(string $chatId, string $command, string $args, ?string $username = null, ?User $user = null): void
     {
+        if ($user) {
+            UserTelegramLink::query()
+                ->where('user_id', $user->id)
+                ->update(['last_interaction_at' => Carbon::now()]);
+        }
+
         switch ($command) {
             case 'start':
                 $this->onboarding->startWizard($chatId, $args ?: null, $username);
@@ -123,9 +129,6 @@ class TelegramBotCommandService
             return null;
         }
 
-        $link->last_interaction_at = Carbon::now();
-        $link->save();
-
         return $link->user;
     }
 
@@ -143,17 +146,9 @@ class TelegramBotCommandService
             return;
         }
 
-        // Touch last_interaction_at first so the welcome-back check below
-        // sees fresh data (otherwise we'd re-greet on every message).
-        UserTelegramLink::query()
-            ->where('user_id', $user->id)
-            ->update(['last_interaction_at' => Carbon::now()]);
-
-        // Welcome-back nudge: if the user's last interaction was > 36h
-        // ago, send an empathetic recap + invite them back BEFORE we
-        // route the current text to whatever handler below.
         $link = UserTelegramLink::query()->where('user_id', $user->id)->first();
         $this->maybeSendWelcomeBack($chatId, $user, $link);
+        $link?->update(['last_interaction_at' => Carbon::now()]);
 
         $state = ConversationState::query()->where('telegram_chat_id', $chatId)->first();
 
@@ -243,6 +238,12 @@ class TelegramBotCommandService
     {
         $this->telegram->answerCallbackQuery($callbackId);
 
+        if ($user) {
+            UserTelegramLink::query()
+                ->where('user_id', $user->id)
+                ->update(['last_interaction_at' => Carbon::now()]);
+        }
+
         // Format: tgb:<action>:<arg1>:<arg2>...
         $parts = explode(':', $data);
         if (count($parts) < 2 || $parts[0] !== 'tgb') {
@@ -328,6 +329,8 @@ class TelegramBotCommandService
                 if ($sub === '') {
                     // tgb:settings → show main settings screen
                     $this->settings->sendSettings($chatId, $user);
+                } elseif ($sub === 'purpose' && $value === 'confirm') {
+                    $this->settings->handlePurposeConfirm($chatId, $user->id);
                 } elseif ($sub === 'purpose' && $value !== '') {
                     // tgb:settings:purpose:<value> — user picked a new purpose
                     $this->settings->handlePurposeChoice($chatId, $value, $user->id);
@@ -812,6 +815,18 @@ class TelegramBotCommandService
 
     private function applyReviewGrade(string $chatId, ?int $messageId, User $user, int $scheduleId, int $grade): void
     {
+        $state = ConversationState::forChat($chatId);
+        $data = (array) $state->state_data;
+        $ids = $data['schedule_ids'] ?? [];
+        $currentIndex = (int) ($data['index'] ?? 0);
+
+        if ($state->current_command !== 'review'
+            || (int) ($ids[$currentIndex] ?? 0) !== $scheduleId
+            || $grade < ReviewSchedule::GRADE_AGAIN
+            || $grade > ReviewSchedule::GRADE_EASY) {
+            return;
+        }
+
         $schedule = ReviewSchedule::query()
             ->where('user_id', $user->id)
             ->where('id', $scheduleId)
@@ -823,9 +838,6 @@ class TelegramBotCommandService
 
         $this->sr->grade($schedule, $grade);
 
-        $state = ConversationState::forChat($chatId);
-        $data = (array) $state->state_data;
-        $ids = $data['schedule_ids'] ?? [];
         $nextIndex = ($data['index'] ?? 0) + 1;
         $correct = ($data['correct'] ?? 0) + ($grade >= ReviewSchedule::GRADE_GOOD ? 1 : 0);
 
@@ -1390,8 +1402,9 @@ class TelegramBotCommandService
             $user,
             $passage,
             $answersByQuestion,
-            null, // grade will be supplied by user via tgb:rr:*
             null,
+            null,
+            false,
         );
 
         $review = $this->readingService->reviewFor($passage->id, $user);

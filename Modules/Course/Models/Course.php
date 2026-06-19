@@ -12,6 +12,7 @@ class Course extends Model
     use HasFactory, HasSlug;
 
     protected $fillable = [
+        'teacher_id',
         'title',
         'slug',
         'description',
@@ -34,6 +35,11 @@ class Course extends Model
         return $this->belongsToMany(\App\Models\User::class, 'course_user')
             ->withPivot('status')
             ->withTimestamps();
+    }
+
+    public function teacher()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'teacher_id');
     }
 
     /**

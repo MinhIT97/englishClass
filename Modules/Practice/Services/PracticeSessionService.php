@@ -39,27 +39,34 @@ class PracticeSessionService
         return $question;
     }
 
-    public function submitAnswer(User $user, int $questionId, string $studentAnswer): array
+    public function submitAnswer(
+        User $user,
+        int $questionId,
+        string $studentAnswer,
+        bool $recordProgress = true,
+    ): array
     {
         $question = Question::query()->findOrFail($questionId);
 
         if ($question->skill === 'writing') {
-            return $this->submitWritingAnswer($user, $question, $studentAnswer);
+            return $this->submitWritingAnswer($user, $question, $studentAnswer, $recordProgress);
         }
 
         $correctAnswer = (string) ($question->content['answer'] ?? '');
         $isCorrect = strcasecmp(trim($studentAnswer), trim($correctAnswer)) === 0;
         $points = $isCorrect ? 10 : 2;
 
-        UserAnswer::query()->create([
-            'user_id' => $user->id,
-            'question_id' => $question->id,
-            'student_answer' => $studentAnswer,
-            'is_correct' => $isCorrect,
-            'points_earned' => $points,
-        ]);
+        if ($recordProgress) {
+            UserAnswer::query()->create([
+                'user_id' => $user->id,
+                'question_id' => $question->id,
+                'student_answer' => $studentAnswer,
+                'is_correct' => $isCorrect,
+                'points_earned' => $points,
+            ]);
 
-        $this->gamificationService->awardPoints($user, $points);
+            $this->gamificationService->awardPoints($user, $points);
+        }
 
         return [
             'is_correct' => $isCorrect,
@@ -69,10 +76,20 @@ class PracticeSessionService
         ];
     }
 
-    private function submitWritingAnswer(User $user, Question $question, string $essayContent): array
+    private function submitWritingAnswer(
+        User $user,
+        Question $question,
+        string $essayContent,
+        bool $recordProgress,
+    ): array
     {
         $taskType = in_array($question->type, ['task_1', 'task_2'], true) ? $question->type : 'task_2';
-        $attempt = $this->writingGraderService->gradeEssay($user->id, $essayContent, $taskType);
+        $attempt = $this->writingGraderService->gradeEssay(
+            $user->id,
+            $essayContent,
+            $taskType,
+            $recordProgress,
+        );
 
         if (!$attempt) {
             return [
@@ -87,15 +104,17 @@ class PracticeSessionService
         $isCorrect = $bandScore >= 6.0;
         $points = max(4, (int) round($bandScore * 2));
 
-        UserAnswer::query()->create([
-            'user_id' => $user->id,
-            'question_id' => $question->id,
-            'student_answer' => $essayContent,
-            'is_correct' => $isCorrect,
-            'points_earned' => $points,
-        ]);
+        if ($recordProgress) {
+            UserAnswer::query()->create([
+                'user_id' => $user->id,
+                'question_id' => $question->id,
+                'student_answer' => $essayContent,
+                'is_correct' => $isCorrect,
+                'points_earned' => $points,
+            ]);
 
-        $this->gamificationService->awardPoints($user, $points);
+            $this->gamificationService->awardPoints($user, $points);
+        }
 
         $feedbackParts = [];
         foreach ((array) ($attempt->feedback ?? []) as $label => $text) {

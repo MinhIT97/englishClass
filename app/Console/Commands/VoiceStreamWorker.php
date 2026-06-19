@@ -81,7 +81,11 @@ class VoiceStreamWorker extends Command
 
         // Wait for setup completion
         try {
-            $setupResp = $client->receive();
+            $client->receive();
+        } catch (\Exception $e) {
+            $this->warn('Gemini setup acknowledgement was not received; continuing in non-blocking mode.');
+        }
+
         $this->info("Listening for audio frames on Redis voice_stream_queue...");
         $clients = [];
 

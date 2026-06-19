@@ -297,13 +297,12 @@ class TelegramQuizService
     private function buildFillBlank(VocabularyEntry $word, array $pool): array
     {
         $example = $word->example_en ?: '';
-        $wordLower = mb_strtolower($word->word);
 
         if ($example !== '') {
             $masked = str_ireplace($word->word, '________', $example);
             // Avoid double-replace in compound words.
             if ($masked === $example) {
-                $masked = str_ireplace($wordLower, '________', $example);
+                $masked = '________ — "' . $word->meaning_vi . '"';
             }
         } else {
             // Fallback: "Từ ________ có nghĩa là {meaning_vi}"

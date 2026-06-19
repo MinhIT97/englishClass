@@ -18,7 +18,12 @@ class WritingGraderService
     /**
      * Grade an essay and return feedback.
      */
-    public function gradeEssay(int $userId, string $essayContent, string $taskType = 'task_2')
+    public function gradeEssay(
+        int $userId,
+        string $essayContent,
+        string $taskType = 'task_2',
+        bool $persist = true,
+    )
     {
         $prompt = $this->buildPrompt($essayContent, $taskType);
         $aiResult = $this->aiService->generate($prompt);
@@ -28,7 +33,7 @@ class WritingGraderService
             return null;
         }
 
-        return WritingAttempt::create([
+        $attempt = new WritingAttempt([
             'user_id' => $userId,
             'task_type' => $taskType,
             'essay_content' => $essayContent,
@@ -36,6 +41,12 @@ class WritingGraderService
             'feedback' => $aiResult['feedback'] ?? [],
             'revised_essay' => $aiResult['revised_essay'] ?? null,
         ]);
+
+        if ($persist) {
+            $attempt->save();
+        }
+
+        return $attempt;
     }
 
     /**

@@ -74,8 +74,8 @@ class LessonQuotaService
         $today = Carbon::now()->toDateString();
 
         return match ($lessonType) {
-            LessonRequest::TYPE_COURSE => $this->countCreatedToday('courses', $user->id, 'created_at', null, $today),
-            LessonRequest::TYPE_CLASSROOM => $this->countCreatedToday('classrooms', $user->id, 'teacher_id', null, $today),
+            LessonRequest::TYPE_COURSE => $this->countCreatedToday('courses', $user->id, 'teacher_id', $today),
+            LessonRequest::TYPE_CLASSROOM => $this->countCreatedToday('classrooms', $user->id, 'teacher_id', $today),
             LessonRequest::TYPE_DAILY_LESSON => (int) Cache::get($this->extraCountKey($user, $today), 0),
             default => 0,
         };
@@ -109,7 +109,7 @@ class LessonQuotaService
         });
     }
 
-    private function countCreatedToday(string $table, int $userId, string $userColumn, ?string $extraColumn, string $date): int
+    private function countCreatedToday(string $table, int $userId, string $userColumn, string $date): int
     {
         $query = DB::table($table)->whereDate('created_at', $date);
         $query->where($userColumn, $userId);

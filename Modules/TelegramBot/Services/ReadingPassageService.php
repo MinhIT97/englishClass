@@ -223,6 +223,7 @@ class ReadingPassageService
         array $answers,
         ?int $grade = null,
         ?int $timeSpentMs = null,
+        bool $applySchedule = true,
     ): array {
         $questions = $passage->passageQuestions->pluck('question')->filter()->values();
 
@@ -268,9 +269,6 @@ class ReadingPassageService
             $this->gamification->awardPoints($user, $pointsEarned);
         }
 
-        // Derive a grade from accuracy if caller didn't pass one.
-        $grade ??= $this->deriveGrade($correctCount, $totalQuestions);
-
         $schedule = ReadingPassageReview::query()->firstOrCreate(
             [
                 'user_id' => $user->id,
@@ -284,7 +282,10 @@ class ReadingPassageService
             ],
         );
 
-        $this->srs->grade($schedule, $grade);
+        if ($applySchedule) {
+            $grade ??= $this->deriveGrade($correctCount, $totalQuestions);
+            $this->srs->grade($schedule, $grade);
+        }
 
         return [
             'ok' => true,

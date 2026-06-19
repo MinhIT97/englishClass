@@ -4,6 +4,8 @@ namespace Tests\Feature\Security;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
+use Modules\Speaking\Services\AiSpeakingService;
 use Tests\TestCase;
 
 /**
@@ -61,6 +63,13 @@ class RateLimitTest extends TestCase
     public function test_ai_chat_is_rate_limited_per_user(): void
     {
         $user = User::factory()->create();
+        $ai = Mockery::mock(AiSpeakingService::class);
+        $ai->shouldReceive('generate')->times(20)->andReturn([
+            'message' => 'ok',
+            'suggestions' => [],
+            'next_question' => null,
+        ]);
+        $this->app->instance(AiSpeakingService::class, $ai);
 
         // 20 requests succeed (the configured limit), the 21st is 429.
         for ($i = 0; $i < 20; $i++) {
