@@ -31,7 +31,7 @@ if [ "$CONTAINER_ROLE" = "app" ]; then
     # Chỉ chạy migration nếu được yêu cầu
     if [ "$RUN_MIGRATIONS" = "true" ]; then
         echo "🔄 Running migrations..."
-        php artisan migrate --force --no-interaction || echo "❌ Migration failed!"
+        php artisan migrate --force --no-interaction
     fi
 
     # Đảm bảo quyền ghi cho storage và cache (chỉ quét các folder cần thiết để nhanh hơn)
