@@ -4,6 +4,7 @@ namespace Modules\TelegramBot\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Modules\TelegramBot\Console\Commands\SendDailyLessonsCommand;
+use Modules\TelegramBot\Console\Commands\SendReviewRemindersCommand;
 use Modules\TelegramBot\Console\Commands\SetWebhookCommand;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
@@ -20,6 +21,7 @@ class TelegramBotServiceProvider extends ModuleServiceProvider
      */
     protected array $commands = [
         SendDailyLessonsCommand::class,
+        SendReviewRemindersCommand::class,
         SetWebhookCommand::class,
     ];
 
@@ -52,6 +54,14 @@ class TelegramBotServiceProvider extends ModuleServiceProvider
         // filters by LearningProfile::isDailySendTime() so we don't
         // double-send.
         $schedule->command('tgb:send-daily')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // Same hourly cadence as the app-level schedule. The command
+        // throttles to one reminder per user per local day, so even if
+        // both schedules run, the user only gets one nudge.
+        $schedule->command('tgb:send-review-reminders')
             ->everyFifteenMinutes()
             ->withoutOverlapping()
             ->onOneServer();

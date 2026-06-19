@@ -33,6 +33,9 @@
             <a href="{{ route('admin.lesson-requests.index') }}" class="btn btn-outline" style="gap: 0.5rem">
                 <span>📚</span> Lesson Quota Requests
             </a>
+            <a href="{{ route('admin.reading-passages.index') }}" class="btn btn-outline" style="gap: 0.5rem">
+                <span>📖</span> Reading Passages
+            </a>
         </div>
     </div>
 </x-app-layout>

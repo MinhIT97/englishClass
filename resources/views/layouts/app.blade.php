@@ -151,6 +151,9 @@
                     <a href="/admin/questions" class="nav-item {{ request()->is('admin/questions') ? 'active' : '' }}">
                         <span class="nav-icon">📝</span> {{ __('ui.question_bank') }}
                     </a>
+                    <a href="{{ route('admin.reading-passages.index') }}" class="nav-item {{ request()->is('admin/reading-passages*') ? 'active' : '' }}">
+                        <span class="nav-icon">📖</span> {{ __('ui.reading_passages_menu') }}
+                    </a>
                     <a href="{{ route('admin.sets.index') }}" class="nav-item {{ request()->is('admin/sets*') ? 'active' : '' }}">
                         <span class="nav-icon">S</span> IELTS Sets
                     </a>

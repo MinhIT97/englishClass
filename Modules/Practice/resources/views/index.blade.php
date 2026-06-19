@@ -10,13 +10,21 @@
         </div>
     @endif
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in" style="animation-delay: 0.1s">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 animate-fade-in" style="animation-delay: 0.1s">
         <div class="glass-card text-center group animate-card-float">
             <div class="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">📖</div>
             <h3 class="text-xl mb-2">{{ __('ui.reading_drills') }}</h3>
             <p class="text-muted text-sm mb-6 min-height-[3rem]">{{ __('ui.reading_desc') }}</p>
             <a href="{{ route('student.practice.drill', 'reading') }}" class="btn btn-primary w-full">{{ __('ui.start_training') }}</a>
             <div class="absolute bottom-0 left-0 w-full h-1 bg-blue-500 opacity-50"></div>
+        </div>
+
+        <div class="glass-card text-center group animate-card-float" style="animation-delay: 0.3s">
+            <div class="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">📚</div>
+            <h3 class="text-xl mb-2">{{ __('ui.reading_review_title') }}</h3>
+            <p class="text-muted text-sm mb-6 min-height-[3rem]">{{ __('ui.reading_review_card_desc') }}</p>
+            <a href="{{ route('reading-review.index') }}" class="btn btn-primary w-full" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4)">{{ __('ui.reading_review_start_session') }}</a>
+            <div class="absolute bottom-0 left-0 w-full h-1 bg-sky-500 opacity-50"></div>
         </div>
 
         <div class="glass-card text-center group animate-card-float" style="animation-delay: 0.5s">

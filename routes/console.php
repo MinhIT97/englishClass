@@ -16,3 +16,11 @@ Schedule::command('tgb:send-daily')
     ->withoutOverlapping()
     ->onOneServer()
     ->timezone('Asia/Ho_Chi_Minh');
+
+// TelegramBot: nudge users who have vocab / reading reviews due. The
+// command itself throttles to one reminder per user per local day.
+Schedule::command('tgb:send-review-reminders')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->timezone('Asia/Ho_Chi_Minh');

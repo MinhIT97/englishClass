@@ -239,5 +239,48 @@ return [
     'telegram_dashboard_banner_desc' => 'Nhận từ vựng, cấu trúc câu và quiz ngay trong Telegram. Liên kết chỉ mất 1 phút.',
     'telegram_dashboard_banner_cta' => 'Liên kết ngay',
     'telegram_dashboard_banner_dismiss' => 'Để sau',
+
+    // Reading-review feature
+    'reading_review_title' => 'Ôn luyện đọc hiểu',
+    'reading_review_subtitle' => 'Lặp lại các bài đọc IELTS bằng phương pháp spaced repetition. Hôm nay bạn có :count bài đang đến hạn ôn.',
+    'reading_review_card_desc' => 'Ôn lại các bài đọc IELTS theo lộ trình spaced repetition, đồng bộ với Telegram.',
+    'reading_review_due_today' => 'Đến hạn hôm nay',
+    'reading_review_due' => 'đến hạn',
+    'reading_review_total' => 'Tổng bài đã đăng ký',
+    'reading_review_mature' => 'Đã thuộc',
+    'reading_review_questions' => 'câu hỏi',
+    'reading_review_words' => 'từ',
+    'reading_review_start_session' => 'Bắt đầu ôn',
+    'reading_review_filter_all_difficulty' => 'Tất cả độ khó',
+    'reading_review_status_new' => 'Mới',
+    'reading_review_status_due' => 'Đến hạn',
+    'reading_review_status_scheduled' => 'Đã lên lịch',
+    'reading_review_status_mature' => 'Đã thuộc',
+    'reading_review_action_start' => 'Bắt đầu',
+    'reading_review_action_review' => 'Ôn lại',
+    'reading_review_empty_title' => 'Chưa có bài đọc nào',
+    'reading_review_empty_desc' => 'Thư viện bài đọc đang được cập nhật. Vui lòng quay lại sau!',
+    'reading_review_session_title' => 'Phiên ôn đọc hiểu',
+    'reading_review_session_subtitle' => 'Đọc đoạn văn bên dưới rồi trả lời các câu hỏi.',
+    'reading_review_session_empty_title' => 'Không có bài nào đang đến hạn',
+    'reading_review_session_empty_desc' => 'Bạn đã hoàn thành tất cả bài đọc trong hàng đợi. Hãy thêm bài mới từ thư viện.',
+    'reading_review_browse_library' => 'Mở thư viện',
+    'reading_review_back_library' => 'Về thư viện',
+    'reading_review_answer_questions' => 'Trả lời các câu hỏi',
+    'reading_review_submit' => 'Nộp bài',
+    'reading_review_perfect' => 'Hoàn hảo!',
+    'reading_review_next_review' => 'Ôn lại sau',
+    'reading_review_due_remaining' => 'Còn lại hôm nay',
+    'reading_review_grade_prompt' => 'Bạn thấy bài này thế nào?',
+    'reading_review_next' => 'Bài tiếp theo',
+
+    // Shared SM-2 grade button labels (used by flashcards and reading review)
+    'grade_again' => 'Lại',
+    'grade_hard' => 'Khó',
+    'grade_good' => 'Tốt',
+    'grade_easy' => 'Dễ',
+
+    // Admin menu
+    'reading_passages_menu' => 'Reading Passages',
 ];
 

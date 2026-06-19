@@ -7,7 +7,6 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\TelegramBot\Models\ReviewSchedule;
-use Modules\TelegramBot\Models\VocabularyEntry;
 use Modules\TelegramBot\Services\SpacedRepetitionService;
 
 /**

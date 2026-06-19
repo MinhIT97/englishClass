@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Log;
 use Modules\TelegramBot\Models\DailyLesson;
 use Modules\TelegramBot\Models\GrammarEntry;
 use Modules\TelegramBot\Models\LearningProfile;
+use Modules\TelegramBot\Models\ReadingPassage;
+use Modules\TelegramBot\Models\ReadingPassageReview;
 use Modules\TelegramBot\Models\ReviewSchedule;
 use Modules\TelegramBot\Models\Topic;
 use Modules\TelegramBot\Models\UserPath;
@@ -40,6 +42,7 @@ class TelegramLearningService
         private readonly AchievementService $achievements,
         private readonly LevelService $levels,
         private readonly TextToSpeechService $tts,
+        private readonly ReadingPassageService $readingService,
     ) {
     }
 
@@ -110,6 +113,18 @@ class TelegramLearningService
 
     /**
      * Mark a topic as completed for the user (called from review/quiz flows).
+     *
+     * A topic is now complete when:
+     *   1. Every vocabulary entry for the topic has a mature schedule
+     *      (repetitions >= 2) — same rule as before, AND
+     *   2. Every active reading passage attached to the topic has either
+     *      been attempted and reached MATURE_REPETITIONS, OR the user
+     *      has not enrolled in it (we don't force enrol; we only check
+     *      passages the user has touched).
+     *
+     * Topics with zero vocabulary are still NOT auto-completed — the
+     * daily-lesson pipeline always seeds 5 words, so a topic with 0
+     * words means it hasn't been taught yet.
      */
     public function completeCurrentTopicIfEligible(User $user, Topic $topic): bool
     {
@@ -137,10 +152,31 @@ class TelegramLearningService
             ->whereHas('vocabularyEntry', function ($q) use ($user, $topic) {
                 $q->where('user_id', $user->id)->where('topic_id', $topic->id);
             })
-            ->where('repetitions', '>=', 2)
+            ->where('repetitions', '>=', ReviewSchedule::MATURE_REPETITIONS)
             ->count();
 
         if ($matureWords < $totalWords) {
+            return false;
+        }
+
+        // Reading-passage check: every passage the user enrolled in for
+        // this topic must also be mature. We don't auto-enrol; we only
+        // check passages the user already touched.
+        $enrolledPassageIds = ReadingPassageReview::query()
+            ->forUser($user->id)
+            ->whereHas('passage', function ($q) use ($topic) {
+                $q->where('topic_id', $topic->id);
+            })
+            ->pluck('reading_passage_id')
+            ->all();
+
+        $maturePassages = ReadingPassageReview::query()
+            ->forUser($user->id)
+            ->whereIn('reading_passage_id', $enrolledPassageIds ?: [0])
+            ->where('repetitions', '>=', ReadingPassageReview::MATURE_REPETITIONS)
+            ->count();
+
+        if ($maturePassages < count($enrolledPassageIds)) {
             return false;
         }
 
@@ -316,7 +352,7 @@ class TelegramLearningService
                 $link->telegram_chat_id, $topic, $payload, $lesson->id
             ),
             GeminiLessonGenerator::TYPE_READING => $this->sendReadingMessage(
-                $link->telegram_chat_id, $payload, $lesson->id
+                $link->telegram_chat_id, $user, $topic, $payload, $lesson->id
             ),
             GeminiLessonGenerator::TYPE_CONVERSATION => $this->sendConversationMessage(
                 $link->telegram_chat_id, $payload, $lesson->id
@@ -797,9 +833,16 @@ class TelegramLearningService
      * Reading lesson — one message with passage + 3 comprehension
      * questions (answers hidden by spoiler / call-to-action).
      *
+     * If the user has a real reading passage on file for this topic, the
+     * "Ôn luyện đọc hiểu" button deep-links straight to it (callback
+     * `tgb:rp:<passageId>`). Otherwise it falls back to the queue-based
+     * `tgb:reading-review` callback which picks whatever's due next.
+     * Without this distinction, the user might tap "practice" and end
+     * up on a passage about a completely different topic.
+     *
      * @param array{extra?: array{passage_en?: string, passage_vi?: string, questions?: list<array{q_en:string, q_vi:string, answer:string}>}} $payload
      */
-    private function sendReadingMessage(string $chatId, array $payload, int $lessonId): void
+    private function sendReadingMessage(string $chatId, User $user, Topic $topic, array $payload, int $lessonId): void
     {
         $extra = $payload['extra'] ?? [];
         $passage = $extra['passage_en'] ?? '';
@@ -830,16 +873,30 @@ class TelegramLearningService
             }
         }
 
+        // Deep-link the practice button to a passage that matches the
+        // current topic. We don't auto-enrol here; tgb:rp:<id> will
+        // enrol on first click.
+        $linkedPassage = ReadingPassage::query()
+            ->active()
+            ->where('topic_id', $topic->id)
+            ->inRandomOrder()
+            ->first();
+
+        $practiceCallback = $linkedPassage
+            ? "tgb:rp:{$linkedPassage->id}"
+            : 'tgb:reading-review';
+
         $this->telegram->sendMessage(
             $chatId,
             implode("\n", $lines),
             [
                 'inline_keyboard' => [
                     [
+                        ['text' => '📚 Ôn luyện đọc hiểu', 'callback_data' => $practiceCallback],
                         ['text' => '🔁 Ôn tập SR', 'callback_data' => 'tgb:rv'],
-                        ['text' => '📝 Làm quiz', 'callback_data' => 'tgb:q:start'],
                     ],
                     [
+                        ['text' => '📝 Làm quiz', 'callback_data' => 'tgb:q:start'],
                         ['text' => '🏠 Menu', 'callback_data' => 'tgb:menu'],
                     ],
                 ],

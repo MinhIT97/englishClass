@@ -8,6 +8,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\TelegramBot\Models\ConversationState;
+use Modules\TelegramBot\Models\ReadingPassage;
+use Modules\TelegramBot\Models\ReadingPassageReview;
 use Modules\TelegramBot\Models\ReviewSchedule;
 use Modules\TelegramBot\Models\UserPath;
 use Modules\TelegramBot\Models\UserTelegramLink;
@@ -29,6 +31,7 @@ class TelegramBotCommandService
         private readonly AchievementService $achievements,
         private readonly LevelService $levels,
         private readonly TextToSpeechService $tts,
+        private readonly ReadingPassageService $readingService,
     ) {
     }
 
@@ -64,6 +67,12 @@ class TelegramBotCommandService
             case 'review':
                 if (! $user) { $this->requireLink($chatId); return; }
                 $this->startReviewSession($chatId, $user);
+                break;
+
+            case 'reading':
+            case 'reading-review':
+                if (! $user) { $this->requireLink($chatId); return; }
+                $this->startReadingReviewSession($chatId, $user);
                 break;
 
             case 'roadmap':
@@ -370,6 +379,34 @@ class TelegramBotCommandService
                 $this->applyReviewGrade($chatId, $messageId, $user, $scheduleId, $grade);
                 break;
 
+            case 'reading-review': // start a reading-passage review session
+                if (! $user) return;
+                $this->startReadingReviewSession($chatId, $user);
+                break;
+
+            case 'rp': // start a reading session for a SPECIFIC passage id
+                // tgb:rp:<passageId> — used by the daily reading message to
+                // start the session for the passage that was just shown.
+                if (! $user) return;
+                $passageId = (int) ($parts[2] ?? 0);
+                $this->startReadingReviewSession($chatId, $user, $passageId);
+                break;
+
+            case 'rq': // reading question answer: tgb:rq:<passage_id>:<q_idx>:<chosen_idx>
+                if (! $user) return;
+                $passageId = (int) ($parts[2] ?? 0);
+                $qIdx = (int) ($parts[3] ?? 0);
+                $chosen = (int) ($parts[4] ?? -1);
+                $this->handleReadingAnswer($chatId, $messageId, $user, $passageId, $qIdx, $chosen);
+                break;
+
+            case 'rr': // reading review grade: tgb:rr:<review_id>:<grade>
+                if (! $user) return;
+                $reviewId = (int) ($parts[2] ?? 0);
+                $grade = (int) ($parts[3] ?? 2);
+                $this->applyReadingGrade($chatId, $messageId, $user, $reviewId, $grade);
+                break;
+
             case 'qa': // quiz answer: tgb:qa:<index>:<chosen>
                 if (! $user) return;
                 $index = (int) ($parts[2] ?? 0);
@@ -460,6 +497,7 @@ class TelegramBotCommandService
             . "/grammar - Cấu trúc câu hôm nay\n"
             . "/quiz - Quiz 5 câu trắc nghiệm\n"
             . "/review - Ôn tập thẻ đến hạn\n"
+            . "/reading - Ôn luyện đọc hiểu (passages + câu hỏi)\n"
             . "/roadmap - Xem lộ trình học\n"
             . "/extra - Học thêm bài (yêu cầu quyền)\n"
             . "/achievements - Xem huy hiệu & thành tựu\n\n"
@@ -1145,5 +1183,322 @@ class TelegramBotCommandService
                 ],
             ]
         );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Reading-passage review (web + Telegram share the same SM-2 state via
+    // ReadingPassageService). Telegram flow:
+    //   /reading  →  startReadingReviewSession()
+    //   tgb:rq:<passageId>:<qIdx>:<chosen>  →  handleReadingAnswer()
+    //   tgb:rr:<reviewId>:<grade>           →  applyReadingGrade()
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Begin a reading-review session. When $passageId is null we pick
+     * the next due / new / un-mature passage from the user's deck;
+     * when a specific id is supplied (e.g. from the daily reading
+     * deep-link callback `tgb:rp:<id>`) we use that exact passage
+     * instead. Falls back to the queue if the supplied id is invalid
+     * or inactive, so the user never lands on a dead end.
+     */
+    private function startReadingReviewSession(string $chatId, User $user, ?int $passageId = null): void
+    {
+        $passage = null;
+
+        if ($passageId !== null && $passageId > 0) {
+            $passage = ReadingPassage::query()->active()->where('id', $passageId)->first();
+
+            if (! $passage) {
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "⚠️ Bài đọc này không còn khả dụng. Đang chọn bài khác…"
+                );
+                // Fall through to the queue-based pick below.
+            }
+        }
+
+        if (! $passage) {
+            $passage = $this->readingService->pickNextForUser($user);
+        }
+
+        if (! $passage) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "📭 <b>Chưa có bài đọc nào.</b>\n\n"
+                . "Hiện tại thư viện reading passages đang được admin cập nhật. "
+                . "Bạn có thể mở web app để xem các bài từ vựng & quiz trong lúc chờ.",
+                ['inline_keyboard' => [[['text' => '🏠 Menu', 'callback_data' => 'tgb:menu']]]]
+            );
+            return;
+        }
+
+        // Enrol the user if not yet on the deck. The schedule will be
+        // created (or fetched) and used to persist the SM-2 grade.
+        $this->readingService->enrol($user, $passage);
+
+        $state = ConversationState::forChat($chatId);
+        $state->update([
+            'current_command' => 'reading_review',
+            'state_data' => [
+                'passage_id' => $passage->id,
+                'question_index' => 0,
+                'answers' => [],
+            ],
+        ]);
+
+        $this->sendReadingPassageIntro($chatId, $passage);
+        $this->sendReadingQuestion($chatId, $user, $passage, 0);
+    }
+
+    /**
+     * Send the passage body as a standalone message before the first
+     * question so the user has a clean view to read.
+     */
+    private function sendReadingPassageIntro(string $chatId, ReadingPassage $passage): void
+    {
+        $topicName = $passage->topic?->name_vi ?? 'Reading';
+        $header = "━━━━━━━━━━━━━━━━━━━━\n"
+            . "📖 <b>ĐỌC HIỂU — {$topicName}</b>\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n\n";
+
+        $body = $passage->body;
+        // Telegram hard-limits at 4096 chars; keep some headroom.
+        if (mb_strlen($body) > 3500) {
+            $body = mb_substr($body, 0, 3500) . "\n\n…";
+        }
+
+        $this->telegram->sendMessage($chatId, $header . $body);
+    }
+
+    /**
+     * Send a single MCQ for the passage. Renders the question and 4
+     * option buttons (A/B/C/D). The correct answer is hidden; it's
+     * revealed in the recap after the last question.
+     */
+    private function sendReadingQuestion(string $chatId, User $user, ReadingPassage $passage, int $index): void
+    {
+        $questions = $passage->passageQuestions->pluck('question')->filter()->values();
+        if (! isset($questions[$index])) {
+            $this->finalizeReadingSession($chatId, $user, $passage);
+            return;
+        }
+
+        $q = $questions[$index];
+        $options = $q->content['options'] ?? [];
+        $total = $questions->count();
+
+        $text = "❓ <b>Câu " . ($index + 1) . "/{$total}:</b>\n"
+            . ($q->content['question'] ?? $q->content['text'] ?? '');
+
+        $buttons = [];
+        foreach (array_values($options) as $i => $option) {
+            $label = chr(65 + $i) . '. ' . mb_substr((string) $option, 0, 60);
+            $buttons[] = [
+                'text' => $label,
+                'callback_data' => "tgb:rq:{$passage->id}:{$index}:{$i}",
+            ];
+        }
+
+        // Telegram rows are at most 8 buttons wide; we use 1 button per
+        // row so long option text is readable.
+        $keyboard = ['inline_keyboard' => array_map(fn ($b) => [$b], $buttons)];
+
+        $this->telegram->sendMessage($chatId, $text, $keyboard);
+    }
+
+    /**
+     * Record an answer to a single question and advance to the next.
+     * The grade is NOT applied here — we wait until the whole passage
+     * is answered so the SM-2 grade reflects the overall accuracy.
+     */
+    private function handleReadingAnswer(
+        string $chatId,
+        ?int $messageId,
+        User $user,
+        int $passageId,
+        int $qIndex,
+        int $chosenIdx
+    ): void {
+        $state = ConversationState::forChat($chatId);
+        $data = $state->state_data ?? [];
+        if (($data['passage_id'] ?? null) !== $passageId) {
+            return; // stale callback (user moved on)
+        }
+
+        $passage = ReadingPassage::query()->where('id', $passageId)->first();
+        if (! $passage) {
+            $state->clear();
+            return;
+        }
+
+        $questions = $passage->passageQuestions->pluck('question')->filter()->values();
+        if (! isset($questions[$qIndex])) {
+            $state->clear();
+            return;
+        }
+
+        $answers = (array) ($data['answers'] ?? []);
+        $answers[$qIndex] = $chosenIdx;
+        $data['answers'] = $answers;
+        $data['question_index'] = $qIndex + 1;
+        $state->update(['state_data' => $data]);
+
+        $next = $qIndex + 1;
+        if ($next >= $questions->count()) {
+            $this->finalizeReadingSession($chatId, $user, $passage);
+            return;
+        }
+
+        $this->sendReadingQuestion($chatId, $user, $passage, $next);
+    }
+
+    /**
+     * Persist the whole passage attempt and present the user with 4
+     * grade buttons (the same SM-2 grade vocabulary as vocab review).
+     */
+    private function finalizeReadingSession(string $chatId, User $user, ReadingPassage $passage): void
+    {
+        $state = ConversationState::forChat($chatId);
+        $data = $state->state_data ?? [];
+        $answers = (array) ($data['answers'] ?? []);
+
+        $questions = $passage->passageQuestions->pluck('question')->filter()->values();
+        $answersByQuestion = [];
+        foreach ($questions as $idx => $q) {
+            $chosenIdx = $answers[$idx] ?? null;
+            $options = $q->content['options'] ?? [];
+            $chosen = is_int($chosenIdx) && isset($options[$chosenIdx])
+                ? (string) $options[$chosenIdx]
+                : '';
+            $answersByQuestion[$q->id] = $chosen;
+        }
+
+        $result = $this->readingService->submitAttempt(
+            $user,
+            $passage,
+            $answersByQuestion,
+            null, // grade will be supplied by user via tgb:rr:*
+            null,
+        );
+
+        $review = $this->readingService->reviewFor($passage->id, $user);
+        if (! $review) {
+            $state->clear();
+            $this->telegram->sendMessage(
+                $chatId,
+                "⚠️ Có lỗi khi lưu kết quả. Vui lòng thử lại.",
+                ['inline_keyboard' => [[['text' => '🏠 Menu', 'callback_data' => 'tgb:menu']]]]
+            );
+            return;
+        }
+
+        $accuracy = $result['accuracy'] ?? 0;
+        $accuracyPct = (int) round($accuracy * 100);
+        $reviewId = $review->id;
+        $gradeButtons = [
+            [['text' => '😖 ' . __('ui.grade_again'), 'callback_data' => "tgb:rr:{$reviewId}:0"]],
+            [['text' => '😣 ' . __('ui.grade_hard'), 'callback_data' => "tgb:rr:{$reviewId}:1"]],
+            [['text' => '👍 ' . __('ui.grade_good'), 'callback_data' => "tgb:rr:{$reviewId}:2"]],
+            [['text' => '🎉 ' . __('ui.grade_easy'), 'callback_data' => "tgb:rr:{$reviewId}:3"]],
+        ];
+
+        $text = "📊 <b>Kết quả bài đọc:</b>\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n\n"
+            . "✅ Đúng: <b>{$result['correct']}/{$result['total']}</b> ({$accuracyPct}%)\n"
+            . "⚡ +{$result['points_earned']} XP\n\n"
+            . "Bạn thấy bài này thế nào? Chọn mức độ để hệ thống lên lịch ôn phù hợp:";
+
+        $keyboard = ['inline_keyboard' => array_merge($gradeButtons, [
+            [['text' => '⏭️ Bài tiếp theo', 'callback_data' => 'tgb:reading-review']],
+            [['text' => '🏠 Menu', 'callback_data' => 'tgb:menu']],
+        ])];
+
+        // Keep the state around so applyReadingGrade can verify the reviewId
+        // is one this session just produced (defence in depth against
+        // malicious or stale callback payloads).
+        $data['finalised_review_id'] = $reviewId;
+        $state->update(['state_data' => $data]);
+
+        $this->telegram->sendMessage($chatId, $text, $keyboard);
+    }
+
+    /**
+     * Apply a user-supplied SM-2 grade to a freshly-completed reading
+     * session. The user picks one of 4 buttons in the recap. We
+     * additionally nudge topic completion if applicable.
+     */
+    private function applyReadingGrade(
+        string $chatId,
+        ?int $messageId,
+        User $user,
+        int $reviewId,
+        int $grade
+    ): void {
+        $review = ReadingPassageReview::query()->where('id', $reviewId)->first();
+        if (! $review || $review->user_id !== $user->id) {
+            return;
+        }
+
+        $state = ConversationState::forChat($chatId);
+        $data = $state->state_data ?? [];
+        // Only accept grades for the review row this session just produced
+        // — prevents old / tampered callbacks from re-grading attempts.
+        if (($data['finalised_review_id'] ?? null) !== $reviewId) {
+            return;
+        }
+
+        $this->sr->grade($review, $grade);
+
+        $gradeLabel = [
+            ReadingPassageReview::GRADE_AGAIN => '🔁 ' . __('ui.grade_again'),
+            ReadingPassageReview::GRADE_HARD => '😣 ' . __('ui.grade_hard'),
+            ReadingPassageReview::GRADE_GOOD => '👍 ' . __('ui.grade_good'),
+            ReadingPassageReview::GRADE_EASY => '🎉 ' . __('ui.grade_easy'),
+        ][$grade] ?? '👍';
+
+        $next = $review->fresh()->next_review_at;
+        $nextStr = $next ? $next->setTimezone('Asia/Ho_Chi_Minh')->format('d/m H:i') : '—';
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "📅 <b>Đã lưu!</b> {$gradeLabel}\n\n"
+            . "Bài đọc sẽ được ôn lại sau: <b>{$nextStr}</b>",
+            [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '⏭️ Bài tiếp theo', 'callback_data' => 'tgb:reading-review'],
+                        ['text' => '🔁 Ôn từ vựng SR', 'callback_data' => 'tgb:rv'],
+                    ],
+                    [
+                        ['text' => '🏠 Menu', 'callback_data' => 'tgb:menu'],
+                    ],
+                ],
+            ]
+        );
+
+        $state->clear();
+
+        // Best-effort topic completion check (covered separately by
+        // TelegramLearningService::completeCurrentTopicIfEligible; calling
+        // it here means a user who finishes a passage on Telegram can
+        // complete a topic without waiting for the next daily lesson).
+        try {
+            $passage = $review->passage;
+            if ($passage && $passage->topic_id) {
+                $topic = $passage->topic;
+                $profile = \Modules\TelegramBot\Models\LearningProfile::query()
+                    ->where('user_id', $user->id)
+                    ->first();
+                if ($profile) {
+                    $this->learning->completeCurrentTopicIfEligible($user, $topic);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[TelegramBot] topic completion check failed in applyReadingGrade', [
+                'user_id' => $user->id,
+                'review_id' => $reviewId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

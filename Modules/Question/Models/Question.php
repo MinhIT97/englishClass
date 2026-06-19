@@ -45,4 +45,23 @@ class Question extends Model
     {
         return $query->where('skill', $skill);
     }
+
+    /**
+     * Exclude questions that are bound to a reading passage. Reading-
+     * passage questions are owned by a passage row in
+     * Modules/TelegramBot/Models/ReadingPassage and are graded together
+     * via ReadingPassageService — they must not surface in the standalone
+     * "Reading Drills" random practice.
+     *
+     * We tag them at seed time with `source LIKE 'reading-passage:%'`,
+     * so a NOT LIKE here is the cheapest reliable filter. (The question
+     * `source` column is on the `questions` table.)
+     */
+    public function scopeStandalone(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('source')
+              ->orWhere('source', 'not like', 'reading-passage:%');
+        });
+    }
 }

@@ -15,6 +15,14 @@ class ReviewSchedule extends Model
     public const GRADE_GOOD = 2;
     public const GRADE_EASY = 3;
 
+    /**
+     * Minimum repetitions for a vocab card to be considered "mature"
+     * (i.e. counts toward topic completion). Kept identical to
+     * ReadingPassageReview::MATURE_REPETITIONS so the topic-completion
+     * rule treats both schedules symmetrically.
+     */
+    public const MATURE_REPETITIONS = 2;
+
     protected $fillable = [
         'user_id',
         'vocabulary_entry_id',

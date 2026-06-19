@@ -24,6 +24,7 @@ class PracticeSessionService
     {
         $question = Question::query()
             ->forSkill($skill)
+            ->standalone()
             ->inRandomOrder()
             ->first();
 
