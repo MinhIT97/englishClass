@@ -71,17 +71,9 @@ class TelegramBotWebhookController extends Controller
             return;
         }
 
-        // Free text - if user has an active conversation state, advance it.
-        // For MVP, send a friendly fallback if no state.
-        $state = \Modules\TelegramBot\Models\ConversationState::query()
-            ->where('telegram_chat_id', $chatId)
-            ->whereNotNull('current_command')
-            ->first();
-
-        if (! $state) {
-            \Log::info('[TelegramBot] Free text from chat, no active state', ['text' => $text]);
-        }
-        // Future: implement free-text fill-in-blank / word-scramble flows.
+        // Free text — route through the same dispatch pipeline as the
+        // main webhook so game answers, onboarding fallback, etc. work.
+        $this->commandService->handleFreeText($chatId, $text, $user);
     }
 
     private function handleCallback(array $query): void

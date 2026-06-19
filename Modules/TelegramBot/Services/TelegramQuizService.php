@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\TelegramBot\Models\ConversationState;
 use Modules\TelegramBot\Models\QuizAttempt;
-use Modules\TelegramBot\Models\ReviewSchedule;
 use Modules\TelegramBot\Models\VocabularyEntry;
 
 /**
@@ -28,20 +27,25 @@ class TelegramQuizService
      */
     public function startQuiz(string $chatId, User $user, int $questionCount = 5): void
     {
+        // Prefer SR-due words first, then newest — all at DB level to
+        // avoid loading every word the user has ever learned into memory.
         $words = VocabularyEntry::query()
-            ->where('user_id', $user->id)
-            ->with('reviewSchedule')
-            ->get()
-            ->sortByDesc(function ($w) {
-                // Prefer SR-due words; fall back to newest.
-                $due = $w->reviewSchedule && (
-                    $w->reviewSchedule->next_review_at === null
-                    || $w->reviewSchedule->next_review_at->isPast()
-                );
-                return $due ? 2 : 1;
+            ->where('tgb_vocabulary_entries.user_id', $user->id)
+            ->leftJoin('tgb_review_schedules as rs', function ($join) use ($user) {
+                $join->on('tgb_vocabulary_entries.id', '=', 'rs.vocabulary_entry_id')
+                    ->where('rs.user_id', '=', $user->id);
             })
-            ->take($questionCount)
-            ->values();
+            ->select('tgb_vocabulary_entries.*')
+            ->orderByRaw("
+                CASE
+                    WHEN rs.next_review_at IS NULL OR rs.next_review_at <= NOW()
+                    THEN 0
+                    ELSE 1
+                END
+            ")
+            ->orderByDesc('tgb_vocabulary_entries.id')
+            ->limit($questionCount)
+            ->get();
 
         if ($words->isEmpty()) {
             $this->telegram->sendMessage(
@@ -71,6 +75,7 @@ class TelegramQuizService
             'user_id' => $user->id,
             'index' => 0,
             'score' => 0,
+            'xp_before' => $user->xp ?? 0, // capture BEFORE per-question XP grants
             'questions' => $questions,
         ];
         $state->save();
@@ -106,12 +111,14 @@ class TelegramQuizService
         $state = ConversationState::forChat($chatId);
         $data = (array) $state->state_data;
         $questions = $data['questions'] ?? [];
-        $q = $questions[$index] ?? null;
 
-        if (! $q) {
+        // Guard: ignore stale/duplicate callbacks from rapid double-taps.
+        $currentIndex = $data['index'] ?? 0;
+        if ($index !== $currentIndex || ! isset($questions[$index])) {
             return;
         }
 
+        $q = $questions[$index];
         $correct = (int) $q['correct_index'] === $chosen;
         $xp = $correct ? 5 : 0;
 
@@ -139,14 +146,20 @@ class TelegramQuizService
 
         $this->telegram->sendMessage($chatId, $feedback);
 
+        // Update score BEFORE checking completion — otherwise the last
+        // question's result is never included.
+        $data['score'] = ($data['score'] ?? 0) + ($correct ? 1 : 0);
         $next = $index + 1;
+
         if ($next >= count($questions)) {
+            $data['index'] = $next;
+            $state->state_data = $data;
+            $state->save();
             $this->finishQuiz($chatId, $data);
             return;
         }
 
         $data['index'] = $next;
-        $data['score'] = ($data['score'] ?? 0) + ($correct ? 1 : 0);
         $state->state_data = $data;
         $state->save();
 
@@ -160,21 +173,23 @@ class TelegramQuizService
         $perfect = $score === $total && $total > 0;
 
         $user = User::find($data['user_id']);
-        $xpBefore = $user ? ($user->xp ?? 0) : 0;
+        $xpBefore = $data['xp_before'] ?? ($user ? ($user->xp ?? 0) : 0);
 
+        // Perfect-score bonus (already granted per-question 5 XP in gradeAnswer).
         if ($perfect && $user) {
             $user->xp = ($user->xp ?? 0) + 20;
             $user->save();
-            $score += 20;
         }
 
         ConversationState::forChat($chatId)->clear();
+
+        $totalXpEarned = ($score * 5) + ($perfect ? 20 : 0);
 
         $this->telegram->sendMessage(
             $chatId,
             "🎉 <b>Hoàn thành quiz!</b>\n"
             . "✅ Đúng: {$score}/{$total}\n"
-            . "⚡ Tổng XP: +" . ($perfect ? 25 : $score * 5)
+            . "⚡ Tổng XP: +{$totalXpEarned}"
         );
 
         // Trigger achievement check for quiz results (best-effort).
@@ -217,6 +232,10 @@ class TelegramQuizService
         $distractors = [];
         foreach ($pool as $other) {
             if ($other->id === $word->id) {
+                continue;
+            }
+            // Skip empty or duplicate meanings.
+            if (empty($other->meaning_vi) || $other->meaning_vi === $correct) {
                 continue;
             }
             $distractors[] = $other->meaning_vi;

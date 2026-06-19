@@ -157,15 +157,20 @@ class TelegramGameService
             return;
         }
 
+        // Guard against stale/duplicate callbacks.
+        if (($data['index'] ?? -1) !== $index) {
+            return;
+        }
+
         $entryIds = $data['entry_ids'] ?? [];
         $entry = VocabularyEntry::query()->find($entryIds[$index] ?? 0);
         if (! $entry) {
             return;
         }
 
-        // Build the same options array to figure out the correct one.
-        $pool = VocabularyEntry::query()->whereIn('id', $entryIds)->get();
-        $options = $pool->pluck('meaning_vi')->shuffle()->values()->all();
+        // Use the EXACT options array that was displayed to the user,
+        // not a fresh shuffle.
+        $options = $data['match_options'] ?? [];
         $correct = $entry->meaning_vi;
         $isCorrect = ($options[$chosen] ?? null) === $correct;
 
@@ -183,6 +188,13 @@ class TelegramGameService
 
         $entryIds = $data['entry_ids'] ?? [];
         $index = $data['index'] ?? 0;
+
+        // Skip: advance without scoring or showing failure feedback.
+        if ($text === '__skip__') {
+            $this->advanceRound($chatId, $user, $data, $index);
+            return;
+        }
+
         $entry = VocabularyEntry::query()->find($entryIds[$index] ?? 0);
         if (! $entry) {
             return;
@@ -198,6 +210,23 @@ class TelegramGameService
         };
 
         $this->recordResult($chatId, $user, $data, $index, $isCorrect, [$text], null);
+    }
+
+    private function advanceRound(string $chatId, User $user, array $data, int $index): void
+    {
+        $next = $index + 1;
+        if ($next >= count($data['entry_ids'] ?? [])) {
+            $this->finishGame($chatId, $data);
+            return;
+        }
+
+        $data['index'] = $next;
+        $state = ConversationState::forChat($chatId);
+        $state->state_data = $data;
+        $state->save();
+
+        $this->telegram->sendMessage($chatId, "⏭ <b>Đã bỏ qua.</b>");
+        $this->sendRound($chatId, $user, $next);
     }
 
     private function recordResult(string $chatId, User $user, array $data, int $index, bool $isCorrect, array $options, ?int $chosen): void
@@ -278,6 +307,13 @@ class TelegramGameService
     private function sendMatch(string $chatId, VocabularyEntry $entry, $pool, int $index, int $total): void
     {
         $options = $pool->pluck('meaning_vi')->shuffle()->values()->all();
+
+        // Persist options to state so handleCallback reads the SAME order.
+        $state = ConversationState::forChat($chatId);
+        $data = (array) $state->state_data;
+        $data['match_options'] = $options;
+        $state->state_data = $data;
+        $state->save();
 
         $text = "🎮 <b>MATCH PAIRS</b>  " . ($index + 1) . "/{$total}\n"
             . "━━━━━━━━━━━━━━━━━━━━\n\n"

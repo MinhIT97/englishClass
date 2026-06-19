@@ -226,7 +226,7 @@ class TelegramBotCommandService
             [
                 'inline_keyboard' => [
                     [
-                        ['text' => '📚 Học tiếp ngay', 'callback_data' => 'tgb:q:start'],
+                        ['text' => '📚 Học tiếp ngay', 'callback_data' => 'tgb:rv'],
                     ],
                     [
                         ['text' => '📍 Xem lộ trình', 'callback_data' => 'tgb:roadmap'],
@@ -432,6 +432,11 @@ class TelegramBotCommandService
             case 'vocab-detail':
                 if (! $user) return;
                 $this->sendRecentVocab($chatId, $user);
+                break;
+
+            case 'grammar-detail':
+                if (! $user) return;
+                $this->sendRecentGrammar($chatId, $user);
                 break;
 
             case 'game':
@@ -1086,7 +1091,7 @@ class TelegramBotCommandService
         $rows = [
             [
                 ['text' => '📚 Từ vựng hôm nay', 'callback_data' => 'tgb:vocab-detail'],
-                ['text' => '🧠 Cấu trúc câu', 'callback_data' => 'tgb:vocab-detail'],
+                ['text' => '🧠 Cấu trúc câu', 'callback_data' => 'tgb:grammar-detail'],
             ],
             [
                 ['text' => '🔁 Ôn tập SR', 'callback_data' => 'tgb:rv'],

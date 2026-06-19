@@ -50,9 +50,9 @@ class AchievementService
             'xp' => 20,
         ],
         self::KEY_FIRST_QUIZ => [
-            'name' => 'Quiz hoàn hảo đầu tiên',
+            'name' => 'Quiz đầu tiên',
             'emoji' => '📝',
-            'description' => 'Đạt điểm tuyệt đối 5/5 trong quiz đầu tiên.',
+            'description' => 'Hoàn thành bài quiz đầu tiên.',
             'xp' => 15,
         ],
         self::KEY_PERFECT_QUIZ => [
@@ -282,12 +282,9 @@ class AchievementService
                 return $xp;
 
             case self::KEY_FIRST_QUIZ:
-                // Unlock the first time they nail a perfect score. We
-                // treat any perfect quiz as the first one.
-                if (! empty($context['perfect'])) {
-                    return $xp;
-                }
-                return false;
+                // Unlock on the very first quiz completion (5 questions = 5 attempts).
+                $count = QuizAttempt::query()->where('user_id', $user->id)->count();
+                return $count <= 5 ? $xp : false;
 
             case self::KEY_PERFECT_QUIZ:
                 if (! empty($context['perfect'])) {
