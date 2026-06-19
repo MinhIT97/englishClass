@@ -1330,7 +1330,16 @@ class TelegramBotCommandService
             return; // stale callback (user moved on)
         }
 
-        $passage = ReadingPassage::query()->where('id', $passageId)->first();
+        // Guard: ignore duplicate callbacks for an already-answered question.
+        $expectedIndex = $data['question_index'] ?? 0;
+        if ($qIndex !== $expectedIndex) {
+            return;
+        }
+
+        $passage = ReadingPassage::query()
+            ->where('id', $passageId)
+            ->with(['passageQuestions.question'])
+            ->first();
         if (! $passage) {
             $state->clear();
             return;
@@ -1338,7 +1347,6 @@ class TelegramBotCommandService
 
         $questions = $passage->passageQuestions->pluck('question')->filter()->values();
         if (! isset($questions[$qIndex])) {
-            $state->clear();
             return;
         }
 

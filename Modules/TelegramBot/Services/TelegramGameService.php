@@ -342,7 +342,27 @@ class TelegramGameService
     private function sendSentence(string $chatId, VocabularyEntry $entry, int $index, int $total): void
     {
         $example = $entry->example_en ?: '';
-        $masked = str_ireplace($entry->word, '____', $example);
+        if ($example !== '') {
+            // Replace only the first occurrence so compounds/multi-word
+            // phrases don't get mangled.
+            $pattern = '/' . preg_quote($entry->word, '/') . '/iu';
+            $masked = preg_replace($pattern, '________', $example, 1);
+            if ($masked === $example) {
+                // Word not found in example text; mask the longest word instead.
+                $words = explode(' ', $example);
+                if (count($words) > 1) {
+                    $longest = collect($words)->sortByDesc(fn($w) => mb_strlen($w))->first();
+                    $pattern2 = '/' . preg_quote($longest, '/') . '/iu';
+                    $replaced = preg_replace($pattern2, '________', $example, 1);
+                    if ($replaced !== $example) {
+                        $masked = $replaced;
+                    }
+                }
+            }
+        } else {
+            // Fallback: no example sentence — build one from the word + meaning.
+            $masked = '________ — "' . $entry->meaning_vi . '"';
+        }
 
         $text = "🎮 <b>SENTENCE BUILDER</b>  " . ($index + 1) . "/{$total}\n"
             . "━━━━━━━━━━━━━━━━━━━━\n\n"
