@@ -20,8 +20,8 @@ class MassAssignmentTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Mallory',
             'email' => 'mallory@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Pass1234!@',           // meets Password::min(8)->mixedCase()->numbers()->symbols()
+            'password_confirmation' => 'Pass1234!@',
             'role' => 'admin',
             'status' => 'active',
             'is_unlimited' => true,
