@@ -9,10 +9,16 @@ Route::middleware(['auth', 'can:admin-access'])->prefix('admin/questions')->grou
     Route::get('/create', [QuestionController::class, 'create'])->name('admin.questions.create');
     Route::post('/store', [QuestionController::class, 'store'])->name('admin.questions.store');
     Route::delete('/{id}', [QuestionController::class, 'delete'])->name('admin.questions.delete');
-    
+
     // AI Question Generation
+    // SECURITY (SEC-014): /ai-generate POST and /generate-voice invoke Gemini + TTS.
+    // Both are cost-bearing endpoints and must be rate-limited.
     Route::get('/ai-generate', [AIQuestionController::class, 'index'])->name('admin.questions.ai');
-    Route::post('/ai-generate', [AIQuestionController::class, 'generate'])->name('admin.questions.generate');
+    Route::post('/ai-generate', [AIQuestionController::class, 'generate'])
+        ->middleware('throttle:ai')
+        ->name('admin.questions.generate');
     Route::post('/store-batch', [AIQuestionController::class, 'store'])->name('admin.questions.store_batch');
-    Route::post('/generate-voice', [QuestionController::class, 'generateVoice'])->name('admin.questions.generate_voice');
+    Route::post('/generate-voice', [QuestionController::class, 'generateVoice'])
+        ->middleware('throttle:ai')
+        ->name('admin.questions.generate_voice');
 });

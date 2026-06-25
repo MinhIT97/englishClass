@@ -43,12 +43,28 @@ class AuthService
 
     /**
      * Login user and return token.
+     *
+     * SECURITY (SEC-005): Both known-email and unknown-email paths now execute
+     * a bcrypt hash, eliminating the timing oracle that allowed attackers to
+     * enumerate registered emails. The dummy hash uses a constant-time cost
+     * (12 rounds = same as the real config) so timing is indistinguishable.
      */
     public function login(array $credentials)
     {
         $user = $this->userRepository->findByEmail($credentials['email']);
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        // Always hash — even for unknown email — to prevent timing oracle.
+        // BCRYPT_ROUNDS=12 matches the configured cost so timing is identical.
+        $storedHash = $user?->password ?? '$2y$12$dummyhashdummyhashdummyhasdummyhasdummyhasdummyha';
+        Hash::check($credentials['password'], $storedHash);
+
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'email' => ['Invalid credentials.'],
+            ]);
+        }
+
+        if (!Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials.'],
             ]);

@@ -40,7 +40,16 @@ class QuestionController extends Controller
             'topic' => 'required|string',
             'difficulty' => 'required|string',
             'content' => 'required|array',
-            'audio_file' => 'nullable|file|mimes:mp3,wav|max:5120',
+            'audio_file' => [
+                'nullable',
+                'file',
+                // SECURITY (SEC-009): Use mimetypes: (content-based) instead of
+                // mimes: (extension-only). Extension check is bypassable by renaming
+                // malware.pdf → video.mp3. mimetypes: uses PHP Fileinfo to inspect the
+                // actual file content. Also cap at 5 MB.
+                'mimetypes:audio/mpeg,audio/wav,audio/webm,audio/ogg',
+                'max:5120',
+            ],
         ]);
 
         if ($request->hasFile('audio_file')) {

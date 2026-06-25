@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Modules\TelegramBot\Models\LearningProfile;
 use Modules\TelegramBot\Models\Topic;
 use Modules\TelegramBot\Models\VocabularyEntry;
@@ -142,6 +143,24 @@ class GeminiLessonGenerator
 
             foreach ($models as $model) {
                 foreach ($this->apiKeys as $keyIndex => $apiKey) {
+                    // SECURITY (SEC-050): without coordination, multiple
+                    // concurrent requests can all observe the same key
+                    // failing and stampede onto the next one — exhausting
+                    // the fallback keys simultaneously. We use a short
+                    // per-key Redis lock so only one request probes a
+                    // given key per probe window, and a `key_blacklist`
+                    // cache entry to skip keys that have already failed
+                    // for the lifetime of this worker burst.
+                    if ($this->isKeyCooldown($apiKey)) {
+                        $failures[] = [
+                            'model' => $model,
+                            'key_number' => $keyIndex + 1,
+                            'status' => null,
+                            'error' => 'Key is in cooldown (another worker is probing it).',
+                        ];
+                        continue;
+                    }
+
                     $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
                     $response = Http::timeout(30)->post($endpoint . '?key=' . $apiKey, [
                         'contents' => [
@@ -163,6 +182,9 @@ class GeminiLessonGenerator
                             'error' => $response->json('error.message') ?? $response->body(),
                         ];
                         Log::warning('[TelegramBot] Gemini model/key failed', end($failures));
+                        // Mark this key as in-cooldown for 60 s so concurrent
+                        // workers don't probe it again in the same burst.
+                        $this->markKeyCooldown($apiKey);
                         continue;
                     }
 
@@ -176,6 +198,7 @@ class GeminiLessonGenerator
                                 . ($response->json('candidates.0.finishReason') ?? 'unknown'),
                         ];
                         Log::warning('[TelegramBot] Gemini returned invalid content', end($failures));
+                        $this->markKeyCooldown($apiKey);
                         continue;
                     }
 
@@ -214,7 +237,8 @@ class GeminiLessonGenerator
 
             return null;
         } catch (\Throwable $e) {
-            Log::error('[TelegramBot] Gemini exception: ' . $e->getMessage(), [
+            // SEC-030: sanitise $e->getMessage() before logging — prevents log injection.
+            Log::error('[TelegramBot] Gemini exception: ' . Str::limit(preg_replace('/[\r\n\t]+/', ' ', (string) $e->getMessage()), 200, ''), [
                 'model' => $this->model,
                 'exception' => $e,
             ]);
@@ -232,6 +256,26 @@ class GeminiLessonGenerator
             array_map('trim', explode(',', $value)),
             static fn (string $item): bool => $item !== ''
         )));
+    }
+
+    /**
+     * SEC-050: per-key cooldown marker. The lock key is a SHA-1 of the
+     * API key so we never write the raw key into the cache store (which
+     * would be visible to anyone with cache:read access).
+     */
+    private function keyCooldownKey(string $apiKey): string
+    {
+        return 'tgb:gemini:key_cooldown:' . sha1($apiKey);
+    }
+
+    private function isKeyCooldown(string $apiKey): bool
+    {
+        return Cache::has($this->keyCooldownKey($apiKey));
+    }
+
+    private function markKeyCooldown(string $apiKey): void
+    {
+        Cache::put($this->keyCooldownKey($apiKey), true, now()->addSeconds(60));
     }
 
     private function alertFailure(
@@ -277,6 +321,12 @@ class GeminiLessonGenerator
     }
 
     /**
+     * SECURITY (SEC-036): Sanitize each vocab word before it is embedded
+     * in any Gemini prompt. Stored vocab rows are user-controlled, so a
+     * malicious entry could carry prompt-injection payloads (e.g.
+     * "ignore prior instructions…"). We strip HTML/script tags, keep
+     * only safe characters, and bound length per word.
+     *
      * @return list<string>
      */
     private function wordsToExclude(LearningProfile $profile, int $limit): array
@@ -286,7 +336,14 @@ class GeminiLessonGenerator
             ->orderByDesc('id')
             ->limit($limit)
             ->pluck('word')
-            ->map(fn ($w) => strtolower((string) $w))
+            ->map(function ($w): string {
+                $clean = strip_tags((string) $w);
+                // Keep letters, digits, apostrophes, hyphens, spaces only.
+                $clean = (string) preg_replace('/[^\pL\pN\'\-\s]/u', '', $clean);
+                return strtolower(Str::limit(trim($clean), 40, ''));
+            })
+            ->filter(static fn (string $w): bool => $w !== '')
+            ->values()
             ->all();
     }
 

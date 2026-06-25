@@ -36,10 +36,16 @@ class ClassroomController extends Controller
 
     /**
      * Store a newly created classroom via API.
+     *
+     * SECURITY (SEC-017): The web route uses ClassroomPolicy::create via
+     * the FormRequest's authorize() method. The API route bypassed that check —
+     * enforce it explicitly here so both entry points are protected.
      */
     public function store(StoreClassroomRequest $request): JsonResponse
     {
         $user = $request->user();
+        abort_unless($user->can('create', \Modules\Classroom\Models\Classroom::class), 403);
+
         $check = $this->quota->check($user, LessonRequest::TYPE_CLASSROOM);
 
         if (! $check['allowed']) {

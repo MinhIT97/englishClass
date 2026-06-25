@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -73,6 +74,17 @@ class AdminBulkController extends Controller
      * CSV import — accepts an uploaded CSV with headers:
      *   name,email,target_band
      * Returns counts and any per-row errors.
+     *
+     * SECURITY (SEC-044):
+     *   - MIME validation (mimes:csv,txt) is already enforced upstream
+     *     (SEC-009). As an additional layer we sniff the first 8 KiB of
+     *     the upload and reject anything that contains PHP / HTML /
+     *     NUL markers — `mimes:txt` accepts plain text by extension but
+     *     cannot guarantee the contents are tabular.
+     *   - Cells that begin with `=`, `+`, `-`, `@`, TAB, or CR are
+     *     CSV-formula-injection vectors when the file is later opened
+     *     in Excel / LibreOffice / Sheets. We prefix such cells with a
+     *     single apostrophe so the formula is treated as literal text.
      */
     public function importCsv(Request $request): JsonResponse
     {
@@ -81,6 +93,29 @@ class AdminBulkController extends Controller
         ]);
 
         $file = $request->file('file');
+
+        // SEC-044: sniff the first 8 KiB for script / NUL markers.
+        $head = fopen($file->getRealPath(), 'r');
+        $sniff = $head ? (string) fread($head, 8192) : '';
+        if ($head) {
+            fclose($head);
+        }
+        if ($sniff !== '' && (
+            str_contains($sniff, '<?php')
+            || str_contains($sniff, '<?=')
+            || str_contains($sniff, '<script')
+            || str_contains($sniff, "\0")
+        )) {
+            return response()->json([
+                'created' => 0,
+                'skipped' => 0,
+                'errors' => [[
+                    'row' => 0,
+                    'errors' => ['File content is not a valid CSV (binary or script markers detected).'],
+                ]],
+            ], 422);
+        }
+
         $handle = fopen($file->getRealPath(), 'r');
         $header = fgetcsv($handle);
         $created = 0; $skipped = 0; $errors = [];
@@ -103,14 +138,24 @@ class AdminBulkController extends Controller
                     continue;
                 }
 
-                User::create([
-                    'name' => $rowData['name'],
-                    'email' => $rowData['email'],
-                    'password' => bcrypt(\Illuminate\Support\Str::random(16)),
-                    'role' => 'student',
-                    'status' => 'pending',
-                    'target_band' => $rowData['target_band'] ?? null,
-                ]);
+                // SECURITY (SEC-019): Set privileged fields (role, status) via direct
+                // property assignment + save(), which bypasses $fillable. Required
+                // because User::$fillable intentionally excludes these to prevent
+                // mass-assignment if a future controller does User::create($request->all()).
+                //
+                // SECURITY (SEC-044): neutralise CSV-formula-injection vectors
+                // before persisting. Cells beginning with =, +, -, @, TAB, or CR
+                // are interpreted as formulas by Excel/LibreOffice/Sheets and can
+                // exfiltrate data or trigger DDE/CMD execution when the file is
+                // later opened by an admin.
+                $user = new User();
+                $user->name = $this->neutraliseCsvFormula((string) $rowData['name']);
+                $user->email = strtolower(trim((string) $rowData['email']));
+                $user->password = Hash::make(\Illuminate\Support\Str::random(16));
+                $user->role = 'student';
+                $user->status = 'pending';
+                $user->target_band = $rowData['target_band'] ?? null;
+                $user->save();
                 $created++;
             }
         });
@@ -127,6 +172,24 @@ class AdminBulkController extends Controller
             'skipped' => $skipped,
             'errors' => $errors,
         ]);
+    }
+
+    /**
+     * SEC-044: prefix any cell that starts with a spreadsheet-formula
+     * trigger with a single apostrophe so downstream tools (Excel,
+     * LibreOffice, Sheets) treat it as a literal string instead of
+     * evaluating `=cmd|'...'!A1` or `=HYPERLINK(...)`.
+     */
+    private function neutraliseCsvFormula(string $value): string
+    {
+        if ($value === '') {
+            return $value;
+        }
+        $first = $value[0];
+        if ($first === '=' || $first === '+' || $first === '-' || $first === '@' || $first === "\t" || $first === "\r") {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     private function validateIds(Request $request): array

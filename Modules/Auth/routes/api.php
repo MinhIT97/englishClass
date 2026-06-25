@@ -15,6 +15,16 @@ Route::post('register', [AuthController::class, 'register'])->middleware('thrott
 Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 /*
+ * SECURITY (SEC-006): JWT logout. Invalidates the current token on the
+ * server side so a stolen token cannot be reused after logout. The
+ * blacklist is enabled in config/jwt.php so JWTAuth::invalidate() works.
+ */
+Route::post('logout', function () {
+    auth('api')->logout();
+    return response()->json(['message' => 'Logged out successfully.']);
+})->middleware('auth:api');
+
+/*
  * Admin User Routes
  */
 Route::group(['prefix' => 'admin', 'middleware' => 'auth:api'], function () {

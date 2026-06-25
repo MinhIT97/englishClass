@@ -79,7 +79,8 @@ class AiSpeakingService
             return null;
 
         } catch (\Exception $e) {
-            Log::error("Gemini Generation Exception: " . $e->getMessage());
+            // SEC-030: sanitise $e->getMessage() before logging — prevents log injection.
+            Log::error("Gemini Generation Exception: " . Str::limit(preg_replace('/[\r\n\t]+/', ' ', (string) $e->getMessage()), 200, ''));
             return null;
         }
     }
@@ -107,7 +108,8 @@ class AiSpeakingService
             }
             return null;
         } catch (\Exception $e) {
-            Log::error("TTS Save Error: " . $e->getMessage());
+            // SEC-030: sanitise $e->getMessage() before logging — prevents log injection.
+            Log::error("TTS Save Error: " . Str::limit(preg_replace('/[\r\n\t]+/', ' ', (string) $e->getMessage()), 200, ''));
             return null;
         }
     }

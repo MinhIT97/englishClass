@@ -51,6 +51,8 @@ class AssignmentController extends Controller
 
     public function submit(Request $request, Classroom $classroom, $assignment): RedirectResponse
     {
+        $this->authorizeTeacher($request, $classroom);
+
         $data = $request->validate([
             'body' => ['required', 'string'],
         ]);
@@ -67,7 +69,17 @@ class AssignmentController extends Controller
 
     public function grade(Request $request, $submission): RedirectResponse
     {
-        $sub = \App\Models\AssignmentSubmission::findOrFail($submission);
+        // SECURITY (SEC-007): Only the teacher who owns this classroom (or an admin)
+        // may grade submissions. The route is admin-authenticated but we additionally
+        // need to verify the teacher owns the submission's classroom.
+        $sub = \App\Models\AssignmentSubmission::with('assignment.classroom')->findOrFail($submission);
+        abort_unless(
+            $request->user()->isAdmin()
+                || $sub->assignment->classroom->teacher_id === $request->user()->id,
+            403,
+            'Only the classroom teacher or admin may grade submissions.'
+        );
+
         $data = $request->validate([
             'score' => ['required', 'numeric', 'min:0'],
             'feedback' => ['nullable', 'string'],

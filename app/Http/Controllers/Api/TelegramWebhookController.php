@@ -19,8 +19,13 @@ class TelegramWebhookController extends Controller
 
     public function handle(Request $request)
     {
-        $update = $request->all();
-        Log::info("Telegram Webhook received", $update);
+        // SECURITY (SEC-010): Log only safe, non-PII fields. Never dump
+        // $request->all() — Telegram payloads include message text, usernames,
+        // phone numbers, and arbitrary content from untrusted senders that could
+        // bloat logs or leak PII. Log the minimal immutable identifier only.
+        Log::info("Telegram Webhook received", [
+            'update_id' => $request->input('update_id'),
+        ]);
 
         if (isset($update['callback_query'])) {
             return $this->handleCallbackQuery($update['callback_query']);
@@ -54,7 +59,10 @@ class TelegramWebhookController extends Controller
 
             // 3. Process action
             $newStatus = ($action === 'approve') ? 'approved' : 'rejected';
-            $user->update(['status' => $newStatus]);
+            // SECURITY (SEC-019): Direct property assignment + save() — User::$fillable
+        // excludes 'status' to prevent mass-assignment of privilege fields.
+        $user->status = $newStatus;
+        $user->save();
 
             // 4. Stop loading spinner & Notify
             $this->telegram->answerCallbackQuery($callbackQueryId, "User {$action}d successfully!");

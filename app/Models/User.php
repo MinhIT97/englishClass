@@ -11,7 +11,17 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status', 'target_band', 'xp', 'streak', 'can_request_extra_lesson', 'lesson_limit', 'is_unlimited'])]
+// SECURITY (SEC-019): $fillable is intentionally restricted to user-controlled
+// profile data only. Privilege / quota / gamification fields (role, status,
+// is_unlimited, lesson_limit, can_request_extra_lesson, xp, streak) MUST NOT be
+// mass-assignable. Defense-in-depth: even if a future controller does
+// User::create($request->all()) or $user->update($request->all()), Eloquent will
+// silently drop these fields because they are not in $fillable.
+//
+// To mutate these fields from trusted code (admin controllers, Telegram approval
+// webhook, bulk import), use direct property assignment + save() — which bypasses
+// $fillable — so the intent of an explicit privilege grant is visible in code.
+#[Fillable(['name', 'email', 'password', 'target_band'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements JWTSubject
 {

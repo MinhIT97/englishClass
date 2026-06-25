@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserPreference;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -48,6 +49,12 @@ class SettingsController extends Controller
             'preferences' => $user->preferences?->toArray(),
             'exported_at' => now()->toIso8601String(),
         ];
+
+        // SEC-031: audit GDPR data export — required by compliance (records of disclosure).
+        app(AuditLogger::class)->log('settings.gdpr_export', null, [
+            'user_id' => $user->id,
+            'format' => 'json',
+        ]);
 
         return response()->json($data, 200, [
             'Content-Type' => 'application/json',

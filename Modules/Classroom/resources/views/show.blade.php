@@ -15,7 +15,10 @@
                 ->toJson();
         @endphp
         <script>
-            window.classroomMembers = {!! $members !!};
+            // SECURITY (SEC-011): Use @json() for safe JSON serialization — this
+            // HTML-encodes < > & " so user-controlled name fields cannot break
+            // out of the JS literal and inject scripts.
+            window.classroomMembers = @json($members);
         </script>
         <style>
             /* Classroom show — responsive */

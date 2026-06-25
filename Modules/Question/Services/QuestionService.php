@@ -13,12 +13,19 @@ class QuestionService
         $this->repository = $repository;
     }
 
+    private const MAX_PER_PAGE = 100;
+
     /**
      * Get filtered and paginated questions.
+     *
+     * SECURITY (SEC-013): $perPage is capped at MAX_PER_PAGE to prevent
+     * a user-supplied ?limit=99999999 from causing unbounded database
+     * result sets and DoS. Follows the same pattern as CourseService.
      */
     public function paginate(array $filters, int $perPage = 15)
     {
-        return $this->repository->model()::query()->filter($filters)->paginate($perPage);
+        $perPage = max(1, min($perPage, self::MAX_PER_PAGE));
+        return $this->repository->models()::query()->filter($filters)->paginate($perPage);
     }
 
     public function create(array $data)

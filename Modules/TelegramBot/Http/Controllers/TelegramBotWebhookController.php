@@ -38,8 +38,9 @@ class TelegramBotWebhookController extends Controller
 
             return response('ok', 200);
         } catch (\Throwable $e) {
-            Log::error('[TelegramBot] Webhook exception: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
+            Log::error('[TelegramBot] Exception: ' . $e->getMessage(), [
+                'class' => get_class($e),
+                'file' => basename($e->getFile()) . ':' . $e->getLine(),
             ]);
             $this->telegram->sendAdminAlert('Telegram webhook exception', [
                 'feature' => 'telegram_webhook',

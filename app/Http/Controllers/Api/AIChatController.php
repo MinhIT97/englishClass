@@ -4,10 +4,21 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Modules\Speaking\Services\AiSpeakingService;
 
 class AIChatController extends Controller
 {
+    /**
+     * SECURITY (SEC-037): Cap message length and history size at the
+     * boundary so a single request cannot push arbitrarily large payloads
+     * into the Gemini prompt.
+     */
+    private const MAX_MESSAGE_LENGTH = 4000;
+    private const MAX_HISTORY_TURNS = 10;
+    private const MAX_TURN_LENGTH = 2000;
+
     protected $aiService;
 
     public function __construct(AiSpeakingService $aiService)
@@ -17,9 +28,19 @@ class AIChatController extends Controller
 
     public function chat(Request $request)
     {
-        $message = $request->input('message');
-        $action = $request->input('action');
-        $history = $request->input('history', []);
+        // SECURITY (SEC-037): validate + bound input size before it reaches
+        // the prompt builder. Reject oversize messages with HTTP 422.
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:' . self::MAX_MESSAGE_LENGTH],
+            'action' => ['nullable', 'string', Rule::in(['fix', 'explain', 'natural'])],
+            'history' => ['nullable', 'array', 'max:' . self::MAX_HISTORY_TURNS],
+            'history.*.role' => ['required_with:history', 'string', Rule::in(['user', 'assistant'])],
+            'history.*.content' => ['required_with:history', 'string', 'max:' . self::MAX_TURN_LENGTH],
+        ]);
+
+        $message = $validated['message'];
+        $action = $validated['action'] ?? null;
+        $history = $validated['history'] ?? [];
 
         $prompt = $this->buildPrompt($message, $action, $history);
         $result = $this->aiService->generate($prompt);
@@ -41,10 +62,16 @@ class AIChatController extends Controller
 
     protected function buildPrompt($message, $action, $history)
     {
+        // SECURITY (SEC-036): Defense-in-depth — strip any tags from
+        // message and history turns before they are concatenated into
+        // the prompt, even though validation has already bounded them.
+        $safeMessage = Str::limit(strip_tags((string) $message), self::MAX_MESSAGE_LENGTH, '…');
+
         $historyContext = "";
         foreach ($history as $chat) {
             $role = $chat['role'] === 'user' ? 'Student' : 'Assistant';
-            $historyContext .= "{$role}: {$chat['content']}\n";
+            $turn = Str::limit(strip_tags((string) $chat['content']), self::MAX_TURN_LENGTH, '…');
+            $historyContext .= "{$role}: {$turn}\n";
         }
 
         $actionDesc = "";
@@ -64,7 +91,7 @@ You are an IELTS English learning assistant.
 Conversation History:
 {$historyContext}
 
-Current User input: "{$message}"
+Current User input: "{$safeMessage}"
 Instruction: {$actionDesc}
 
 Return ONLY a JSON response with the following structure:

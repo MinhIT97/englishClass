@@ -61,8 +61,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Community — public study notes + comments + buddy match
     Route::get('community/notes', [\App\Http\Controllers\CommunityController::class, 'notesIndex'])->name('community.notes.index');
-    Route::post('community/notes', [\App\Http\Controllers\CommunityController::class, 'noteStore'])->name('community.notes.store');
-    Route::post('community/comments', [\App\Http\Controllers\CommunityController::class, 'commentStore'])->name('community.comments.store');
+    // SEC-033: throttle community write endpoints to prevent spam/abuse.
+    Route::post('community/notes', [\App\Http\Controllers\CommunityController::class, 'noteStore'])
+        ->middleware('throttle:10,60')
+        ->name('community.notes.store');
+    Route::post('community/comments', [\App\Http\Controllers\CommunityController::class, 'commentStore'])
+        ->middleware('throttle:10,60')
+        ->name('community.comments.store');
     Route::get('community/find-buddy', [\App\Http\Controllers\CommunityController::class, 'findBuddy'])->name('community.buddy');
 
     // Student analytics
@@ -79,7 +84,10 @@ Route::middleware(['auth'])->group(function () {
     // Settings + GDPR export
     Route::get('settings/preferences', [\App\Http\Controllers\SettingsController::class, 'show'])->name('settings.preferences');
     Route::put('settings/preferences', [\App\Http\Controllers\SettingsController::class, 'update'])->name('settings.preferences.update');
-    Route::get('settings/export', [\App\Http\Controllers\SettingsController::class, 'export'])->name('settings.preferences.export');
+    // SEC-032: throttle GDPR export — limit to 10/min per user (rate-limit sensitive disclosure).
+    Route::get('settings/export', [\App\Http\Controllers\SettingsController::class, 'export'])
+        ->middleware('throttle:10,60')
+        ->name('settings.preferences.export');
 });
 
 Route::middleware(['auth', 'can:admin-access', 'audit.admin'])->prefix('admin')->name('admin.')->group(function () {

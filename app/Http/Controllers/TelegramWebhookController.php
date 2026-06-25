@@ -7,6 +7,7 @@ use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Modules\TelegramBot\Services\TelegramBotCommandService;
 
 class TelegramWebhookController extends Controller
@@ -104,7 +105,30 @@ class TelegramWebhookController extends Controller
         $callbackId = (string) ($cb['id'] ?? '');
         $chatId = isset($cb['message']['chat']['id']) ? (string) $cb['message']['chat']['id'] : null;
         $messageId = $cb['message']['message_id'] ?? null;
-        $adminName = $cb['from']['first_name'] ?? 'Admin';
+        // SECURITY (SEC-048): Telegram `from.first_name` is attacker-controlled
+        // user input. We interpolate it into Telegram HTML (`parse_mode=HTML`)
+        // below, so any `<`, `>` or `&` would either break the markup or inject
+        // new HTML nodes. Strip tags and neutralise HTML entities before the
+        // value reaches the message body.
+        $adminName = htmlspecialchars(
+            strip_tags((string) ($cb['from']['first_name'] ?? 'Admin')),
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8',
+        );
+
+        // SECURITY (SEC-016): Even with a valid webhook secret, verify the
+        // callback originated from the configured admin chat. Telegram's secret
+        // header prevents external callers, but verifying the chat_id ensures
+        // that even a leaked secret cannot be used from any other chat.
+        $adminChatId = config('telegram.admin_chat_id');
+        if ($adminChatId && $chatId !== (string) $adminChatId) {
+            Log::warning('[Telegram] Admin callback from non-admin chat', [
+                'callback_id' => $callbackId,
+                'chat_id' => $chatId,
+                'expected_chat_id' => $adminChatId,
+            ]);
+            return;
+        }
 
         if ($action === 'approve') {
             $this->approveUser($userId, $callbackId, $chatId, $messageId, $adminName);
@@ -127,7 +151,10 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        $user->update(['status' => 'active']);
+        // SECURITY (SEC-019): Direct property assignment + save() — User::$fillable
+        // excludes 'status' to prevent mass-assignment of privilege fields.
+        $user->status = 'active';
+        $user->save();
 
         $this->telegram->answerCallbackQuery($callbackId, '✅ Đã duyệt thành công!');
 
@@ -145,7 +172,7 @@ class TelegramWebhookController extends Controller
             );
         }
 
-        Log::info("[Telegram] Admin duyệt học viên #{$userId} ({$user->email})");
+        Log::info("[Telegram] Admin duyệt học viên #{$userId} (email: " . Str::limit(strip_tags((string) $user->email), 50, '') . ')');
     }
 
     private function rejectUser(int $userId, string $callbackId, ?string $chatId, ?int $messageId, string $adminName): void
@@ -162,7 +189,10 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        $user->update(['status' => 'rejected']);
+        // SECURITY (SEC-019): Direct property assignment + save() — User::$fillable
+        // excludes 'status' to prevent mass-assignment of privilege fields.
+        $user->status = 'rejected';
+        $user->save();
 
         $this->telegram->answerCallbackQuery($callbackId, '❌ Đã từ chối học viên.');
 
@@ -180,6 +210,6 @@ class TelegramWebhookController extends Controller
             );
         }
 
-        Log::info("[Telegram] Admin từ chối học viên #{$userId} ({$user->email})");
+        Log::info("[Telegram] Admin từ chối học viên #{$userId} (email: " . Str::limit(strip_tags((string) $user->email), 50, '') . ')');
     }
 }

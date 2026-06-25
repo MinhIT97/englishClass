@@ -169,7 +169,15 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // SECURITY (SEC-020): Default to false. Production deployments MUST
+    // set SESSION_SECURE_COOKIE=true in their .env so the session cookie
+    // is only sent over HTTPS. Without this, an attacker on the same
+    // network can sniff the session cookie over plaintext HTTP and
+    // hijack the authenticated session.
+    //
+    // When APP_ENV=local (HTTP-only dev), false is intentional. When
+    // APP_ENV=production, set SESSION_SECURE_COOKIE=true in .env.
+    'secure' => env('SESSION_SECURE_COOKIE', false),
 
     /*
     |--------------------------------------------------------------------------

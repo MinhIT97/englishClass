@@ -191,7 +191,10 @@
                                 <div style="margin-top: 0.5rem">
                                     <strong>Reference:</strong> {{ $saved->correct_answer ?: 'No reference answer available.' }}
                                 </div>
-                                <div style="margin-top: 0.5rem">{!! $saved->feedback ?: 'No feedback available.' !!}</div>
+                                {{-- SECURITY (SEC-008): Gemini AI output is user-influenced and must
+                                    be escaped. $saved->feedback is AI-generated and may contain HTML/script
+                                    payloads via prompt injection. Using {{ }} instead of {!! !!}. --}}
+                                <div style="margin-top: 0.5rem">{{ $saved->feedback ?: 'No feedback available.' }}</div>
                                 <div style="margin-top: 0.5rem">
                                     <strong>Points:</strong> {{ $saved->points_earned }}
                                 </div>

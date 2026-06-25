@@ -68,7 +68,8 @@ class VoiceService
             return $this->getFallbackResponse($questionText);
 
         } catch (\Exception $e) {
-            Log::error('VoiceService Exception: ' . $e->getMessage());
+            // SEC-030: sanitise $e->getMessage() before logging (strip newlines/control chars) — prevents log injection.
+            Log::error('VoiceService Exception: ' . Str::limit(preg_replace('/[\r\n\t]+/', ' ', (string) $e->getMessage()), 200, ''));
             return $this->getFallbackResponse($questionText);
         }
     }

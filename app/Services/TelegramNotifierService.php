@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class TelegramNotifierService
 {
@@ -56,7 +57,8 @@ class TelegramNotifierService
 
             return true;
         } catch (\Exception $e) {
-            Log::error('Telegram Exception', ['message' => $e->getMessage()]);
+            // SEC-030: sanitise $e->getMessage() before logging (strip newlines/control chars) — prevents log injection.
+            Log::error('Telegram Exception', ['message' => Str::limit(preg_replace('/[\r\n\t]+/', ' ', (string) $e->getMessage()), 200, '')]);
             return false;
         }
     }
@@ -71,7 +73,8 @@ class TelegramNotifierService
 
             return true;
         } catch (\Exception $e) {
-            Log::error('Telegram answerCallbackQuery Error: ' . $e->getMessage());
+            // SEC-030: sanitise $e->getMessage() before logging — prevents log injection.
+            Log::error('Telegram answerCallbackQuery Error: ' . Str::limit(preg_replace('/[\r\n\t]+/', ' ', (string) $e->getMessage()), 200, ''));
             return false;
         }
     }
@@ -89,7 +92,8 @@ class TelegramNotifierService
 
             return true;
         } catch (\Exception $e) {
-            Log::error('Telegram editMessageText Error: ' . $e->getMessage());
+            // SEC-030: sanitise $e->getMessage() before logging — prevents log injection.
+            Log::error('Telegram editMessageText Error: ' . Str::limit(preg_replace('/[\r\n\t]+/', ' ', (string) $e->getMessage()), 200, ''));
             return false;
         }
     }

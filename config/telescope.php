@@ -16,7 +16,14 @@ return [
     |
     */
 
-    'enabled' => env('TELESCOPE_ENABLED', true),
+    // SECURITY (SEC-018): Default to disabled. The production guard in
+    // AppServiceProvider only registers the Telescope provider when
+    // APP_ENV=local, but a future misconfiguration must not silently expose
+    // the /telescope dashboard (which dumps full request/response payloads,
+    // including Authorization headers, query bindings, and exception
+    // stack traces). Operators who want Telescope in a non-local env must
+    // explicitly set TELESCOPE_ENABLED=true in their .env.
+    'enabled' => env('TELESCOPE_ENABLED', false),
 
     /*
     |--------------------------------------------------------------------------

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
  * AI Tutor service — gives personalized learning assistance.
@@ -33,10 +34,21 @@ class AiTutorService
     private string $apiKey;
     private string $model;
 
+    /**
+     * SECURITY (SEC-036): Sanitize any user-supplied string before it is
+     * embedded into a Gemini prompt. Strips HTML/script tags and bounds
+     * length to prevent prompt-injection via oversized payloads.
+     */
+    private function sanitizeForPrompt(string $value, int $limit = 1000): string
+    {
+        $cleaned = strip_tags($value);
+        return Str::limit(trim($cleaned), $limit, '…');
+    }
+
     public function ask(User $user, string $question): string
     {
         $history = $this->getHistory($user);
-        $history[] = ['role' => 'user', 'text' => $question];
+        $history[] = ['role' => 'user', 'text' => $this->sanitizeForPrompt($question)];
 
         $systemPrompt = $this->systemPrompt($user);
 
@@ -51,10 +63,14 @@ class AiTutorService
 
     public function explain(User $user, string $question, string $userAnswer, string $correctAnswer): string
     {
-        $prompt = "Người học trả lời: \"{$userAnswer}\"\n"
-                . "Đáp án đúng: \"{$correctAnswer}\"\n"
-                . "Câu hỏi: \"{$question}\"\n\n"
-                . "Giải thích ngắn gọn (≤120 từ) bằng tiếng Việt tại sao đáp án đúng là \"{$correctAnswer}\", "
+        $safeQuestion = $this->sanitizeForPrompt($question);
+        $safeUserAnswer = $this->sanitizeForPrompt($userAnswer);
+        $safeCorrectAnswer = $this->sanitizeForPrompt($correctAnswer);
+
+        $prompt = "Người học trả lời: \"{$safeUserAnswer}\"\n"
+                . "Đáp án đúng: \"{$safeCorrectAnswer}\"\n"
+                . "Câu hỏi: \"{$safeQuestion}\"\n\n"
+                . "Giải thích ngắn gọn (≤120 từ) bằng tiếng Việt tại sao đáp án đúng là \"{$safeCorrectAnswer}\", "
                 . "và gợi ý cách tránh sai lần sau. Có thể kèm ví dụ minh hoạ.";
 
         $systemPrompt = "Bạn là gia sư IELTS thân thiện, giải thích ngắn gọn, dễ hiểu.";
@@ -71,7 +87,9 @@ class AiTutorService
         }
 
         $list = implode("\n", array_map(
-            fn ($m) => "- {$m['skill']}: {$m['topic']} (sai {$m['wrong_count']} lần)",
+            fn ($m) => "- {$this->sanitizeForPrompt((string) ($m['skill'] ?? ''), 60)}: "
+                     . "{$this->sanitizeForPrompt((string) ($m['topic'] ?? ''), 100)} "
+                     . "(sai {$this->sanitizeForPrompt((string) ($m['wrong_count'] ?? ''), 20)} lần)",
             array_slice($recentMistakes, 0, 5),
         ));
 
@@ -130,9 +148,18 @@ class AiTutorService
             $response = Http::timeout(20)->post($endpoint, $payload);
 
             if (! $response->successful()) {
+                // SECURITY (SEC-049): the Gemini response body is appended
+                // verbatim to the URL query string as `?key=...` so it is
+                // not unusual for the server to echo the API key in an
+                // error message (e.g. "API key not valid: AIza…"). Truncate
+                // the body and explicitly replace the in-memory key with a
+                // redaction token before logging.
                 Log::warning('[AiTutor] Gemini call failed', [
                     'status' => $response->status(),
-                    'body' => substr((string) $response->body(), 0, 300),
+                    'body' => Str::of((string) $response->body())
+                        ->when($this->apiKey !== '', fn ($s) => $s->replace($this->apiKey, '[API_KEY_REDACTED]'))
+                        ->limit(300)
+                        ->toString(),
                 ]);
                 return null;
             }
