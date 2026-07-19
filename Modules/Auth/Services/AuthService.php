@@ -3,6 +3,7 @@
 namespace Modules\Auth\Services;
 
 use Modules\Auth\Repositories\UserRepositoryInterface;
+use App\Events\RoleSynced;
 use App\Events\StudentRegistered;
 use Illuminate\Support\Facades\Hash;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
@@ -35,6 +36,15 @@ class AuthService
         $data['target_band'] = $data['target_band'] ?? null;
 
         $user = $this->userRepository->create($data);
+
+        // Dual-source role sync: write to Spatie pivot immediately so
+        // `hasRole()` checks return true on the very first request after
+        // registration (e.g. middleware firing on the response side of
+        // the same HTTP cycle). The RoleSynced event runs the same
+        // operation through the listener for consistency with admin
+        // approval paths, so there is one code path to audit.
+        $user->assignRole($data['role']);
+        event(new RoleSynced($user, $data['role']));
 
         event(new StudentRegistered($user));
 

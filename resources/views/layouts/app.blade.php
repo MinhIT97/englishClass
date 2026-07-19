@@ -86,6 +86,7 @@
 
     <!-- Styles & Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <!-- Theme tokens — applied before Vite-built CSS so tokens win -->
     <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
@@ -246,6 +247,7 @@
         <main class="main-content">
             <header class="top-nav">
                 <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu">☰</button>
+                <x-ui.global-search />
                 <div class="top-nav-actions">
                     <!-- Language Switcher -->
                     <div class="top-nav-lang">
@@ -381,36 +383,8 @@
 
 
 
-        <!-- Floating Chat Widget -->
-        <div class="chat-widget-trigger" id="chat-trigger" title="Hỗ trợ học tập">
-            <span style="font-size: 1.5rem">🤖</span>
-        </div>
-
-        <div class="chat-panel" id="chat-panel">
-            <div class="chat-header">
-                <h3>{{ __('ui.learning_assistant') }}</h3>
-                <button class="chat-close" id="chat-close">×</button>
-            </div>
-            <div class="chat-messages" id="chat-messages">
-                <div class="chat-bubble ai">
-                    {{ __('ui.chat_welcome') }}
-                </div>
-            </div>
-            <div class="chat-suggestions">
-                <button class="suggestion-pill">{{ __('ui.chat_suggestion_1') }}</button>
-                <button class="suggestion-pill">{{ __('ui.chat_suggestion_2') }}</button>
-                <button class="suggestion-pill">{{ __('ui.chat_suggestion_3') }}</button>
-            </div>
-            <div class="chat-input-container">
-                <input type="text" class="chat-input" placeholder="{{ __('ui.chat_placeholder') }}" id="chat-input">
-                <button class="chat-send" id="chat-send">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                </button>
-            </div>
-        </div>
+        <!-- Floating AI Tutor Widget -->
+        <x-ui.ai-tutor />
 
         <script>
             (function() {
@@ -535,59 +509,7 @@
                 }
 
 
-                const chatTrigger = document.getElementById('chat-trigger');
 
-                const chatPanel = document.getElementById('chat-panel');
-                const chatClose = document.getElementById('chat-close');
-                const chatInput = document.getElementById('chat-input');
-                const chatMessages = document.getElementById('chat-messages');
-
-                chatTrigger.addEventListener('click', () => chatPanel.classList.toggle('active'));
-                chatClose.addEventListener('click', () => chatPanel.classList.remove('active'));
-
-                const ChatService = {
-                    async sendMessage(message, action = null, history = []) {
-                        try {
-                            const response = await fetch('/ai/chat', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                },
-                                body: JSON.stringify({ message, action, history })
-                            });
-                            if (!response.ok) throw new Error('API Error');
-                            return await response.json();
-                        } catch (error) {
-                            return { message: "I am having trouble connecting to the AI. Please try again later." };
-                        }
-                    }
-                };
-
-                const ChatUI = {
-                    container: document.getElementById('chat-messages'),
-                    input: document.getElementById('chat-input'),
-                    init() {
-                        document.getElementById('chat-send').addEventListener('click', () => this.handleUserMessage());
-                        this.input.addEventListener('keypress', (e) => e.key === 'Enter' && this.handleUserMessage());
-                    },
-                    async handleUserMessage() {
-                        const text = this.input.value.trim();
-                        if (!text) return;
-                        this.appendMessage(text, 'user');
-                        this.input.value = '';
-                        const data = await ChatService.sendMessage(text);
-                        this.appendMessage(data.message, 'ai');
-                    },
-                    appendMessage(text, type) {
-                        const bubble = document.createElement('div');
-                        bubble.className = `chat-bubble ${type}`;
-                        bubble.textContent = text;
-                        this.container.appendChild(bubble);
-                        this.container.scrollTop = this.container.scrollHeight;
-                    }
-                };
-                ChatUI.init();
             })();
         </script>
         <!-- Final Force Style Fix -->
@@ -612,5 +534,8 @@
 
         {{-- Global toast host — must be present on every page --}}
         <x-toast-host />
+
+        {{-- PWA Registration --}}
+        <x-ui.pwa-register />
     </body>
 </html>

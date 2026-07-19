@@ -1,183 +1,28 @@
 {
   "schema_version": 2,
-  "active_work_id": "security-review-6ac70ea4",
+  "active_work_id": "upgrade-roadmap-2026-06-27",
   "works": {
     "security-review-6ac70ea4": {
       "work_id": "security-review-6ac70ea4",
       "active_plan": "C:\\laragon\\www\\englishClass\\.omo\\plans\\security-review.md",
       "plan_name": "security-review",
       "status": "completed",
-      "started_at": "2026-06-25T15:47:51.364Z",
-      "updated_at": "2026-06-25T16:35:34.188Z",
-      "session_ids": [
-        "opencode:ses_100a426d7ffeff8fPluaUL4aFe",
-        "opencode:ses_100879f93ffeIiln9VMQ9qjq9I",
-        "opencode:ses_100876c42ffeebBqcYvLSQKPQK",
-        "opencode:ses_10087310effeWWcOyP281lDu3R",
-        "opencode:ses_10086f79cffeVRwIZi9jTooFFv",
-        "opencode:ses_10086c3abffeXZSXXGojijQd66",
-        "opencode:ses_100637848ffeRM3PunL8WMhaWf",
-        "opencode:ses_100634f88ffegGbtEkOFbbN5gf",
-        "opencode:ses_100631b8bffeih4qsUKkyUSb3P",
-        "opencode:ses_10062eb84ffeMXzhuhxF1wUthM"
-      ],
-      "session_origins": {
-        "opencode:ses_100a426d7ffeff8fPluaUL4aFe": "direct",
-        "opencode:ses_100879f93ffeIiln9VMQ9qjq9I": "appended",
-        "opencode:ses_100876c42ffeebBqcYvLSQKPQK": "appended",
-        "opencode:ses_10087310effeWWcOyP281lDu3R": "appended",
-        "opencode:ses_10086f79cffeVRwIZi9jTooFFv": "appended",
-        "opencode:ses_10086c3abffeXZSXXGojijQd66": "appended",
-        "opencode:ses_100637848ffeRM3PunL8WMhaWf": "appended",
-        "opencode:ses_100634f88ffegGbtEkOFbbN5gf": "appended",
-        "opencode:ses_100631b8bffeih4qsUKkyUSb3P": "appended",
-        "opencode:ses_10062eb84ffeMXzhuhxF1wUthM": "appended"
-      },
-      "agent": "atlas",
-      "task_sessions": {
-        "todo:1": {
-          "task_key": "todo:1",
-          "task_label": "1",
-          "task_title": "C1 — Audit Configuration & secrets (`.env`, JWT, session, Telescope, APP_DEBUG, BCRYPT, key rotation)",
-          "session_id": "opencode:ses_1007d76f7ffeKg6J01GoWLprBw",
-          "agent": "Sisyphus-Junior",
-          "category": "unspecified-high",
-          "started_at": "2026-06-25T16:09:10.091Z",
-          "status": "completed",
-          "updated_at": "2026-06-25T16:11:07.782Z",
-          "ended_at": "2026-06-25T16:11:07.782Z",
-          "elapsed_ms": 117691
-        },
-        "todo:11": {
-          "task_key": "todo:11",
-          "task_label": "11",
-          "task_title": "Tổng hợp findings → `SECURITY_AUDIT.md` ở working tree",
-          "session_id": "opencode:ses_1007249e6ffecyJKqtMgKCV8fC",
-          "agent": "Sisyphus-Junior",
-          "category": "unspecified-high",
-          "updated_at": "2026-06-25T16:28:04.847Z",
-          "started_at": "2026-06-25T16:27:11.388Z",
-          "status": "completed",
-          "ended_at": "2026-06-25T16:28:04.847Z",
-          "elapsed_ms": 53459
-        },
-        "final-wave:f1": {
-          "task_key": "final-wave:f1",
-          "task_label": "F1",
-          "task_title": "Plan compliance audit — verify tất cả 11 todos đã chạy, evidence files tồn tại, findings được gộp đầy đủ",
-          "session_id": "opencode:ses_100631b8bffeih4qsUKkyUSb3P",
-          "agent": "Sisyphus-Junior",
-          "category": "unspecified-high",
-          "started_at": "2026-06-25T16:33:01.193Z",
-          "status": "completed",
-          "updated_at": "2026-06-25T16:34:22.128Z",
-          "ended_at": "2026-06-25T16:34:22.128Z",
-          "elapsed_ms": 80935
-        }
-      },
-      "ended_at": "2026-06-25T16:35:34.188Z",
-      "elapsed_ms": 2862824
+      "ended_at": "2026-06-25T16:35:34.188Z"
+    },
+    "upgrade-roadmap-2026-06-27": {
+      "work_id": "upgrade-roadmap-2026-06-27",
+      "active_plan": "C:\\laragon\\www\\englishClass\\.omo\\plans\\upgrade-roadmap.md",
+      "plan_name": "upgrade-roadmap",
+      "session_ids": ["opencode:ses_100a426d7ffeff8fPluaUL4aFe"],
+      "status": "active",
+      "started_at": "2026-06-27T00:00:00.000Z",
+      "updated_at": "2026-06-27T00:00:00.000Z"
     }
   },
-  "active_plan": "C:\\laragon\\www\\englishClass\\.omo\\plans\\security-review.md",
-  "started_at": "2026-06-25T15:47:51.364Z",
-  "status": "completed",
-  "updated_at": "2026-06-25T16:35:34.188Z",
-  "completed_at": "2026-06-25T16:40:00.000Z",
-  "plan_name": "security-review",
-  "final_wave": {
-    "f1": "APPROVE",
-    "f2": "APPROVE",
-    "f3": "APPROVE",
-    "f4": "APPROVE"
-  },
-  "findings_total": 52,
-  "findings_breakdown": {
-    "critical": 0,
-    "high": 14,
-    "medium": 23,
-    "low": 13,
-    "info": 2
-  },
-  "artifacts": [
-    "SECURITY_AUDIT.md (96KB, untracked, no secrets leaked)",
-    ".omo/evidence/task-1-security-review.md (38KB)",
-    ".omo/evidence/task-2-security-review.md (42KB)",
-    ".omo/evidence/task-3-security-review.md (32KB)",
-    ".omo/evidence/task-4-security-review.md (32KB)",
-    ".omo/evidence/task-5-security-review.md (39KB)",
-    ".omo/evidence/task-6-security-review.md (26KB)",
-    ".omo/evidence/task-7-security-review.md (24KB)",
-    ".omo/evidence/task-8-security-review.md (25KB)",
-    ".omo/evidence/task-9-security-review.md (36KB)",
-    ".omo/evidence/task-10-security-review.md (39KB)"
-  ],
-  "agent": "atlas",
-  "session_ids": [
-    "opencode:ses_100a426d7ffeff8fPluaUL4aFe",
-    "opencode:ses_100879f93ffeIiln9VMQ9qjq9I",
-    "opencode:ses_100876c42ffeebBqcYvLSQKPQK",
-    "opencode:ses_10087310effeWWcOyP281lDu3R",
-    "opencode:ses_10086f79cffeVRwIZi9jTooFFv",
-    "opencode:ses_10086c3abffeXZSXXGojijQd66",
-    "opencode:ses_100637848ffeRM3PunL8WMhaWf",
-    "opencode:ses_100634f88ffegGbtEkOFbbN5gf",
-    "opencode:ses_100631b8bffeih4qsUKkyUSb3P",
-    "opencode:ses_10062eb84ffeMXzhuhxF1wUthM"
-  ],
-  "session_origins": {
-    "opencode:ses_100a426d7ffeff8fPluaUL4aFe": "direct",
-    "opencode:ses_100879f93ffeIiln9VMQ9qjq9I": "appended",
-    "opencode:ses_100876c42ffeebBqcYvLSQKPQK": "appended",
-    "opencode:ses_10087310effeWWcOyP281lDu3R": "appended",
-    "opencode:ses_10086f79cffeVRwIZi9jTooFFv": "appended",
-    "opencode:ses_10086c3abffeXZSXXGojijQd66": "appended",
-    "opencode:ses_100637848ffeRM3PunL8WMhaWf": "appended",
-    "opencode:ses_100634f88ffegGbtEkOFbbN5gf": "appended",
-    "opencode:ses_100631b8bffeih4qsUKkyUSb3P": "appended",
-    "opencode:ses_10062eb84ffeMXzhuhxF1wUthM": "appended"
-  },
-  "task_sessions": {
-    "todo:1": {
-      "task_key": "todo:1",
-      "task_label": "1",
-      "task_title": "C1 — Audit Configuration & secrets (`.env`, JWT, session, Telescope, APP_DEBUG, BCRYPT, key rotation)",
-      "session_id": "opencode:ses_1007d76f7ffeKg6J01GoWLprBw",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "started_at": "2026-06-25T16:09:10.091Z",
-      "status": "completed",
-      "updated_at": "2026-06-25T16:11:07.782Z",
-      "ended_at": "2026-06-25T16:11:07.782Z",
-      "elapsed_ms": 117691
-    },
-    "todo:11": {
-      "task_key": "todo:11",
-      "task_label": "11",
-      "task_title": "Tổng hợp findings → `SECURITY_AUDIT.md` ở working tree",
-      "session_id": "opencode:ses_1007249e6ffecyJKqtMgKCV8fC",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-06-25T16:28:04.847Z",
-      "started_at": "2026-06-25T16:27:11.388Z",
-      "status": "completed",
-      "ended_at": "2026-06-25T16:28:04.847Z",
-      "elapsed_ms": 53459
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "Plan compliance audit — verify tất cả 11 todos đã chạy, evidence files tồn tại, findings được gộp đầy đủ",
-      "session_id": "opencode:ses_100631b8bffeih4qsUKkyUSb3P",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "started_at": "2026-06-25T16:33:01.193Z",
-      "status": "completed",
-      "updated_at": "2026-06-25T16:34:22.128Z",
-      "ended_at": "2026-06-25T16:34:22.128Z",
-      "elapsed_ms": 80935
-    }
-  },
-  "ended_at": "2026-06-25T16:35:34.188Z",
-  "elapsed_ms": 2862824
+  "active_plan": "C:\\laragon\\www\\englishClass\\.omo\\plans\\upgrade-roadmap.md",
+  "plan_name": "upgrade-roadmap",
+  "status": "active",
+  "started_at": "2026-06-27T00:00:00.000Z",
+  "updated_at": "2026-06-27T00:00:00.000Z",
+  "agent": "atlas"
 }

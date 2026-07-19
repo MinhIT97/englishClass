@@ -23,63 +23,130 @@
         </button>
     </div>
 
-    <div class="instruction-box" id="how-to-use">
-        <h3 style="font-size: 1rem; margin-bottom: 1rem">{{ __('ui.how_to_use') }}</h3>
-        <p style="margin-bottom: 0.5rem">1. {!! __('ui.step_1') !!}</p>
-        <p style="margin-bottom: 0.5rem">2. {{ __('ui.step_2') }}</p>
-        <p style="margin-bottom: 0.5rem">3. {!! __('ui.step_3') !!}</p>
-        <p>4. {{ __('ui.step_4') }}</p>
+    <div class="speaking-tabs" style="display: flex; gap: 1rem; border-bottom: 1px solid var(--glass-border); margin-bottom: 2rem;">
+        <button onclick="switchTab('simulator')" id="tab-simulator" class="speaking-tab active" style="background: none; border: none; border-bottom: 2px solid var(--primary); color: var(--text-main); font-weight: 700; padding: 0.75rem 1.5rem; cursor: pointer; transition: all 0.2s">
+            💬 Simulator Mode
+        </button>
+        <button onclick="switchTab('shadowing')" id="tab-shadowing" class="speaking-tab" style="background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 700; padding: 0.75rem 1.5rem; cursor: pointer; transition: all 0.2s">
+            🎙️ Shadowing Practice (Luyện Phát Âm)
+        </button>
     </div>
 
-    <div id="simulator-container" class="speaking-grid">
-        <!-- Visual & Chat -->
-        <div class="glass-card" style="display: flex; flex-direction: column; padding: 0; overflow: hidden">
-            <!-- AI Visualizer Area -->
-            <div class="ai-header-visual">
-                <div id="waveform" class="waveform-pulse"></div>
-                <div class="visual-status" id="visual-status-text">IELTS EXAMINER ACTIVE</div>
-            </div>
+    <div id="panel-simulator">
+        <div class="instruction-box" id="how-to-use">
+            <h3 style="font-size: 1rem; margin-bottom: 1rem">{{ __('ui.how_to_use') }}</h3>
+            <p style="margin-bottom: 0.5rem">1. {!! __('ui.step_1') !!}</p>
+            <p style="margin-bottom: 0.5rem">2. {{ __('ui.step_2') }}</p>
+            <p style="margin-bottom: 0.5rem">3. {!! __('ui.step_3') !!}</p>
+            <p>4. {{ __('ui.step_4') }}</p>
+        </div>
 
-            <!-- Dialogue Area -->
-            <div id="chat-history" class="chat-area">
-                <!-- Messages will appear here -->
-            </div>
-
-            <!-- Input Area -->
-            <div class="chat-input-area">
-                <div style="display: flex; gap: 1rem; align-items: center">
-                    <button onclick="toggleMic()" id="mic-btn" class="btn-mic" title="Speak">
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                    </button>
-                    <input type="text" id="student-input" class="form-control" placeholder="{{ __('ui.type_placeholder') }}" autocomplete="off">
-                    <button onclick="sendMessage()" id="send-btn" class="btn btn-primary" style="padding: 0.8rem 1.5rem">{{ __('ui.send') }}</button>
+        <div id="simulator-container" class="speaking-grid">
+            <!-- Visual & Chat -->
+            <div class="glass-card" style="display: flex; flex-direction: column; padding: 0; overflow: hidden">
+                <!-- AI Visualizer Area -->
+                <div class="ai-header-visual">
+                    <div id="waveform" class="waveform-pulse"></div>
+                    <div class="visual-status" id="visual-status-text">IELTS EXAMINER ACTIVE</div>
                 </div>
-                <div style="display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 1rem">
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0">{{ __('ui.mic_tip') }}</p>
+
+                <!-- Dialogue Area -->
+                <div id="chat-history" class="chat-area">
+                    <!-- Messages will appear here -->
+                </div>
+
+                <!-- Input Area -->
+                <div class="chat-input-area">
+                    <div style="display: flex; gap: 1rem; align-items: center">
+                        <button onclick="toggleMic()" id="mic-btn" class="btn-mic" title="Speak">
+                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                        </button>
+                        <input type="text" id="student-input" class="form-control" placeholder="{{ __('ui.type_placeholder') }}" autocomplete="off">
+                        <button onclick="sendMessage()" id="send-btn" class="btn btn-primary" style="padding: 0.8rem 1.5rem">{{ __('ui.send') }}</button>
+                    </div>
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 1rem">
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0">{{ __('ui.mic_tip') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feedback & Stats Sidebar -->
+            <div class="speaking-sidebar">
+                <div class="glass-card">
+                    <h3 style="margin-bottom: 1.5rem; font-size: 1rem">✨ {{ __('ui.realtime_coaching') }}</h3>
+                    <div id="live-feedback" style="color: var(--text-muted); font-size: 0.875rem">
+                        {{ __('ui.ai_analyzing') }}
+                    </div>
+                </div>
+
+                <div class="glass-card" style="border-color: var(--primary)">
+                    <h3 style="margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem">
+                        🎯 {{ __('ui.exam_tips') }}
+                    </h3>
+                    <ul class="tips-list">
+                        <li><strong>{{ __('ui.fluency') }}:</strong> {{ __('ui.fluency_tip') }}</li>
+                        <li><strong>{{ __('ui.coherence') }}:</strong> {{ __('ui.coherence_tip') }}</li>
+                        <li><strong>{{ __('ui.vocabulary') }}:</strong> {{ __('ui.vocab_tip') }}</li>
+                        <li><strong>{{ __('ui.grammar') }}:</strong> {{ __('ui.grammar_tip') }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shadowing Practice Mode -->
+    <div id="panel-shadowing" style="display: none" class="speaking-grid">
+        <!-- Sentences List Card -->
+        <div class="glass-card" style="padding: 1.5rem">
+            <h3 style="margin-bottom: 1rem; font-size: 1.15rem">📚 Chọn câu mẫu để luyện tập</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem">Chọn bất kỳ câu nào dưới đây, nghe phát âm chuẩn và luyện nói đuổi theo (Shadowing) bằng micro của bạn.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 1.5rem">
+                <!-- Topic 1 -->
+                <div>
+                    <h4 style="color: var(--primary); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 0.5rem">🌍 Topic: Environment</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem">
+                        <button onclick="loadShadowSentence('Global warming is one of the most pressing challenges of our time.', 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=Global+warming+is+one+of+the+most+pressing+challenges+of+our+time.')" class="shadow-sentence-btn" style="text-align: left; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; color: var(--text-main); cursor: pointer; font-size: 0.9rem; width: 100%; transition: all 0.2s">
+                            "Global warming is one of the most pressing challenges of our time."
+                        </button>
+                        <button onclick="loadShadowSentence('Individuals can make a difference by adopting a sustainable lifestyle.', 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=Individuals+can+make+a+difference+by+adopting+a+sustainable+lifestyle.')" class="shadow-sentence-btn" style="text-align: left; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; color: var(--text-main); cursor: pointer; font-size: 0.9rem; width: 100%; transition: all 0.2s">
+                            "Individuals can make a difference by adopting a sustainable lifestyle."
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Topic 2 -->
+                <div>
+                    <h4 style="color: var(--primary); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 0.5rem">💻 Topic: Technology</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem">
+                        <button onclick="loadShadowSentence('Technological advancements have revolutionized the way we communicate.', 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=Technological+advancements+have+revolutionized+the+way+we+communicate.')" class="shadow-sentence-btn" style="text-align: left; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; color: var(--text-main); cursor: pointer; font-size: 0.9rem; width: 100%; transition: all 0.2s">
+                            "Technological advancements have revolutionized the way we communicate."
+                        </button>
+                        <button onclick="loadShadowSentence('Artificial intelligence has the potential to enhance various industries.', 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=Artificial+intelligence+has+the+potential+to+enhance+various+industries.')" class="shadow-sentence-btn" style="text-align: left; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; color: var(--text-main); cursor: pointer; font-size: 0.9rem; width: 100%; transition: all 0.2s">
+                            "Artificial intelligence has the potential to enhance various industries."
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Topic 3 -->
+                <div>
+                    <h4 style="color: var(--primary); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 0.5rem">🎓 Topic: Education</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem">
+                        <button onclick="loadShadowSentence('Education plays a vital role in shaping the future of young generations.', 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=Education+plays+a+vital+role+in+shaping+the+future+of+young+generations.')" class="shadow-sentence-btn" style="text-align: left; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; color: var(--text-main); cursor: pointer; font-size: 0.9rem; width: 100%; transition: all 0.2s">
+                            "Education plays a vital role in shaping the future of young generations."
+                        </button>
+                        <button onclick="loadShadowSentence('Online learning platforms have democratized access to quality knowledge.', 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=Online+learning+platforms+have+democratized+access+to+quality+knowledge.')" class="shadow-sentence-btn" style="text-align: left; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; color: var(--text-main); cursor: pointer; font-size: 0.9rem; width: 100%; transition: all 0.2s">
+                            "Online learning platforms have democratized access to quality knowledge."
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Feedback & Stats Sidebar -->
+        <!-- Shadowing UI Sidebar -->
         <div class="speaking-sidebar">
-            <div class="glass-card">
-                <h3 style="margin-bottom: 1.5rem; font-size: 1rem">✨ {{ __('ui.realtime_coaching') }}</h3>
-                <div id="live-feedback" style="color: var(--text-muted); font-size: 0.875rem">
-                    {{ __('ui.ai_analyzing') }}
-                </div>
-            </div>
-
-            <div class="glass-card" style="border-color: var(--primary)">
-                <h3 style="margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem">
-                    🎯 {{ __('ui.exam_tips') }}
-                </h3>
-                <ul class="tips-list">
-                    <li><strong>{{ __('ui.fluency') }}:</strong> {{ __('ui.fluency_tip') }}</li>
-                    <li><strong>{{ __('ui.coherence') }}:</strong> {{ __('ui.coherence_tip') }}</li>
-                    <li><strong>{{ __('ui.vocabulary') }}:</strong> {{ __('ui.vocab_tip') }}</li>
-                    <li><strong>{{ __('ui.grammar') }}:</strong> {{ __('ui.grammar_tip') }}</li>
-                </ul>
-            </div>
+            <h3 style="margin-bottom: 1rem; font-size: 1.15rem">🎙️ Thực hành phát âm</h3>
+            <x-ui.pronunciation-shadow reference-text="Select a sentence on the left to start." />
         </div>
     </div>
 
@@ -386,6 +453,42 @@
                     <div style="color:var(--text-muted);font-size:0.85rem">${feedback.explanation}</div>
                 </div>` : ''}
             `;
+        function switchTab(tab) {
+            document.querySelectorAll('.speaking-tab').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.borderBottomColor = 'transparent';
+                btn.style.color = 'var(--text-muted)';
+            });
+
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            activeBtn.classList.add('active');
+            activeBtn.style.borderBottomColor = 'var(--primary)';
+            activeBtn.style.color = 'var(--text-main)';
+
+            if (tab === 'simulator') {
+                document.getElementById('panel-simulator').style.display = 'block';
+                document.getElementById('panel-shadowing').style.display = 'none';
+            } else {
+                document.getElementById('panel-simulator').style.display = 'none';
+                document.getElementById('panel-shadowing').style.display = 'grid';
+            }
+        }
+
+        function loadShadowSentence(text, audioUrl) {
+            document.querySelectorAll('.shadow-sentence-btn').forEach(btn => {
+                btn.style.borderColor = 'var(--glass-border)';
+                btn.style.background = 'var(--bg-secondary)';
+            });
+
+            const eventTarget = window.event?.currentTarget;
+            if (eventTarget) {
+                eventTarget.style.borderColor = 'var(--primary)';
+                eventTarget.style.background = 'rgba(99, 102, 241, 0.05)';
+            }
+
+            window.dispatchEvent(new CustomEvent('shadow:load', {
+                detail: { text, audioUrl }
+            }));
         }
     </script>
 

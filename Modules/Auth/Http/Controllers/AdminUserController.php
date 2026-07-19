@@ -3,6 +3,7 @@
 namespace Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Events\RoleSynced;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Modules\Auth\Services\UserService;
@@ -43,6 +44,12 @@ class AdminUserController extends Controller
         $target = User::find($id);
         $user = $this->userService->approveUser($id);
 
+        // Dual-source role sync: re-assert the Spatie pivot matches
+        // `users.role` after admin mutation. Idempotent — covers the
+        // re-approval case (rejected → active) and any future admin
+        // flows that change `role`.
+        event(new RoleSynced($user, $user->role));
+
         $this->audit->log(
             action: 'user.approved',
             target: $user,
@@ -76,6 +83,9 @@ class AdminUserController extends Controller
     {
         $target = User::find($id);
         $user = $this->userService->approveUser($id);
+
+        // Dual-source role sync: see webApprove().
+        event(new RoleSynced($user, $user->role));
 
         $this->audit->log(
             action: 'user.approved',
