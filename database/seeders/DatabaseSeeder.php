@@ -13,6 +13,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Spatie roles + permissions MUST exist before any code that
+        // does $user->assignRole() or $user->hasRole() runs. Run this
+        // seeder first so the demo users below can sync to the pivot
+        // safely (see AuthService::register + RoleSynced event).
+        $this->call([
+            RolesAndPermissionsSeeder::class,
+        ]);
+
         User::updateOrCreate(
             ['email' => 'admin@ielts.com'],
             [
@@ -44,6 +52,13 @@ class DatabaseSeeder extends Seeder
                 'target_band' => '6.5',
             ]
         );
+
+        // Sync demo users into Spatie pivot so hasRole()/can() checks
+        // work out-of-the-box. Real registrations go through
+        // AuthService::register which dispatches RoleSynced.
+        foreach (User::whereIn('email', ['admin@ielts.com', 'student@ielts.com', 'pending@ielts.com'])->get() as $demoUser) {
+            $demoUser->syncRoles([$demoUser->role]);
+        }
 
         $this->call([
             \Modules\Question\database\seeders\SampleQuestionSeeder::class,

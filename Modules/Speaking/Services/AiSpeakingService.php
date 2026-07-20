@@ -20,7 +20,7 @@ class AiSpeakingService
 
     public function isLive(): bool
     {
-        return !empty($this->apiKey);
+        return !empty($this->apiKey) && !app()->runningUnitTests();
     }
 
     /**

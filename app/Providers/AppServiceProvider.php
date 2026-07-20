@@ -8,11 +8,14 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use App\View\Directives\LazyImageDirective;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\View;
 use App\Enums\UserRole;
+use App\Events\RoleSynced;
 use App\Http\View\Composers\FeedbackComposer;
+use App\Listeners\SyncSpatieRole;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -55,6 +58,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('active-user', function ($user) {
             return $user->status === 'active';
         });
+
+        // Dual-source role sync: whenever a trusted code path mutates
+        // `users.role` it dispatches RoleSynced; this listener mirrors
+        // the change into Spatie's pivot so hasRole()/can() return the
+        // same answer as the string check. See app/Events/RoleSynced.php.
+        Event::listen(RoleSynced::class, SyncSpatieRole::class);
 
         // Register components for ease of use
         Blade::component('layouts.app', 'app-layout');

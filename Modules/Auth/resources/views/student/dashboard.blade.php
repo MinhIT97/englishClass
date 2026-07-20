@@ -38,30 +38,34 @@
             </div>
         </div>
 
-        <div class="glass-card performance-card">
-            <h3 style="margin-bottom: 1rem; width: 100%">{{ __('ui.performance') }}</h3>
-            <div class="performance-chart-wrap">
-                <canvas id="accuracyChart"></canvas>
-                <div class="performance-chart-center">
-                    <strong>{{ $accuracy }}%</strong>
-                    <span>overall</span>
+        <div style="display: flex; flex-direction: column; gap: 1.5rem">
+            <div class="glass-card performance-card" style="margin: 0">
+                <h3 style="margin-bottom: 1rem; width: 100%">{{ __('ui.performance') }}</h3>
+                <div class="performance-chart-wrap">
+                    <canvas id="accuracyChart"></canvas>
+                    <div class="performance-chart-center">
+                        <strong>{{ $accuracy }}%</strong>
+                        <span>overall</span>
+                    </div>
+                </div>
+                <div class="performance-summary">
+                    <div class="performance-summary-pill">
+                        <span class="performance-dot performance-dot-correct"></span>
+                        <strong>{{ $correctAnswers }}</strong>
+                        <small>correct</small>
+                    </div>
+                    <div class="performance-summary-pill">
+                        <span class="performance-dot performance-dot-incorrect"></span>
+                        <strong>{{ $incorrectAnswers }}</strong>
+                        <small>incorrect</small>
+                    </div>
+                </div>
+                <div class="performance-caption">
+                    Overall accuracy across your recorded practice answers.
                 </div>
             </div>
-            <div class="performance-summary">
-                <div class="performance-summary-pill">
-                    <span class="performance-dot performance-dot-correct"></span>
-                    <strong>{{ $correctAnswers }}</strong>
-                    <small>correct</small>
-                </div>
-                <div class="performance-summary-pill">
-                    <span class="performance-dot performance-dot-incorrect"></span>
-                    <strong>{{ $incorrectAnswers }}</strong>
-                    <small>incorrect</small>
-                </div>
-            </div>
-            <div class="performance-caption">
-                Overall accuracy across your recorded practice answers.
-            </div>
+
+            <x-ui.daily-quests />
         </div>
     </div>
 

@@ -12,19 +12,15 @@
     'referenceAudioUrl' => null, // URL of the model recording
 ])
 
-<div class="pron-shadow" x-data="pronShadow()">
+<div class="pron-shadow" x-data="pronShadow(@js($referenceText), @js($referenceAudioUrl))">
     <div style="background:var(--bg-elevated);border:1px solid var(--glass-border);border-radius:12px;padding:1.25rem">
 
-        @if($referenceText)
-            <p style="font-style:italic;color:var(--text-muted);margin-bottom:0.75rem">"{{ $referenceText }}"</p>
-        @endif
+        <p x-show="referenceText" style="font-style:italic;color:var(--text-muted);margin-bottom:0.75rem" x-text="'&ldquo;' + referenceText + '&rdquo;'"></p>
 
-        @if($referenceAudioUrl)
-            <audio controls src="{{ $referenceAudioUrl }}" style="width:100%;margin-bottom:1rem"></audio>
-        @endif
+        <audio x-ref="refPlayer" x-show="referenceAudioUrl" :src="referenceAudioUrl" controls style="width:100%;margin-bottom:1rem"></audio>
 
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
-            <button type="button" @click="start" :disabled="recording" class="btn btn-primary" style="padding:0.5rem 1rem">
+            <button type="button" @click="toggle" class="btn btn-primary" style="padding:0.5rem 1rem">
                 <span x-show="!recording">🎙️ Bắt đầu ghi</span>
                 <span x-show="recording" x-cloak>⏹️ Dừng</span>
             </button>
@@ -61,7 +57,9 @@
 @push('scripts')
     <script>
         document.addEventListener('alpine:init', () => {
-            window.Alpine.data('pronShadow', () => ({
+            window.Alpine.data('pronShadow', (initialText = '', initialAudio = null) => ({
+                referenceText: initialText || '',
+                referenceAudioUrl: initialAudio || null,
                 recording: false,
                 audioBlob: null,
                 audioUrl: null,
@@ -72,6 +70,22 @@
                 _timer: null,
                 _mediaRecorder: null,
                 _chunks: [],
+
+                init() {
+                    window.addEventListener('shadow:load', (e) => {
+                        this.referenceText = e.detail.text || '';
+                        this.referenceAudioUrl = e.detail.audioUrl || null;
+                        this.audioBlob = null;
+                        this.audioUrl = null;
+                        this.gradeResult = '';
+                        this.error = '';
+                        this.recording = false;
+                        if (this._timer) clearInterval(this._timer);
+                        if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
+                            this._mediaRecorder.stop();
+                        }
+                    });
+                },
 
                 async start() {
                     this.error = '';
@@ -116,7 +130,7 @@
                     try {
                         const fd = new FormData();
                         fd.append('audio', this.audioBlob, 'recording.webm');
-                        fd.append('reference_text', @json($referenceText ?? ''));
+                        fd.append('reference_text', this.referenceText);
                         const csrf = document.querySelector('meta[name="csrf-token"]').content;
                         const res = await fetch('/speaking/grade-audio', {
                             method: 'POST',

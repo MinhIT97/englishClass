@@ -23,6 +23,9 @@ Route::post('telegram/webhook', [\App\Http\Controllers\TelegramWebhookController
     ->name('telegram.webhook');
 
 Route::middleware(['auth'])->group(function () {
+    Route::post('/speaking/grade-audio', [\Modules\Speaking\Http\Controllers\SpeakingController::class, 'gradeAudio'])
+        ->name('student.speaking.grade-audio');
+
     Route::post('/ai/chat', [\App\Http\Controllers\Api\AIChatController::class, 'chat'])
         ->middleware('throttle:ai')
         ->name('ai.chat');

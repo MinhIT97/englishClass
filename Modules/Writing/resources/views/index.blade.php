@@ -25,8 +25,7 @@
 
                 <div class="form-group">
                     <label class="form-label">{{ __('ui.essay_content') }}</label>
-                    <textarea name="essay_content" class="form-control" style="min-height: 400px; resize: vertical; line-height: 1.8; font-size: 1rem" placeholder="{{ __('ui.essay_placeholder') }}">{{ old('essay_content') }}</textarea>
-                    <small style="color: var(--text-muted); display: block; margin-top: 0.5rem">{{ __('ui.min_words') }}</small>
+                    <x-ui.writing-checker name="essay_content" :initial-value="old('essay_content')" :placeholder="__('ui.essay_placeholder')" />
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%; border-radius: 50px; padding: 1rem">
