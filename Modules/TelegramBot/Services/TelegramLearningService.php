@@ -184,6 +184,16 @@ class TelegramLearningService
         $path->completed_at = Carbon::now();
         $path->save();
 
+        // Trigger topic-completion achievement check.
+        try {
+            app(AchievementService::class)->checkAndUnlock($user, 'topic_completed');
+        } catch (\Throwable $e) {
+            Log::warning('[TelegramBot] topic achievement check failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return true;
     }
 
@@ -192,7 +202,7 @@ class TelegramLearningService
      *
      * @return bool true on successful send
      */
-    public function sendDailyLesson(User $user, ?Carbon $when = null, bool $force = false): bool
+    public function sendDailyLesson(User $user, ?Carbon $when = null, bool $force = false, ?string $lessonType = null): bool
     {
         $this->lastFailureReason = null;
         $when ??= Carbon::now();
@@ -212,10 +222,11 @@ class TelegramLearningService
             return false;
         }
 
-        // Avoid duplicates on the same date.
+        // Avoid duplicates on the same date (scheduled lessons only).
         $alreadySent = DailyLesson::query()
             ->where('user_id', $user->id)
             ->whereDate('lesson_date', $when->toDateString())
+            ->where('is_extra', false)
             ->where('status', DailyLesson::STATUS_SENT)
             ->exists();
 
@@ -235,25 +246,54 @@ class TelegramLearningService
                 ? 'no_topics_configured'
                 : ($hasPaths ? 'learning_path_completed' : 'learning_path_missing');
             Log::warning('[TelegramBot] No topic available for user', ['user_id' => $user->id]);
+
+            if ($this->lastFailureReason === 'learning_path_completed') {
+                $throttleKey = "tgb:topics_completed_msg:{$user->id}";
+                if (! Cache::has($throttleKey)) {
+                    $this->telegram->sendMessage(
+                        $link->telegram_chat_id,
+                        "🎉 <b>Chúc mừng! Bạn đã hoàn thành toàn bộ lộ trình!</b>\n\n"
+                        . "Bạn có thể:\n"
+                        . "• Tiếp tục ôn tập với /review\n"
+                        . "• Làm /quiz để củng cố kiến thức\n"
+                        . "• Chơi /game để thư giãn\n"
+                        . "• Liên hệ admin để được mở lộ trình mới",
+                        ['inline_keyboard' => [[
+                            ['text' => '🔁 Ôn tập SR', 'callback_data' => 'tgb:rv'],
+                            ['text' => '🏠 Menu', 'callback_data' => 'tgb:menu'],
+                        ]]]
+                    );
+                    Cache::put($throttleKey, true, now()->addDays(7));
+                }
+            }
+
             return false;
         }
 
-        $lesson = DailyLesson::query()->updateOrCreate(
-            [
+        $isExtra = $force;
+
+        if ($isExtra) {
+            $lesson = DailyLesson::query()->create([
                 'user_id' => $user->id,
                 'lesson_date' => $when->toDateString(),
-            ],
-            [
+                'is_extra' => true,
                 'topic_id' => $topic->id,
                 'status' => DailyLesson::STATUS_SCHEDULED,
-            ]
-        );
+            ]);
+        } else {
+            $lesson = DailyLesson::query()->updateOrCreate(
+                ['user_id' => $user->id, 'lesson_date' => $when->toDateString(), 'is_extra' => false],
+                ['topic_id' => $topic->id, 'status' => DailyLesson::STATUS_SCHEDULED]
+            );
+        }
 
         // Show typing indicator so the user sees the bot is "thinking"
         // during the (typically 3-8s) Gemini call. Telegram expires this
         // after ~5s, so we resend once if the call takes longer.
         $this->telegram->sendChatAction($link->telegram_chat_id, 'typing');
-        $payload = $this->generator->generateDailyLesson($profile, $topic, $pathWordCount = 5);
+        $payload = $lessonType
+            ? $this->generator->generateDailyLessonOfType($profile, $topic, $lessonType, $pathWordCount = 5)
+            : $this->generator->generateDailyLesson($profile, $topic, $pathWordCount = 5);
         $this->telegram->sendChatAction($link->telegram_chat_id, 'typing');
         if (! $payload) {
             $this->lastFailureReason = 'gemini_generation_failed';
@@ -329,46 +369,91 @@ class TelegramLearningService
         });
 
         // Send 3 separate messages: intro, content (vocab/grammar/reading/conv/listening), recap.
-        // Dispatch by lesson type so each day has a tailored layout.
-        $lessonType = $payload['lesson_type'] ?? GeminiLessonGenerator::TYPE_VOCAB;
+        // Wrapped in try-catch so Telegram send failures are recorded on the lesson row
+        // and don't leave the lesson in a phantom SCHEDULED state.
+        try {
+            $resolvedType = $payload['lesson_type'] ?? GeminiLessonGenerator::TYPE_VOCAB;
 
-        $lastResponse = $this->sendIntroMessage($link->telegram_chat_id, $user, $topic, $payload, $when, $lessonType);
-        if ($lastResponse === null) {
-            $this->lastFailureReason = 'telegram_intro_send_failed';
-            $lesson->status = DailyLesson::STATUS_FAILED;
-            $lesson->error_message = 'Telegram send failed (intro)';
+            $lastResponse = $this->sendIntroMessage($link->telegram_chat_id, $user, $topic, $payload, $when, $resolvedType);
+            if ($lastResponse === null) {
+                throw new \RuntimeException('Intro message send failed');
+            }
+
+            // Content message(s).
+            match ($resolvedType) {
+                GeminiLessonGenerator::TYPE_VOCAB => $this->sendVocabAndGrammarMessages(
+                    $link->telegram_chat_id, $topic, $payload, $lesson->id
+                ),
+                GeminiLessonGenerator::TYPE_GRAMMAR => $this->sendVocabAndGrammarMessages(
+                    $link->telegram_chat_id, $topic, $payload, $lesson->id
+                ),
+                GeminiLessonGenerator::TYPE_READING => $this->sendReadingMessage(
+                    $link->telegram_chat_id, $user, $topic, $payload, $lesson->id
+                ),
+                GeminiLessonGenerator::TYPE_CONVERSATION => $this->sendConversationMessage(
+                    $link->telegram_chat_id, $payload, $lesson->id
+                ),
+                GeminiLessonGenerator::TYPE_LISTENING => $this->sendListeningMessage(
+                    $link->telegram_chat_id, $payload, $lesson->id
+                ),
+                GeminiLessonGenerator::TYPE_REVIEW => $this->sendReviewMessage(
+                    $link->telegram_chat_id, $user, $payload, $lesson->id
+                ),
+            };
+
+            // Word of the Day — lightweight bonus message, best-effort.
+            try {
+                $wotd = $this->generator->generateWordOfTheDay();
+                if ($wotd && ! empty($wotd['word'])) {
+                    $audioCallback = $this->tts->callbackData($wotd['word']);
+                    $audioRow = $audioCallback
+                        ? [[['text' => '🔊 Nghe phát âm', 'callback_data' => $audioCallback]]]
+                        : [];
+                    $this->telegram->sendMessage(
+                        $link->telegram_chat_id,
+                        "🌟 <b>Word of the Day:</b> <b>{$wotd['word']}</b>\n"
+                        . "📐 <i>" . ($wotd['pos'] ?? '') . "</i>\n"
+                        . "🇻🇳 " . ($wotd['meaning_vi'] ?? '') . "\n"
+                        . "💬 <i>\"" . ($wotd['example_en'] ?? '') . "\"</i>",
+                        ! empty($audioRow) ? ['inline_keyboard' => $audioRow] : []
+                    );
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[TelegramBot] Word of the day send failed', ['error' => $e->getMessage()]);
+            }
+
+            $lesson->status = DailyLesson::STATUS_SENT;
+            $lesson->telegram_message_id = $lastResponse['result']['message_id'] ?? null;
+            $lesson->sent_at = Carbon::now();
             $lesson->save();
+        } catch (\Throwable $e) {
+            Log::error('[TelegramBot] Telegram send failed after vocab persistence', [
+                'user_id' => $user->id,
+                'lesson_id' => $lesson->id,
+                'error' => $e->getMessage(),
+            ]);
+            $lesson->status = DailyLesson::STATUS_FAILED;
+            $lesson->error_message = 'Telegram send failed: ' . \Illuminate\Support\Str::limit($e->getMessage(), 200);
+            $lesson->save();
+
+            $this->telegram->sendMessage(
+                $link->telegram_chat_id,
+                "⚠️ <b>Bài học hôm nay chưa sẵn sàng.</b>\n\n"
+                . "Hệ thống AI đang gặp vấn đề. Bạn có thể:\n"
+                . "• Thử lại sau với /vocab\n"
+                . "• Mở web app để xem từ vựng có sẵn\n"
+                . "• Liên hệ admin nếu lỗi kéo dài",
+                [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '🌐 Mở web app', 'url' => url('/student/dashboard')],
+                            ['text' => '🔁 Thử lại /vocab', 'callback_data' => 'tgb:vocab-detail'],
+                        ],
+                    ],
+                ]
+            );
             return false;
         }
-
-        // Content message(s) — at most one per type for the MVP. Reading
-        // and listening send one combined message; conversation sends one
-        // dialog message; vocab/grammar send one vocab card + one grammar card.
-        match ($lessonType) {
-            GeminiLessonGenerator::TYPE_VOCAB => $this->sendVocabAndGrammarMessages(
-                $link->telegram_chat_id, $topic, $payload, $lesson->id
-            ),
-            GeminiLessonGenerator::TYPE_GRAMMAR => $this->sendVocabAndGrammarMessages(
-                $link->telegram_chat_id, $topic, $payload, $lesson->id
-            ),
-            GeminiLessonGenerator::TYPE_READING => $this->sendReadingMessage(
-                $link->telegram_chat_id, $user, $topic, $payload, $lesson->id
-            ),
-            GeminiLessonGenerator::TYPE_CONVERSATION => $this->sendConversationMessage(
-                $link->telegram_chat_id, $payload, $lesson->id
-            ),
-            GeminiLessonGenerator::TYPE_LISTENING => $this->sendListeningMessage(
-                $link->telegram_chat_id, $payload, $lesson->id
-            ),
-            GeminiLessonGenerator::TYPE_REVIEW => $this->sendReviewMessage(
-                $link->telegram_chat_id, $user, $payload, $lesson->id
-            ),
-        };
-
-        $lesson->status = DailyLesson::STATUS_SENT;
-        $lesson->telegram_message_id = $lastResponse['result']['message_id'] ?? null;
-        $lesson->sent_at = Carbon::now();
-        $lesson->save();
 
         // Capture XP BEFORE streak/achievement XP grants so we can
         // detect level-up after they're applied.
@@ -381,7 +466,7 @@ class TelegramLearningService
         // We deliberately send the recap BEFORE the celebration so the
         // user sees "today's summary" framing, then the bonus celebration
         // on top.
-        $this->sendRecapCard($link->telegram_chat_id, $user, count($payload['vocabulary']), $lessonType);
+        $this->sendRecapCard($link->telegram_chat_id, $user, count($payload['vocabulary']), $resolvedType);
 
         $unlocked = $this->achievements->checkAndUnlock($user, 'lesson_sent', [
             'vocab_count' => VocabularyEntry::query()->where('user_id', $user->id)->count(),
@@ -515,14 +600,21 @@ class TelegramLearningService
             return ['ok' => false, 'reason' => 'no_link'];
         }
 
+        // All validations passed — notify user we're generating.
+        $this->telegram->sendMessage(
+            $link->telegram_chat_id,
+            "📖 <b>Đang tạo bài học mới...</b>\n\n⏳ Vui lòng đợi trong giây lát."
+        );
+
         // Increment counter BEFORE generation so two parallel requests
-        // can't both pass the limit check.
+        // can't both pass the limit check. The finally block guarantees
+        // the counter is rolled back on any failure path.
         $this->incrementExtrasToday($user);
+        $sent = false;
 
         try {
-            $sent = $this->sendDailyLesson($user, Carbon::now(), force: true);
+            $sent = $this->sendDailyLesson($user, Carbon::now(), force: true, lessonType: GeminiLessonGenerator::TYPE_VOCAB);
         } catch (\Throwable $e) {
-            $this->decrementExtrasToday($user);
             Log::error('[TelegramBot] Extra lesson exception', [
                 'user_id' => $user->id,
                 'exception' => $e,
@@ -534,16 +626,25 @@ class TelegramLearningService
             ], $e);
 
             return ['ok' => false, 'reason' => 'send_failed'];
+        } finally {
+            if (! $sent) {
+                $this->decrementExtrasToday($user);
+            }
         }
 
         if (! $sent) {
-            // Roll back the counter so a failed attempt doesn't burn quota.
-            $this->decrementExtrasToday($user);
+            $reason = $this->lastFailureReason() ?? 'unknown';
+
+            // Non-recoverable reasons — no admin alert needed.
+            if (in_array($reason, ['learning_path_completed', 'no_topics_configured', 'learning_path_missing'], true)) {
+                return ['ok' => false, 'reason' => $reason];
+            }
+
             $this->telegram->sendAdminAlert('Extra lesson could not be created', [
                 'feature' => 'telegram_extra_lesson',
                 'user_id' => $user->id,
                 'email' => $user->email,
-                'failure_reason' => $this->lastFailureReason() ?? 'unknown',
+                'failure_reason' => $reason,
                 'hint' => 'Check the preceding Gemini or Telegram alert and laravel.log.',
             ]);
             return ['ok' => false, 'reason' => 'send_failed'];
@@ -598,6 +699,8 @@ class TelegramLearningService
             $today = $when->toDateString();
             $lastKey = "tgb:last_lesson:{$user->id}";
             $lastDate = cache()->get($lastKey);
+            $usedFreeze = false;
+            $freezeEarned = false;
 
             if ($lastDate === $today) {
                 return; // already counted today
@@ -605,13 +708,41 @@ class TelegramLearningService
 
             if ($lastDate === $when->copy()->subDay()->toDateString()) {
                 $user->streak = ($user->streak ?? 0) + 1;
+            } elseif ($lastDate !== null && ($user->streak_freezes ?? 0) > 0) {
+                // Streak would break, but user has a freeze token — consume it.
+                $user->streak_freezes = ($user->streak_freezes ?? 1) - 1;
+                $user->streak = ($user->streak ?? 0) + 1;
+                $usedFreeze = true;
             } else {
                 $user->streak = 1;
             }
+
+            // Award streak freezes: 1 per 7 consecutive days.
+            if (($user->streak % 7) === 0 && ($user->streak_freezes ?? 0) < 5) {
+                $user->streak_freezes = ($user->streak_freezes ?? 0) + 1;
+                $freezeEarned = true;
+            }
+
             $user->xp = ($user->xp ?? 0) + 10; // daily lesson XP
             $user->save();
 
             cache()->put($lastKey, $today, now()->addDays(2));
+            cache()->put("tgb:last_lesson_cal:{$user->id}:{$today}", true, now()->addDays(8));
+
+            // Send streak freeze notification if one was consumed or earned.
+            if ($usedFreeze || $freezeEarned) {
+                try {
+                    $link = UserTelegramLink::query()->where('user_id', $user->id)->first();
+                    if ($link) {
+                        $msg = $usedFreeze
+                            ? "🧊 <b>Streak freeze đã được dùng!</b> Bạn còn <b>{$user->streak_freezes}</b> freeze."
+                            : "🎁 <b>+1 Streak Freeze!</b> Bạn có <b>{$user->streak_freezes}</b> freeze. Học đều 7 ngày để nhận thêm!";
+                        app(TelegramService::class)->sendMessage($link->telegram_chat_id, $msg);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('[TelegramBot] freeze notification failed', ['user_id' => $user->id]);
+                }
+            }
 
             // Trigger streak-based achievement check (best-effort —
             // we don't want to break the streak update if the check fails).
@@ -619,7 +750,7 @@ class TelegramLearningService
                 app(AchievementService::class)->checkAndUnlock(
                     $user,
                     'streak_changed',
-                    ['streak' => $user->streak]
+                    ['streak' => $user->streak, 'freeze_used' => $usedFreeze]
                 );
             } catch (\Throwable $e) {
                 Log::warning('[TelegramBot] achievement check failed in bumpStreak', [
@@ -672,9 +803,20 @@ class TelegramLearningService
             default => "1️⃣ Nội dung chính\n2️⃣ Luyện tập",
         };
 
+        $streakDays = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = $when->copy()->subDays($i)->toDateString();
+            $hasLesson = Cache::get("tgb:last_lesson_cal:{$user->id}:{$d}", false);
+            if (! $hasLesson && $i === 0) {
+                $hasLesson = true; // today's lesson counts
+            }
+            $streakDays[] = $hasLesson ? '🟢' : '⚪';
+        }
+        $calendar = implode('', $streakDays);
+
         $text = "━━━━━━━━━━━━━━━━━━━━\n"
             . "{$greeting}, <b>{$user->name}</b>! 👋\n"
-            . "📅 " . $when->format('l, d/m/Y') . "\n"
+            . "📅 " . $when->format('l, d/m/Y') . "  {$calendar}\n"
             . "━━━━━━━━━━━━━━━━━━━━\n\n"
             . "🎓 <b>Hôm nay:</b> {$typeLabel}\n"
             . "📌 <b>Chủ đề:</b> <b>{$topic->name_vi}</b> <i>({$topic->name_en})</i>\n\n"
@@ -758,6 +900,16 @@ class TelegramLearningService
         ];
 
         $this->telegram->sendMessage($chatId, implode("\n", $lines), ['inline_keyboard' => $keyboardRows]);
+
+        // Lightweight related-word tip — pull one word from today's lesson.
+        $firstWord = $words[0]['word'] ?? null;
+        if ($firstWord) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "💡 <b>Mẹo nhỏ:</b> Từ <b>{$firstWord}</b> thường đi với các từ như: "
+                . "<i>common, useful, practical</i>. Hãy thử đặt câu với collocation nhé! ✍️"
+            );
+        }
     }
 
     /**
@@ -1056,8 +1208,37 @@ class TelegramLearningService
         $lines[] = "";
         $streak = $user->streak ?? 0;
         $xp = $user->xp ?? 0;
-        $lines[] = "📊 <b>Tiến độ tuần này:</b>";
-        $lines[] = "  • 🔥 Streak hiện tại: <b>{$streak} ngày</b>";
+        $levelInfo = $this->levels->currentLevelInfo($user);
+        $levelProgress = $this->levels->progressPercent($user);
+
+        // Weekly stats.
+        $weekStart = Carbon::now()->startOfWeek();
+        $wordsThisWeek = VocabularyEntry::query()
+            ->where('user_id', $user->id)
+            ->where('created_at', '>=', $weekStart)
+            ->count();
+        $reviewsThisWeek = (int) DB::table('tgb_review_schedules')
+            ->where('user_id', $user->id)
+            ->where('last_reviewed_at', '>=', $weekStart)
+            ->count();
+        $quizAccuracy = (int) round(
+            \Modules\TelegramBot\Models\QuizAttempt::query()
+                ->where('user_id', $user->id)
+                ->where('attempted_at', '>=', $weekStart)
+                ->where('is_correct', true)
+                ->count()
+            / max(1, \Modules\TelegramBot\Models\QuizAttempt::query()
+                ->where('user_id', $user->id)
+                ->where('attempted_at', '>=', $weekStart)
+                ->count()) * 100
+        );
+
+        $lines[] = "📊 <b>Tổng kết tuần này:</b>";
+        $lines[] = "  • 🔥 Streak: <b>{$streak} ngày</b>";
+        $lines[] = "  • 📚 Từ mới: <b>{$wordsThisWeek}</b>";
+        $lines[] = "  • 🔁 Đã ôn: <b>{$reviewsThisWeek} thẻ</b>";
+        $lines[] = "  • 🎯 Quiz accuracy: <b>{$quizAccuracy}%</b>";
+        $lines[] = "  • {$levelInfo['emoji']} Level: <b>{$levelInfo['level']} — {$levelInfo['name_vi']}</b> ({$levelProgress}%)";
         $lines[] = "  • ⚡ Tổng XP: <b>{$xp}</b>";
 
         // Mini practice CTA.

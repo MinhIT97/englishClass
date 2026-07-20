@@ -94,6 +94,45 @@
         </div>
     </div>
 
+    @if(!empty($telegram['topic_name']))
+    <div class="glass-card" style="margin-bottom: 2rem">
+        <h3 style="margin-bottom: 1.25rem">📚 Học tập Telegram</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem">
+            <div style="background: var(--bg-main); padding: 1rem; border-radius: 12px; text-align: center">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem">Chủ đề hiện tại</div>
+                <div style="font-weight: 700">{{ $telegram['topic_name'] }}</div>
+            </div>
+            <div style="background: var(--bg-main); padding: 1rem; border-radius: 12px; text-align: center">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem">Tiến độ từ vựng</div>
+                <div style="height: 8px; background: var(--bg-surface); border-radius: 4px; overflow: hidden; margin: 0.5rem 0">
+                    <div style="width: {{ $telegram['topic_pct'] }}%; height: 100%; background: var(--primary); transition: width 0.6s"></div>
+                </div>
+                <div style="font-weight: 700">{{ $telegram['words_mature'] }}/{{ $telegram['words_total'] }} ({{ $telegram['topic_pct'] }}%)</div>
+            </div>
+            <div style="background: var(--bg-main); padding: 1rem; border-radius: 12px; text-align: center">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem">Thẻ cần ôn</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: {{ $telegram['due_cards'] > 0 ? 'var(--accent)' : 'var(--text-muted)' }}">{{ $telegram['due_cards'] }}</div>
+            </div>
+            <div style="background: var(--bg-main); padding: 1rem; border-radius: 12px; text-align: center">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem">Tổng từ vựng</div>
+                <div style="font-size: 1.5rem; font-weight: 700">{{ $telegram['total_vocab'] }}</div>
+            </div>
+            @if($telegram['freezes'] > 0)
+            <div style="background: var(--bg-main); padding: 1rem; border-radius: 12px; text-align: center">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem">Streak Freeze</div>
+                <div style="font-size: 1.5rem; font-weight: 700">🧊 {{ $telegram['freezes'] }}</div>
+            </div>
+            @endif
+        </div>
+        <div style="margin-top: 1rem; display: flex; gap: 0.75rem">
+            <a href="{{ url('/flashcards') }}" class="btn btn-primary" style="text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px">🔁 Ôn tập thẻ</a>
+            @if($telegram['due_cards'] > 0)
+            <span style="color: var(--accent); font-size: 0.85rem; align-self: center">{{ $telegram['due_cards'] }} thẻ đang chờ ôn</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     <h3 style="margin-bottom: 1.5rem">{{ __('ui.practice_skills') }}</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 3rem">
         @foreach([

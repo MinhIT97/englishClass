@@ -147,7 +147,6 @@ class TelegramBotCommandService
         }
 
         $link = UserTelegramLink::query()->where('user_id', $user->id)->first();
-        $this->maybeSendWelcomeBack($chatId, $user, $link);
         $link?->update(['last_interaction_at' => Carbon::now()]);
 
         $state = ConversationState::query()->where('telegram_chat_id', $chatId)->first();
@@ -167,7 +166,37 @@ class TelegramBotCommandService
             return;
         }
 
-        // No active flow - send a friendly reminder of available commands.
+        // No active flow — try opportunistic review card first.
+        $dueCard = ReviewSchedule::query()
+            ->with('vocabularyEntry')
+            ->where('user_id', $user->id)
+            ->due()
+            ->inRandomOrder()
+            ->first();
+
+        if ($dueCard) {
+            $state = ConversationState::forChat($chatId);
+            $state->current_command = 'quick_review';
+            $state->state_data = [
+                'user_id' => $user->id,
+                'schedule_ids' => [$dueCard->id],
+                'index' => 0,
+                'correct' => 0,
+            ];
+            $state->save();
+
+            $this->telegram->sendMessage(
+                $chatId,
+                "💡 <b>Ôn nhanh 1 từ nhé!</b>"
+            );
+            $this->sendReviewCard($chatId, $dueCard, 0, 1);
+            return;
+        }
+
+        // No due cards — send welcome-back if applicable, then help.
+        $this->maybeSendWelcomeBack($chatId, $user, $link);
+
+        // No due cards — send a friendly reminder of available commands.
         $this->telegram->sendMessage(
             $chatId,
             "💬 Mình nhận được: <i>\"" . mb_substr($text, 0, 50) . '"</i>\n\n'
@@ -632,7 +661,13 @@ class TelegramBotCommandService
                 ->where('repetitions', '>=', 2)
                 ->count();
             $currentDetail = "📍 <b>Đang học:</b> {$currentPath->topic->name_vi}\n"
-                . "   Từ vựng: <b>{$matureWords}/{$totalWords}</b> đã thuộc\n\n";
+                . "   Từ vựng: <b>{$matureWords}/{$totalWords}</b> đã thuộc\n";
+            if ($totalWords > 0) {
+                $pct = (int) round(($matureWords / $totalWords) * 100);
+                $currentDetail .= "   " . $this->progressBar($matureWords, max($totalWords, 1))
+                    . " <b>{$pct}%</b>\n";
+            }
+            $currentDetail .= "\n";
         }
 
         $lines = [];
@@ -722,6 +757,7 @@ class TelegramBotCommandService
             ->with('vocabularyEntry')
             ->where('user_id', $user->id)
             ->due()
+            ->orderBy('ease_factor')
             ->orderBy('next_review_at')
             ->limit(10)
             ->get();
@@ -820,7 +856,7 @@ class TelegramBotCommandService
         $ids = $data['schedule_ids'] ?? [];
         $currentIndex = (int) ($data['index'] ?? 0);
 
-        if ($state->current_command !== 'review'
+        if (($state->current_command !== 'review' && $state->current_command !== 'quick_review')
             || (int) ($ids[$currentIndex] ?? 0) !== $scheduleId
             || $grade < ReviewSchedule::GRADE_AGAIN
             || $grade > ReviewSchedule::GRADE_EASY) {
@@ -842,6 +878,20 @@ class TelegramBotCommandService
         $correct = ($data['correct'] ?? 0) + ($grade >= ReviewSchedule::GRADE_GOOD ? 1 : 0);
 
         if ($nextIndex >= count($ids)) {
+            // Quick review: brief feedback only, no full completion flow.
+            if ($state->current_command === 'quick_review') {
+                $xp = $grade >= ReviewSchedule::GRADE_GOOD ? 2 : 1;
+                $user->xp = ($user->xp ?? 0) + $xp;
+                $user->save();
+                $gradeLabel = ['🔁', '😣', '👍', '🎉'][$grade] ?? '👍';
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "✅ {$gradeLabel} Đã ghi nhận! <b>+{$xp} XP</b>"
+                );
+                $state->clear();
+                return;
+            }
+
             $xp = $correct * 2;
             $user->xp = ($user->xp ?? 0) + $xp;
             $user->save();
@@ -885,6 +935,37 @@ class TelegramBotCommandService
             );
 
             $state->clear();
+
+            // Auto-complete current topic if all vocab + reading are mature.
+            try {
+                $currentPath = UserPath::query()
+                    ->where('user_id', $user->id)
+                    ->where('status', UserPath::STATUS_CURRENT)
+                    ->first();
+                if ($currentPath && $currentPath->topic) {
+                    $completed = $this->learning->completeCurrentTopicIfEligible($user, $currentPath->topic);
+                    if ($completed) {
+                        $this->telegram->sendMessage(
+                            $chatId,
+                            "🎉 <b>Chúc mừng! Bạn đã hoàn thành chủ đề \"{$currentPath->topic->name_vi}\"!</b>\n\n"
+                            . "Chủ đề tiếp theo đã được mở khóa. Gõ /roadmap để xem lộ trình.",
+                            ['inline_keyboard' => [[
+                                ['text' => '📍 Xem lộ trình', 'callback_data' => 'tgb:roadmap'],
+                                ['text' => '🏠 Menu', 'callback_data' => 'tgb:menu'],
+                            ]]]
+                        );
+                    }
+                }
+
+                // Trigger review achievement check on session completion.
+                $this->achievements->checkAndUnlock($user, 'review_finished');
+            } catch (\Throwable $e) {
+                Log::warning('[TelegramBot] topic/review achievement check failed in applyReviewGrade', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return;
         }
 
@@ -1090,12 +1171,16 @@ class TelegramBotCommandService
             ? "🔥 Streak: <b>{$streak} ngày</b>\n"
             : "💡 Hoàn thành bài học hôm nay để bắt đầu streak!\n";
 
+        $freezes = $user->streak_freezes ?? 0;
+        $freezeBlock = $freezes > 0 ? "🧊 Freeze: <b>{$freezes}</b>\n" : '';
+
         $text = "🏠 <b>MENU CHÍNH</b>\n"
             . "━━━━━━━━━━━━━━━━━━━━\n\n"
             . "👋 Xin chào, <b>{$user->name}</b>!\n"
             . "{$levelInfo['emoji']} Level: <b>{$levelInfo['level']} — {$levelInfo['name_vi']}</b>\n"
             . "⚡ Tổng XP: <b>{$xp}</b> (tiến độ level: {$levelProgress}%)\n"
             . $streakBlock
+            . $freezeBlock
             . "🏆 Huy hiệu: <b>{$achievementCount}/{$achievementTotal}</b>\n"
             . "\n"
             . "🎯 <b>Chọn hoạt động:</b>";
@@ -1161,11 +1246,6 @@ class TelegramBotCommandService
      */
     public function handleExtraLesson(string $chatId, User $user): void
     {
-        $this->telegram->sendMessage(
-            $chatId,
-            "📖 <b>Đang tạo bài học mới...</b>\n\n⏳ Vui lòng đợi trong giây lát."
-        );
-
         $result = $this->learning->sendExtraLesson($user);
 
         if ($result['ok']) {
@@ -1185,6 +1265,15 @@ class TelegramBotCommandService
                 . " bài hôm nay.</b>\n\n"
                 . "Hãy quay lại vào ngày mai nhé!",
             'no_link' => "🔗 Bạn cần liên kết tài khoản trước. Gõ /start.",
+            'learning_path_completed' => "🎉 <b>Bạn đã hoàn thành tất cả chủ đề!</b>\n\n"
+                . "Hãy ôn tập để củng cố kiến thức:\n"
+                . "• /review — ôn tập thẻ đến hạn\n"
+                . "• /quiz — kiểm tra kiến thức\n"
+                . "• Liên hệ admin để mở khóa thêm chủ đề mới.",
+            'no_topics_configured' => "⚠️ <b>Chưa có chủ đề nào được cấu hình.</b>\n\n"
+                . "Vui lòng liên hệ admin để thiết lập lộ trình học.",
+            'learning_path_missing' => "⚠️ <b>Lộ trình học chưa được thiết lập.</b>\n\n"
+                . "Gõ /start để hoàn tất thiết lập ban đầu.",
             default => "⚠️ Không thể tạo bài học mới. Vui lòng thử lại sau.",
         };
 

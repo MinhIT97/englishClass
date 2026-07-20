@@ -193,6 +193,12 @@
                     <a href="/student/flashcards" class="nav-item {{ request()->is('student/flashcards*') ? 'active' : '' }}">
                         <span class="nav-icon">🗂️</span> {{ __('ui.flashcards') }}
                     </a>
+                    <a href="/student/vocabulary" class="nav-item {{ request()->is('student/vocabulary*') ? 'active' : '' }}">
+                        <span class="nav-icon">📖</span> Từ vựng
+                    </a>
+                    <a href="/student/grammar" class="nav-item {{ request()->is('student/grammar*') ? 'active' : '' }}">
+                        <span class="nav-icon">🧠</span> Ngữ pháp
+                    </a>
                     <a href="/student/test" class="nav-item {{ request()->is('student/test') ? 'active' : '' }}">
                         <span class="nav-icon">🏆</span> {{ __('ui.mock_tests') }}
                     </a>

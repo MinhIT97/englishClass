@@ -129,7 +129,13 @@ class GeminiLessonGenerator
 
         $cached = Cache::get($cacheKey);
         if (is_array($cached) && isset($cached['lesson_type'])) {
-            return $this->personalise($cached, $exclude, $wordCount);
+            $result = $this->personalise($cached, $exclude, $wordCount);
+            if ($result !== null) {
+                return $result;
+            }
+            // All cached words are already learned by this user —
+            // bust the cache and fall through to generate fresh content.
+            Cache::forget($cacheKey);
         }
 
         $prompt = $this->buildPromptForType($profile, $topic, $lessonType, $wordCount, $exclude);
@@ -314,8 +320,8 @@ class GeminiLessonGenerator
             1, 3 => self::TYPE_VOCAB,         // Mon, Wed
             2, 4 => self::TYPE_GRAMMAR,        // Tue, Thu
             5    => self::TYPE_READING,        // Fri
-            6    => self::TYPE_CONVERSATION,   // Sat
-            7    => self::TYPE_LISTENING,      // Sun
+            6    => self::TYPE_LISTENING,      // Sat
+            7    => self::TYPE_REVIEW,         // Sun — review day
             default => self::TYPE_VOCAB,
         };
     }
@@ -365,7 +371,7 @@ class GeminiLessonGenerator
      * conversation transcript) intact since those don't depend on the
      * user's exclusion list.
      */
-    private function personalise(array $cached, array $exclude, int $wordCount): array
+    private function personalise(array $cached, array $exclude, int $wordCount): ?array
     {
         $lowerExclude = array_map('strtolower', $exclude);
         $filtered = array_values(array_filter(
@@ -377,6 +383,11 @@ class GeminiLessonGenerator
                 return ! in_array(strtolower((string) $entry['word']), $lowerExclude, true);
             }
         ));
+
+        if (empty($filtered) && ! empty($cached['vocabulary'])) {
+            Log::info('[TelegramBot] All cached words already learned by user; regenerating.');
+            return null;
+        }
 
         $vocab = ! empty($filtered)
             ? array_slice($filtered, 0, max(1, $wordCount))
@@ -440,11 +451,7 @@ class GeminiLessonGenerator
             default => 'IELTS academic English',
         };
 
-        $levelLabel = match ($profile->level) {
-            LearningProfile::LEVEL_BEGINNER => 'beginner (A2)',
-            LearningProfile::LEVEL_ADVANCED => 'advanced (C1+)',
-            default => 'intermediate (B1-B2)',
-        };
+        $levelLabel = $this->adaptiveLevelLabel($profile);
 
         $exampleBlock = <<<EXAMPLE
 {
@@ -502,7 +509,7 @@ BODY,
     {
         $excludeCsv = $exclude ? implode(', ', $exclude) : '(none)';
         $purposeLabel = $this->purposeLabel($profile);
-        $levelLabel = $this->levelLabel($profile);
+        $levelLabel = $this->adaptiveLevelLabel($profile);
 
         $exampleBlock = <<<EXAMPLE
 {
@@ -561,7 +568,7 @@ BODY,
     {
         $excludeCsv = $exclude ? implode(', ', $exclude) : '(none)';
         $purposeLabel = $this->purposeLabel($profile);
-        $levelLabel = $this->levelLabel($profile);
+        $levelLabel = $this->adaptiveLevelLabel($profile);
 
         $exampleBlock = <<<EXAMPLE
 {
@@ -622,7 +629,7 @@ BODY,
     {
         $excludeCsv = $exclude ? implode(', ', $exclude) : '(none)';
         $purposeLabel = $this->purposeLabel($profile);
-        $levelLabel = $this->levelLabel($profile);
+        $levelLabel = $this->adaptiveLevelLabel($profile);
 
         $exampleBlock = <<<EXAMPLE
 {
@@ -686,7 +693,7 @@ BODY,
     {
         $excludeCsv = $exclude ? implode(', ', $exclude) : '(none)';
         $purposeLabel = $this->purposeLabel($profile);
-        $levelLabel = $this->levelLabel($profile);
+        $levelLabel = $this->adaptiveLevelLabel($profile);
 
         $exampleBlock = <<<EXAMPLE
 {
@@ -785,6 +792,35 @@ PROMPT;
     }
 
     /**
+     * Dynamically adjust the target level based on the user's performance.
+     * High average ease_factor → push harder. Low ease_factor → ease off.
+     */
+    private function adaptiveLevelLabel(LearningProfile $profile): string
+    {
+        $avgEase = (float) \Modules\TelegramBot\Models\ReviewSchedule::query()
+            ->where('user_id', $profile->user_id)
+            ->avg('ease_factor');
+
+        if ($avgEase > 2.80) {
+            return match ($profile->level) {
+                LearningProfile::LEVEL_BEGINNER => 'intermediate (B1-B2)',
+                LearningProfile::LEVEL_INTERMEDIATE => 'advanced (C1+)',
+                default => 'advanced (C1+)',
+            };
+        }
+
+        if ($avgEase < 2.00 && $avgEase > 0) {
+            return match ($profile->level) {
+                LearningProfile::LEVEL_ADVANCED => 'intermediate (B1-B2)',
+                LearningProfile::LEVEL_INTERMEDIATE => 'beginner (A2)',
+                default => 'beginner (A2)',
+            };
+        }
+
+        return $this->levelLabel($profile);
+    }
+
+    /**
      * Parse response and normalise shape regardless of lesson type.
      */
     private function parseResponseForType(string $text, string $lessonType, array $exclude, int $wordCount): ?array
@@ -830,5 +866,86 @@ PROMPT;
             'lesson_type' => $lessonType,
             'extra' => $extra,
         ];
+    }
+
+    /**
+     * Generate a "word of the day" — one interesting English word/phrase
+     * with Vietnamese meaning and example. Cached per date so all users
+     * share the same word.
+     *
+     * @return array{word: string, pos: string, meaning_vi: string, example_en: string}|null
+     */
+    public function generateWordOfTheDay(): ?array
+    {
+        $cacheKey = 'tgb:wotd:' . Carbon::now()->toDateString();
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        if ($this->apiKeys === []) {
+            return null;
+        }
+
+        $prompt = <<<PROMPT
+You are Ms. Linh — a warm, encouraging Vietnamese English teacher.
+Generate ONE interesting English word or phrase suitable for today's date or season. Choose something culturally relevant, useful in daily life, or seasonally appropriate.
+
+Output ONLY valid JSON (no fences):
+{
+  "word": "serendipity",
+  "pos": "n",
+  "meaning_vi": "sự tình cờ may mắn",
+  "example_en": "Finding this café was pure serendipity."
+}
+
+Rules:
+- word should be interesting but not obscure — something a Vietnamese learner at B1-B2 level should know
+- meaning_vi in natural Vietnamese (1 phrase)
+- example_en: short, natural sentence (8-15 words)
+- Avoid cultural references uncommon in Vietnam
+PROMPT;
+
+        try {
+            foreach ($this->apiKeys as $apiKey) {
+                if ($this->isKeyCooldown($apiKey)) {
+                    continue;
+                }
+
+                $response = Http::timeout(15)->post(
+                    "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$apiKey}",
+                    [
+                        'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
+                        'generationConfig' => [
+                            'temperature' => 0.7,
+                            'maxOutputTokens' => 256,
+                        ],
+                    ]
+                );
+
+                if (! $response->successful()) {
+                    $this->markKeyCooldown($apiKey);
+                    continue;
+                }
+
+                $text = $response->json('candidates.0.content.parts.0.text');
+                if (! is_string($text)) {
+                    continue;
+                }
+
+                $clean = trim((string) preg_replace('/^```(?:json)?|```$/m', '', trim($text)));
+                $decoded = json_decode($clean, true);
+                if (is_array($decoded) && ! empty($decoded['word'])) {
+                    Cache::put($cacheKey, $decoded, now()->addHours(36));
+                    return $decoded;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[TelegramBot] Word-of-the-day generation failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 }

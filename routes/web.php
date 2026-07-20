@@ -50,6 +50,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('flashcards/{reviewSchedule}/grade', [\App\Http\Controllers\FlashcardController::class, 'grade'])->name('flashcards.grade');
     Route::get('flashcards/stats', [\App\Http\Controllers\FlashcardController::class, 'stats'])->name('flashcards.stats');
 
+    // Vocabulary & Grammar lists
+    Route::get('student/vocabulary', [\App\Http\Controllers\VocabController::class, 'index'])->name('student.vocabulary');
+    Route::get('student/grammar', [\App\Http\Controllers\GrammarController::class, 'index'])->name('student.grammar');
+
     // Study planner
     Route::get('study-plan', [\App\Http\Controllers\StudyPlanController::class, 'index'])->name('study-plan.index');
     Route::post('study-plan', [\App\Http\Controllers\StudyPlanController::class, 'store'])->name('study-plan.store');

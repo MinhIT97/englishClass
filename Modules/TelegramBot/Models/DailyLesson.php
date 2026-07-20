@@ -20,6 +20,7 @@ class DailyLesson extends Model
         'user_id',
         'topic_id',
         'lesson_date',
+        'is_extra',
         'status',
         'telegram_message_id',
         'error_message',
@@ -28,6 +29,7 @@ class DailyLesson extends Model
 
     protected $casts = [
         'lesson_date' => 'date',
+        'is_extra' => 'boolean',
         'sent_at' => 'datetime',
         'telegram_message_id' => 'integer',
     ];

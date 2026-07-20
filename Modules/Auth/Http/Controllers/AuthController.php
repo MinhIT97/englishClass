@@ -14,6 +14,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Modules\Gamification\Services\GamificationService;
+use Modules\TelegramBot\Models\ReviewSchedule;
+use Modules\TelegramBot\Models\UserPath;
+use Modules\TelegramBot\Services\LevelService;
 
 class AuthController extends Controller
 {
@@ -57,6 +60,44 @@ class AuthController extends Controller
 
         $performance = $this->performanceAnalyticsService->studentPerformance($user->id);
 
+        // Telegram bot learning data — best-effort, graceful when module not loaded.
+        $telegram = [];
+        try {
+            $currentPath = UserPath::query()
+                ->where('user_id', $user->id)
+                ->where('status', UserPath::STATUS_CURRENT)
+                ->with('topic')
+                ->first();
+            if ($currentPath && $currentPath->topic) {
+                $totalWords = \Modules\TelegramBot\Models\VocabularyEntry::query()
+                    ->where('user_id', $user->id)
+                    ->where('topic_id', $currentPath->topic_id)
+                    ->count();
+                $matureWords = ReviewSchedule::query()
+                    ->where('user_id', $user->id)
+                    ->whereHas('vocabularyEntry', fn ($q) => $q->where('topic_id', $currentPath->topic_id))
+                    ->where('repetitions', '>=', 2)
+                    ->count();
+                $telegram['topic_name'] = $currentPath->topic->name_vi;
+                $telegram['topic_id'] = $currentPath->topic_id;
+                $telegram['words_total'] = $totalWords;
+                $telegram['words_mature'] = $matureWords;
+                $telegram['topic_pct'] = $totalWords > 0 ? (int) round(($matureWords / $totalWords) * 100) : 0;
+            }
+            $telegram['due_cards'] = ReviewSchedule::query()
+                ->where('user_id', $user->id)
+                ->due()
+                ->count();
+            $telegram['total_vocab'] = \Modules\TelegramBot\Models\VocabularyEntry::query()
+                ->where('user_id', $user->id)
+                ->count();
+            $telegram['freezes'] = $user->streak_freezes ?? 0;
+            $telegram['level_info'] = app(LevelService::class)->currentLevelInfo($user);
+            $telegram['level_progress'] = app(LevelService::class)->progressPercent($user);
+        } catch (\Throwable $e) {
+            // Module may not be loaded — dashboard works without it.
+        }
+
         return view('auth::student.dashboard', [
             'levelData' => $levelData,
             'accuracy' => $performance['accuracy'],
@@ -66,6 +107,7 @@ class AuthController extends Controller
             'skillStats' => $performance['skill_stats'],
             'skillAttempts' => $performance['skill_attempts'],
             'skillCorrectCounts' => $performance['skill_correct_counts'],
+            'telegram' => $telegram,
         ]);
     }
 

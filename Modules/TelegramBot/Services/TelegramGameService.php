@@ -414,5 +414,24 @@ class TelegramGameService
                 ],
             ]
         );
+
+        // Best-effort game achievement check.
+        try {
+            $user = \App\Models\User::find($data['user_id'] ?? 0);
+            if ($user) {
+                $gameCount = \Modules\TelegramBot\Models\QuizAttempt::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('quiz_type', ['word_scramble', 'match_pairs'])
+                    ->distinct('attempted_at')
+                    ->count('attempted_at');
+                app(\Modules\TelegramBot\Services\AchievementService::class)->checkAndUnlock(
+                    $user, 'game_finished', ['game_count' => $gameCount + 1]
+                );
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TelegramBot] game achievement check failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

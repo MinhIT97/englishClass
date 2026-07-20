@@ -33,12 +33,15 @@ class LevelService
      */
     public const LEVELS = [
         // index, name (vi), emoji, min_xp, max_xp (or null for last)
-        ['level' => 1, 'name' => 'Newcomer',   'name_vi' => 'Người mới',  'emoji' => '🌱', 'min' => 0,    'max' => 100,  'bonus_xp' => 0],
-        ['level' => 2, 'name' => 'Explorer',   'name_vi' => 'Nhà khám phá', 'emoji' => '🧭', 'min' => 100,  'max' => 300,  'bonus_xp' => 50],
-        ['level' => 3, 'name' => 'Scholar',    'name_vi' => 'Học giả',    'emoji' => '📖', 'min' => 300,  'max' => 700,  'bonus_xp' => 50],
-        ['level' => 4, 'name' => 'Expert',     'name_vi' => 'Chuyên gia', 'emoji' => '🎓', 'min' => 700,  'max' => 1500, 'bonus_xp' => 50],
-        ['level' => 5, 'name' => 'Master',     'name_vi' => 'Bậc thầy',   'emoji' => '🏅', 'min' => 1500, 'max' => 3000, 'bonus_xp' => 50],
-        ['level' => 6, 'name' => 'Legend',     'name_vi' => 'Huyền thoại', 'emoji' => '👑', 'min' => 3000, 'max' => null, 'bonus_xp' => 50],
+        ['level' => 1, 'name' => 'Newcomer',     'name_vi' => 'Người mới',    'emoji' => '🌱', 'min' => 0,     'max' => 100,   'bonus_xp' => 0],
+        ['level' => 2, 'name' => 'Explorer',     'name_vi' => 'Nhà khám phá', 'emoji' => '🧭', 'min' => 100,   'max' => 300,   'bonus_xp' => 50],
+        ['level' => 3, 'name' => 'Scholar',      'name_vi' => 'Học giả',      'emoji' => '📖', 'min' => 300,   'max' => 700,   'bonus_xp' => 50],
+        ['level' => 4, 'name' => 'Expert',       'name_vi' => 'Chuyên gia',   'emoji' => '🎓', 'min' => 700,   'max' => 1500,  'bonus_xp' => 50],
+        ['level' => 5, 'name' => 'Master',       'name_vi' => 'Bậc thầy',     'emoji' => '🏅', 'min' => 1500,  'max' => 3000,  'bonus_xp' => 50],
+        ['level' => 6, 'name' => 'Legend',       'name_vi' => 'Huyền thoại',  'emoji' => '👑', 'min' => 3000,  'max' => 5000,  'bonus_xp' => 50],
+        ['level' => 7, 'name' => 'Grandmaster',  'name_vi' => 'Đại sư',       'emoji' => '🧙', 'min' => 5000,  'max' => 8000,  'bonus_xp' => 80],
+        ['level' => 8, 'name' => 'Polyglot',     'name_vi' => 'Nhà ngôn ngữ', 'emoji' => '🌍', 'min' => 8000,  'max' => 12000, 'bonus_xp' => 80],
+        ['level' => 9, 'name' => 'Oracle',       'name_vi' => 'Nhà tiên tri', 'emoji' => '🔮', 'min' => 12000, 'max' => null,   'bonus_xp' => 100],
     ];
 
     /**

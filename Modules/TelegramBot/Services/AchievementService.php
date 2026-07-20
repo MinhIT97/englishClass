@@ -29,11 +29,20 @@ class AchievementService
     public const KEY_PERFECT_QUIZ = 'perfect_quiz';
     public const KEY_STREAK_3 = 'streak_3';
     public const KEY_STREAK_7 = 'streak_7';
+    public const KEY_STREAK_14 = 'streak_14';
     public const KEY_STREAK_30 = 'streak_30';
+    public const KEY_STREAK_60 = 'streak_60';
     public const KEY_WORDS_50 = 'words_50';
     public const KEY_WORDS_100 = 'words_100';
     public const KEY_WORDS_500 = 'words_500';
     public const KEY_REVIEW_MASTER = 'review_master';
+    public const KEY_REVIEW_200 = 'review_200';
+    public const KEY_QUIZ_10 = 'quiz_10';
+    public const KEY_QUIZ_50 = 'quiz_50';
+    public const KEY_GAME_10 = 'game_10';
+    public const KEY_TOPIC_3 = 'topic_3';
+    public const KEY_TOPIC_ALL = 'topic_all';
+    public const KEY_FREEZE_FIRST = 'freeze_first';
 
     /**
      * Catalog of every achievement currently defined.
@@ -73,11 +82,23 @@ class AchievementService
             'description' => 'Học liên tục 7 ngày — một tuần kỷ luật!',
             'xp' => 50,
         ],
+        self::KEY_STREAK_14 => [
+            'name' => 'Streak 14 ngày',
+            'emoji' => '💎',
+            'description' => 'Học liên tục 2 tuần — kỷ luật thép!',
+            'xp' => 100,
+        ],
         self::KEY_STREAK_30 => [
             'name' => 'Streak 30 ngày',
             'emoji' => '🏆',
             'description' => 'Học liên tục 30 ngày — bạn là huyền thoại!',
             'xp' => 200,
+        ],
+        self::KEY_STREAK_60 => [
+            'name' => 'Streak 60 ngày',
+            'emoji' => '👑',
+            'description' => 'Học liên tục 60 ngày — kỷ lục gia!',
+            'xp' => 500,
         ],
         self::KEY_WORDS_50 => [
             'name' => '50 từ vựng',
@@ -102,6 +123,48 @@ class AchievementService
             'emoji' => '🎯',
             'description' => 'Hoàn thành 10 phiên ôn tập SR.',
             'xp' => 50,
+        ],
+        self::KEY_REVIEW_200 => [
+            'name' => 'Ôn 200 thẻ',
+            'emoji' => '📋',
+            'description' => 'Ôn tập tổng cộng 200 thẻ SR.',
+            'xp' => 100,
+        ],
+        self::KEY_QUIZ_10 => [
+            'name' => '10 quiz',
+            'emoji' => '✅',
+            'description' => 'Hoàn thành 10 bài quiz.',
+            'xp' => 40,
+        ],
+        self::KEY_QUIZ_50 => [
+            'name' => '50 quiz',
+            'emoji' => '💯',
+            'description' => 'Hoàn thành 50 bài quiz.',
+            'xp' => 100,
+        ],
+        self::KEY_GAME_10 => [
+            'name' => 'Game thủ',
+            'emoji' => '🎮',
+            'description' => 'Chơi 10 mini-game.',
+            'xp' => 30,
+        ],
+        self::KEY_TOPIC_3 => [
+            'name' => '3 chủ đề',
+            'emoji' => '📖',
+            'description' => 'Hoàn thành 3 chủ đề học.',
+            'xp' => 60,
+        ],
+        self::KEY_TOPIC_ALL => [
+            'name' => 'Toàn bộ lộ trình',
+            'emoji' => '🌟',
+            'description' => 'Hoàn thành toàn bộ lộ trình học.',
+            'xp' => 300,
+        ],
+        self::KEY_FREEZE_FIRST => [
+            'name' => 'Lần đầu freeze',
+            'emoji' => '🧊',
+            'description' => 'Dùng streak freeze lần đầu tiên.',
+            'xp' => 15,
         ],
     ];
 
@@ -243,22 +306,39 @@ class AchievementService
                 self::KEY_FIRST_LESSON,
                 self::KEY_STREAK_3,
                 self::KEY_STREAK_7,
+                self::KEY_STREAK_14,
                 self::KEY_STREAK_30,
+                self::KEY_STREAK_60,
                 self::KEY_WORDS_50,
                 self::KEY_WORDS_100,
                 self::KEY_WORDS_500,
+                self::KEY_TOPIC_3,
+                self::KEY_TOPIC_ALL,
             ],
             'quiz_finished' => [
                 self::KEY_FIRST_QUIZ,
                 self::KEY_PERFECT_QUIZ,
+                self::KEY_QUIZ_10,
+                self::KEY_QUIZ_50,
             ],
             'streak_changed' => [
                 self::KEY_STREAK_3,
                 self::KEY_STREAK_7,
+                self::KEY_STREAK_14,
                 self::KEY_STREAK_30,
+                self::KEY_STREAK_60,
+                self::KEY_FREEZE_FIRST,
             ],
             'review_finished' => [
                 self::KEY_REVIEW_MASTER,
+                self::KEY_REVIEW_200,
+            ],
+            'game_finished' => [
+                self::KEY_GAME_10,
+            ],
+            'topic_completed' => [
+                self::KEY_TOPIC_3,
+                self::KEY_TOPIC_ALL,
             ],
             default => [],
         };
@@ -294,11 +374,15 @@ class AchievementService
 
             case self::KEY_STREAK_3:
             case self::KEY_STREAK_7:
+            case self::KEY_STREAK_14:
             case self::KEY_STREAK_30:
+            case self::KEY_STREAK_60:
                 $required = match ($key) {
                     self::KEY_STREAK_3 => 3,
                     self::KEY_STREAK_7 => 7,
+                    self::KEY_STREAK_14 => 14,
                     self::KEY_STREAK_30 => 30,
+                    self::KEY_STREAK_60 => 60,
                 };
                 $streak = $context['streak'] ?? ($user->streak ?? 0);
                 return $streak >= $required ? $xp : false;
@@ -316,12 +400,50 @@ class AchievementService
                 return $count >= $required ? $xp : false;
 
             case self::KEY_REVIEW_MASTER:
-                // Count distinct calendar days on which the user finished
-                // a review session. We approximate this by counting review
-                // grade events, but cap at the configured max for the day
-                // so a single marathon day doesn't grant the badge.
                 $days = $this->reviewDaysCompleted($user);
                 return $days >= 10 ? $xp : false;
+
+            case self::KEY_REVIEW_200:
+                $totalGraded = (int) DB::table('tgb_review_schedules')
+                    ->where('user_id', $user->id)
+                    ->whereNotNull('last_reviewed_at')
+                    ->count();
+                return $totalGraded >= 200 ? $xp : false;
+
+            case self::KEY_QUIZ_10:
+            case self::KEY_QUIZ_50:
+                $requiredQuiz = $key === self::KEY_QUIZ_10 ? 10 : 50;
+                $quizCount = QuizAttempt::query()
+                    ->where('user_id', $user->id)
+                    ->distinct('attempted_at')
+                    ->count();
+                return $quizCount >= $requiredQuiz ? $xp : false;
+
+            case self::KEY_GAME_10:
+                $gameCount = (int) ($context['game_count']
+                    ?? DB::table('tgb_quiz_attempts')
+                        ->where('user_id', $user->id)
+                        ->whereIn('quiz_type', ['word_scramble', 'match_pairs'])
+                        ->distinct('attempted_at')
+                        ->count());
+                return $gameCount >= 10 ? $xp : false;
+
+            case self::KEY_TOPIC_3:
+            case self::KEY_TOPIC_ALL:
+                $completedTopics = (int) DB::table('tgb_user_paths')
+                    ->where('user_id', $user->id)
+                    ->where('status', 'completed')
+                    ->count();
+                if ($key === self::KEY_TOPIC_ALL) {
+                    $totalTopics = (int) DB::table('tgb_user_paths')
+                        ->where('user_id', $user->id)
+                        ->count();
+                    return $totalTopics > 0 && $completedTopics >= $totalTopics ? $xp : false;
+                }
+                return $completedTopics >= 3 ? $xp : false;
+
+            case self::KEY_FREEZE_FIRST:
+                return ! empty($context['freeze_used']) ? $xp : false;
 
             default:
                 return false;
