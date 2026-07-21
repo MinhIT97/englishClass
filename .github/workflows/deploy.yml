@@ -29,7 +29,7 @@ jobs:
       - name: Build and recreate app-facing containers
         run: |
           cd /home/minhnv/projects/englishClass
-          docker compose up -d --build --force-recreate --remove-orphans --scale queue=4 app queue reverb nginx
+          docker compose up -d --build --force-recreate --renew-anon-volumes --remove-orphans --scale queue=4 app queue reverb nginx
 
       - name: Clear Laravel cache
         run: |
