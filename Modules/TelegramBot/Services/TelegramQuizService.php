@@ -27,6 +27,14 @@ class TelegramQuizService
      */
     public function startQuiz(string $chatId, User $user, int $questionCount = 5): void
     {
+        $dbDriver = DB::getDriverName();
+        $dateExpression = $dbDriver === 'sqlite'
+            ? "DATE('now', '-1 day')"
+            : "DATE_SUB(NOW(), INTERVAL 1 DAY)";
+        $nowExpression = $dbDriver === 'sqlite'
+            ? "datetime('now')"
+            : "NOW()";
+
         // Personalized: new words first, then weakest words (low ease_factor),
         // then due words. Ensures the quiz targets what the user needs most.
         $words = VocabularyEntry::query()
@@ -38,9 +46,9 @@ class TelegramQuizService
             ->select('tgb_vocabulary_entries.*')
             ->orderByRaw("
                 CASE
-                    WHEN tgb_vocabulary_entries.created_at >= DATE('now', '-1 day') THEN 0
+                    WHEN tgb_vocabulary_entries.created_at >= {$dateExpression} THEN 0
                     WHEN rs.ease_factor IS NULL OR rs.ease_factor <= 2.00 THEN 1
-                    WHEN rs.next_review_at IS NULL OR rs.next_review_at <= NOW() THEN 2
+                    WHEN rs.next_review_at IS NULL OR rs.next_review_at <= {$nowExpression} THEN 2
                     ELSE 3
                 END
             ")
