@@ -166,6 +166,11 @@ class TelegramBotCommandService
             return;
         }
 
+        if ($state && $state->current_command === 'practice') {
+            $this->evaluatePracticeSentence($chatId, $user, $text);
+            return;
+        }
+
         // No active flow — try opportunistic review card first.
         $dueCard = ReviewSchedule::query()
             ->with('vocabularyEntry')
@@ -456,6 +461,12 @@ class TelegramBotCommandService
                 $this->skipReviewCard($chatId, $user);
                 break;
 
+            case 'rshow': // reveal review card answer: tgb:rshow:<schedule_id>
+                if (! $user) return;
+                $scheduleId = (int) ($parts[2] ?? 0);
+                $this->revealReviewCard($chatId, $user, $scheduleId);
+                break;
+
             case 'menu': // main menu (single button from any flow)
                 if (! $user) return;
                 $this->sendMainMenu($chatId, $user);
@@ -497,6 +508,12 @@ class TelegramBotCommandService
                     "👋 Đã thoát game. Hẹn gặp lại!",
                     ['inline_keyboard' => [[['text' => '🏠 Menu', 'callback_data' => 'tgb:menu']]]]
                 );
+                break;
+
+            case 'practice': // practice mode: tgb:practice:<type>
+                if (! $user) return;
+                $practiceType = $parts[2] ?? 'sentence';
+                $this->startPracticeMode($chatId, $user, $practiceType);
                 break;
 
             case 'ghint':
@@ -800,12 +817,11 @@ class TelegramBotCommandService
         $this->sendReviewCard($chatId, $due->first(), 0, $due->count());
     }
 
-    public function sendReviewCard(string $chatId, ReviewSchedule $schedule, int $index, int $total): void
+    public function sendReviewCard(string $chatId, ReviewSchedule $schedule, int $index, int $total, bool $reveal = false): void
     {
         $entry = $schedule->vocabularyEntry;
         $progress = $this->progressBar($index + 1, $total);
 
-        // Build the card content. Show meaning directly to avoid the extra tap.
         $lines = [];
         $lines[] = $progress . " <b>" . ($index + 1) . "/{$total}</b>";
         $lines[] = "";
@@ -816,23 +832,40 @@ class TelegramBotCommandService
         if ($entry->pos) {
             $lines[] = "📐 <i>{$entry->pos}</i>";
         }
-        $lines[] = "";
-        $lines[] = "🇻🇳 <b>{$entry->meaning_vi}</b>";
-        if ($entry->example_en) {
-            $lines[] = "";
-            $lines[] = "💬 <i>\"{$entry->example_en}\"</i>";
-        }
-        $lines[] = "";
-        $lines[] = "<i>Mức độ bạn nhớ từ này thế nào?</i>";
 
-        $keyboard = [
-            'inline_keyboard' => [
-                $this->sr->gradeKeyboard($schedule->id)[0],
-                [
-                    ['text' => '⏭ Bỏ qua thẻ này', 'callback_data' => "tgb:rskip:{$schedule->id}"],
+        if ($reveal) {
+            $lines[] = "";
+            $lines[] = "🇻🇳 <b>{$entry->meaning_vi}</b>";
+            if ($entry->example_en) {
+                $lines[] = "";
+                $lines[] = "💬 <i>\"{$entry->example_en}\"</i>";
+            }
+            $lines[] = "";
+            $lines[] = "<i>Mức độ bạn nhớ từ này thế nào?</i>";
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    $this->sr->gradeKeyboard($schedule->id)[0],
+                    [
+                        ['text' => '⏭ Bỏ qua thẻ này', 'callback_data' => "tgb:rskip:{$schedule->id}"],
+                    ],
                 ],
-            ],
-        ];
+            ];
+        } else {
+            $lines[] = "";
+            $lines[] = "<i>🤔 Bạn có nhớ nghĩa của từ này không?</i>";
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '👁 Xem nghĩa', 'callback_data' => "tgb:rshow:{$schedule->id}"],
+                    ],
+                    [
+                        ['text' => '⏭ Bỏ qua', 'callback_data' => "tgb:rskip:{$schedule->id}"],
+                    ],
+                ],
+            ];
+        }
 
         $this->telegram->sendMessage($chatId, implode("\n", $lines), $keyboard);
     }
@@ -978,6 +1011,35 @@ class TelegramBotCommandService
         if ($nextSchedule) {
             $this->sendReviewCard($chatId, $nextSchedule, $nextIndex, count($ids));
         }
+    }
+
+    /**
+     * Reveal the review card answer — user saw the word, tried to recall,
+     * now taps "Xem nghĩa" to see meaning + example + grade buttons.
+     */
+    private function revealReviewCard(string $chatId, User $user, int $scheduleId): void
+    {
+        $state = ConversationState::forChat($chatId);
+        $data = (array) $state->state_data;
+        $ids = $data['schedule_ids'] ?? [];
+        $currentIndex = (int) ($data['index'] ?? 0);
+
+        if (! in_array($state->current_command, ['review', 'quick_review'], true)
+            || (int) ($ids[$currentIndex] ?? 0) !== $scheduleId) {
+            return;
+        }
+
+        $schedule = ReviewSchedule::query()
+            ->where('user_id', $user->id)
+            ->where('id', $scheduleId)
+            ->with('vocabularyEntry')
+            ->first();
+
+        if (! $schedule) {
+            return;
+        }
+
+        $this->sendReviewCard($chatId, $schedule, $currentIndex, count($ids), reveal: true);
     }
 
     private function sendLessonDetail(string $chatId, ?int $messageId, User $user, int $lessonId): void
@@ -1237,6 +1299,107 @@ class TelegramBotCommandService
             ],
         ];
         $this->telegram->sendMessage($chatId, $message, $keyboard);
+    }
+
+    /**
+     * Start practice mode — prompts the user to write a sentence using today's
+     * vocabulary. The sentence is sent as free text and evaluated by AI.
+     */
+    private function startPracticeMode(string $chatId, User $user, string $type): void
+    {
+        $state = ConversationState::forChat($chatId);
+        $state->current_command = 'practice';
+        $state->state_data = ['user_id' => $user->id, 'type' => $type];
+        $state->save();
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "✍️ <b>Luyện tập đặt câu</b>\n\n"
+            . "Hãy viết 1 câu tiếng Anh sử dụng ít nhất 1 từ vựng bạn vừa học.\n\n"
+            . "📝 Gửi câu của bạn bên dưới 👇\n"
+            . "<i>(Gõ /menu để thoát)</i>"
+        );
+    }
+
+    /**
+     * Evaluate a user-submitted practice sentence using Gemini.
+     */
+    private function evaluatePracticeSentence(string $chatId, User $user, string $sentence): void
+    {
+        $this->telegram->sendChatAction($chatId, 'typing');
+
+        $generator = app(\Modules\TelegramBot\Services\GeminiLessonGenerator::class);
+        $prompt = <<<PROMPT
+You are Ms. Linh, a warm Vietnamese English teacher. Evaluate this sentence from a Vietnamese English learner:
+
+"{$sentence}"
+
+Give feedback in Vietnamese (2-3 sentences max). Check:
+1. Grammar: any errors?
+2. Naturalness: does it sound like native English?
+3. Suggestion: one way to improve it (if needed)
+
+Be encouraging. If the sentence is correct and natural, praise them. Output ONLY plain text (no JSON, no markdown).
+PROMPT;
+
+        // Use GeminiLessonGenerator's internal API call via reflection.
+        // Simpler: use the Gemini API directly through the generator's keys.
+        try {
+            $ref = new \ReflectionClass($generator);
+            $apiKeys = $ref->getProperty('apiKeys');
+            $apiKeys->setAccessible(true);
+            $keys = $apiKeys->getValue($generator);
+            $model = $ref->getProperty('model');
+            $model->setAccessible(true);
+            $modelName = $model->getValue($generator);
+
+            if (empty($keys)) {
+                $this->telegram->sendMessage($chatId, "⚠️ AI đang bận, thử lại sau nhé!");
+                return;
+            }
+
+            $response = \Illuminate\Support\Facades\Http::timeout(20)->post(
+                "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$keys[0]}",
+                [
+                    'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
+                    'generationConfig' => ['temperature' => 0.7, 'maxOutputTokens' => 256],
+                ]
+            );
+
+            $text = $response->json('candidates.0.content.parts.0.text');
+            if (! is_string($text) || trim($text) === '') {
+                $text = "✅ Cảm ơn bạn đã luyện tập! Hãy tiếp tục đặt câu mỗi ngày nhé. 💪";
+            }
+
+            $user->xp = ($user->xp ?? 0) + 3;
+            $user->save();
+
+            $this->telegram->sendMessage(
+                $chatId,
+                "📝 <b>Câu của bạn:</b>\n<i>\"{$sentence}\"</i>\n\n"
+                . "🤖 <b>Nhận xét:</b>\n{$text}\n\n"
+                . "⚡ <b>+3 XP</b>",
+                ['inline_keyboard' => [[
+                    ['text' => '✍️ Viết câu khác', 'callback_data' => 'tgb:practice:sentence'],
+                    ['text' => '🏠 Menu', 'callback_data' => 'tgb:menu'],
+                ]]]
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TelegramBot] Practice evaluation failed', [
+                'error' => $e->getMessage(),
+            ]);
+            $this->telegram->sendMessage(
+                $chatId,
+                "✅ Cảm ơn bạn đã luyện tập! <b>+3 XP</b>\n\n"
+                . "💡 <i>Mẹo: cố gắng dùng từ mới trong câu hoàn chỉnh mỗi ngày để nhớ lâu hơn.</i>",
+                ['inline_keyboard' => [[
+                    ['text' => '✍️ Viết câu khác', 'callback_data' => 'tgb:practice:sentence'],
+                    ['text' => '🏠 Menu', 'callback_data' => 'tgb:menu'],
+                ]]]
+            );
+            $user->xp = ($user->xp ?? 0) + 3;
+            $user->save();
+        }
     }
 
     /**

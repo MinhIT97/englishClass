@@ -352,7 +352,7 @@ class TelegramLearningService
             }
 
             $grammar = $payload['grammar'];
-            GrammarEntry::query()->updateOrCreate(
+            $grammarEntry = GrammarEntry::query()->updateOrCreate(
                 [
                     'user_id' => $user->id,
                     'topic_id' => $topic->id,
@@ -364,6 +364,17 @@ class TelegramLearningService
                     'example_en' => $grammar['example_en'] ?? null,
                     'example_vi' => $grammar['example_vi'] ?? null,
                     'difficulty' => $topic->difficulty,
+                ]
+            );
+
+            // Create grammar SR schedule so grammar patterns are also reviewed.
+            \Modules\TelegramBot\Models\GrammarReviewSchedule::query()->firstOrCreate(
+                ['user_id' => $user->id, 'grammar_entry_id' => $grammarEntry->id],
+                [
+                    'ease_factor' => 2.50,
+                    'interval_days' => 0,
+                    'repetitions' => 0,
+                    'next_review_at' => Carbon::now()->addDays(3),
                 ]
             );
         });
@@ -865,10 +876,6 @@ class TelegramLearningService
             $ipa = ! empty($w['ipa']) ? " <code>{$w['ipa']}</code>" : '';
             $pos = ! empty($w['pos']) ? " <i>[{$w['pos']}]</i>" : '';
             $lines[] = "<b>{$num}. {$w['word']}</b>{$pos}{$ipa}";
-            $lines[] = "   🇻🇳 " . ($w['meaning_vi'] ?? '');
-            if (! empty($w['example_en'])) {
-                $lines[] = "   💬 <i>\"{$w['example_en']}\"</i>";
-            }
             if ($i < count($words) - 1) {
                 $lines[] = "";
             }
@@ -884,7 +891,7 @@ class TelegramLearningService
         }
 
         $lines[] = "";
-        $lines[] = "💡 <i>Bấm 🔊 để nghe phát âm, hoặc nút bên dưới để xem chi tiết / làm quiz.</i>";
+        $lines[] = "💡 <i>Bấm 🔊 để nghe phát âm. Thử nhớ nghĩa trước khi bấm \"Xem chi tiết\" nhé!</i>";
 
         // Build the keyboard: put audio buttons in a single row at the
         // top (max 5 fit on a row). If the lesson has no audio, skip.
@@ -897,6 +904,7 @@ class TelegramLearningService
         ];
         $keyboardRows[] = [
             ['text' => '📝 Làm quiz ngay', 'callback_data' => 'tgb:q:start'],
+            ['text' => '✍️ Tạo câu với từ này', 'callback_data' => 'tgb:practice:sentence'],
         ];
 
         $this->telegram->sendMessage($chatId, implode("\n", $lines), ['inline_keyboard' => $keyboardRows]);

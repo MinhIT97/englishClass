@@ -27,8 +27,8 @@ class TelegramQuizService
      */
     public function startQuiz(string $chatId, User $user, int $questionCount = 5): void
     {
-        // Prefer SR-due words first, then newest — all at DB level to
-        // avoid loading every word the user has ever learned into memory.
+        // Personalized: new words first, then weakest words (low ease_factor),
+        // then due words. Ensures the quiz targets what the user needs most.
         $words = VocabularyEntry::query()
             ->where('tgb_vocabulary_entries.user_id', $user->id)
             ->leftJoin('tgb_review_schedules as rs', function ($join) use ($user) {
@@ -38,11 +38,13 @@ class TelegramQuizService
             ->select('tgb_vocabulary_entries.*')
             ->orderByRaw("
                 CASE
-                    WHEN rs.next_review_at IS NULL OR rs.next_review_at <= NOW()
-                    THEN 0
-                    ELSE 1
+                    WHEN tgb_vocabulary_entries.created_at >= DATE('now', '-1 day') THEN 0
+                    WHEN rs.ease_factor IS NULL OR rs.ease_factor <= 2.00 THEN 1
+                    WHEN rs.next_review_at IS NULL OR rs.next_review_at <= NOW() THEN 2
+                    ELSE 3
                 END
             ")
+            ->orderBy('rs.ease_factor')
             ->orderByDesc('tgb_vocabulary_entries.id')
             ->limit($questionCount)
             ->get();
