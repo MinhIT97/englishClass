@@ -37,7 +37,7 @@ IELTS AI is a state-of-the-art English learning platform designed to help studen
 - **Frontend**: Blade, TailwindCSS, Vanilla JavaScript (MediaRecorder API), Vite
 - **Architecture**: Modular Design (HMVC) using `nwidart/laravel-modules`
 - **Real-time Notifications**: Telegram Bot API (native HTTP, no extra package)
-- **Deployment**: Docker (multi-stage build) + Cloudflare Tunnel
+- **Deployment**: Docker (multi-stage build)
 
 ## ⚙️ Installation & Setup (Local)
 
@@ -152,8 +152,6 @@ Expected response:
 ```json
 {"ok":true,"result":true,"description":"Webhook was set"}
 ```
-
-> **Note:** The app uses Cloudflare Tunnel to expose the server over HTTPS — Telegram requires HTTPS for webhooks. No extra configuration needed.
 
 ### Gemini API rotation
 

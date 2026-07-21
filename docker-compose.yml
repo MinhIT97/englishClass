@@ -115,15 +115,6 @@ services:
       - english-network
     restart: unless-stopped
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: english-class-cloudflared
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run --token  ${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      nginx:
-        condition: service_started
-
 volumes:
   dbdata:
   app_storage:

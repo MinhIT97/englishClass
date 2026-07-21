@@ -17,6 +17,7 @@
         "prettus/l5-repository": "^3.0",
         "psr/http-factory": "^1.1",
         "psr/http-message": "^2.0",
+        "spatie/laravel-permission": "*",
         "spatie/laravel-sluggable": "^3.8",
         "textalk/websocket": "^1.5"
     },
